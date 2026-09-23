@@ -8,6 +8,13 @@ on:
     branches:
       - develop
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -29,7 +36,7 @@ jobs:
         run: npm ci
 
       - name: Verificar formatação
-        run: npm run format
+        run: npm run format:check
 
       - name: Instalar dependências do frontend
         working-directory: apps/chat-mia
