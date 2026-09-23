@@ -1,5 +1,5 @@
 function MessageList() {
-  return null
+  return null;
 }
 
-export default MessageList
+export default MessageList;

@@ -1,5 +1,5 @@
 function MiniChat() {
-  return null
+  return null;
 }
 
-export default MiniChat
+export default MiniChat;

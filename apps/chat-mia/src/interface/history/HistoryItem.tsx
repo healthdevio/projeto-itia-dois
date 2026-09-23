@@ -1,5 +1,5 @@
 function HistoryItem() {
-  return null
+  return null;
 }
 
-export default HistoryItem
+export default HistoryItem;

@@ -1,5 +1,5 @@
 function ChatHeader() {
-  return null
+  return null;
 }
 
-export default ChatHeader
+export default ChatHeader;

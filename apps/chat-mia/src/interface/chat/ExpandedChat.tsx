@@ -1,5 +1,5 @@
 function ExpandedChat() {
-  return null
+  return null;
 }
 
-export default ExpandedChat
+export default ExpandedChat;

@@ -1,5 +1,5 @@
 function HistoryPanel() {
-  return null
+  return null;
 }
 
-export default HistoryPanel
+export default HistoryPanel;

@@ -1,5 +1,5 @@
 function MessageItem() {
-  return null
+  return null;
 }
 
-export default MessageItem
+export default MessageItem;

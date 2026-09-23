@@ -1,5 +1,5 @@
 function ChatInput() {
-  return null
+  return null;
 }
 
-export default ChatInput
+export default ChatInput;

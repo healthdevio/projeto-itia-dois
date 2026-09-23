@@ -1,5 +1,5 @@
 function LoadingIndicator() {
-  return null
+  return null;
 }
 
-export default LoadingIndicator
+export default LoadingIndicator;

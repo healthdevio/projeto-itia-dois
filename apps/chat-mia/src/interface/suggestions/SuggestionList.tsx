@@ -1,5 +1,5 @@
 function SuggestionList() {
-  return null
+  return null;
 }
 
-export default SuggestionList
+export default SuggestionList;

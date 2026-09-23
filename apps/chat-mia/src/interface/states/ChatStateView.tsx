@@ -1,5 +1,5 @@
 function ChatStateView() {
-  return null
+  return null;
 }
 
-export default ChatStateView
+export default ChatStateView;

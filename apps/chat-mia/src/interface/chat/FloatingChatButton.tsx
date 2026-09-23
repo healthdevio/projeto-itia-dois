@@ -1,5 +1,5 @@
 function FloatingChatButton() {
-  return null
+  return null;
 }
 
-export default FloatingChatButton
+export default FloatingChatButton;
