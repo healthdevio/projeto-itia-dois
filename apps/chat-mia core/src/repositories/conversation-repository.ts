@@ -216,6 +216,29 @@ export async function getOrCreateActiveConversation(
 }
 
 /**
+ * Ids das conversas anteriores de um usuário, mais recente primeiro.
+ *
+ * Usado para montar o `history_ids` do contexto da Mia AI. Os ids, e não as
+ * conversas inteiras: a IA recebe a referência de que houve diálogos
+ * anteriores, sem o conteúdo deles.
+ */
+export async function getHistoryIds(
+  userId: string,
+  limit = HISTORY_LIMIT,
+): Promise<string[]> {
+  const rows = await getDatabase()
+    .select({ id: conversations.id })
+    .from(conversations)
+    .where(
+      and(eq(conversations.userId, userId), eq(conversations.isActive, false)),
+    )
+    .orderBy(desc(conversations.updatedAt))
+    .limit(limit);
+
+  return rows.map((row) => row.id);
+}
+
+/**
  * Monta a visão completa da conversa atual de um usuário.
  */
 export async function getConversationView(

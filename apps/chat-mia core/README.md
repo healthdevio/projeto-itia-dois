@@ -169,7 +169,7 @@ contexto montado para a Mia AI é o daquele usuário.
 }
 ```
 
-**Response (400/500):**
+**Response (400/500/502):**
 
 ```json
 {
@@ -179,6 +179,81 @@ contexto montado para a Mia AI é o daquele usuário.
 ```
 
 Formato completo em [`docs/core/Message.md`](../../docs/core/Message.md).
+
+## Mia AI
+
+> **O Core não sabe o que é um modelo de linguagem.** Provider, modelo, prompt,
+> temperatura e o formato de requisição de qualquer API de IA vivem no servidor
+> da Mia AI (`apps/packages/mia-ai`). O Core conhece apenas o contrato HTTP
+> abaixo.
+>
+> A consequência prática: nenhuma credencial de modelo é passada ao Core, e
+> trocar de provider não toca este repositório.
+
+O Core monta o contexto a cada envio e faz `POST $MIA_AI_ENDPOINT` com
+`{ message, context }`.
+
+### Contrato
+
+**Requisição:**
+
+```json
+{
+  "message": { "message_id": "m1", "message": "Olá", "origin": "frontend" },
+  "context": {
+    "conversation_id": "9f1c2a44-...",
+    "state": "idle",
+    "previous_messages": [
+      { "message_id": "m0", "message": "oi", "role": "user" }
+    ],
+    "history_ids": ["8ad9f590-..."],
+    "max_context_messages": 20
+  }
+}
+```
+
+**Resposta (`200`):**
+
+```json
+{ "response": "Olá! Como posso ajudar?" }
+```
+
+Só isso. A conversa não é enviada, e o Core não interpreta nada além do texto de
+`response`. O envelope `success`/`data` do próprio Core também é aceito como
+alternativa, para um servidor feito à mão não ter que acertar o formato.
+
+### O contexto é o que dá consciência
+
+A mensagem atual **não** entra em `previous_messages`: o contexto é montado
+antes de a mensagem ser persistida, para que ela não apareça como histórico de
+si mesma.
+
+Em conversas longas só as `max_context_messages` mais recentes vão — o histórico
+completo estouraria a janela de contexto da IA. Os ids de conversas anteriores
+vêm em `history_ids`: a Mia AI fica ciente de que houve diálogos antes, sem
+receber o conteúdo deles.
+
+O log do servidor mostra o que foi anexado a cada envio, que é a forma mais
+rápida de conferir que a consciência de contexto está funcionando:
+
+```
+[Mia AI] m2 → http://localhost:3002/api/chat (conversa 6e0cbf75-..., 2 mensagens de contexto, 1 conversas anteriores)
+```
+
+### Quando a Mia AI falha
+
+O Core não sabe se a causa foi chave inválida, limite de taxa ou modelo fora de
+ciclo de vida — ele só sabe que o outro lado não respondeu. O que ele faz é
+preservar a causa e devolvê-la, para que a interface possa oferecer retry com
+sentido:
+
+```json
+HTTP 502
+{ "success": false, "error": "Mia AI respondeu com erro: Authorization failed" }
+```
+
+`502` significa que o Core funcionou e o serviço do qual ele depende não. Um
+`500` continua significando falha no próprio Core.
 
 ## Máquina de estados
 
@@ -195,11 +270,13 @@ O Core aplica as transições sozinho conforme o resultado do envio para a Mia A
 
 ## Variáveis de Ambiente
 
-| Variável          | Descrição                                 | Padrão                           |
-| ----------------- | ----------------------------------------- | -------------------------------- |
-| `CORE_PORT`       | Porta do servidor                         | `3001`                           |
-| `DATABASE_URL`    | Conexão Postgres que storeia as conversas | — (obrigatória)                  |
-| `MIA_AI_ENDPOINT` | Endpoint da Mia AI (futuro)               | `http://localhost:3002/api/chat` |
+| Variável               | Descrição                                 | Padrão          |
+| ---------------------- | ----------------------------------------- | --------------- |
+| `CORE_PORT`            | Porta do servidor                         | `3001`          |
+| `DATABASE_URL`         | Conexão Postgres que storeia as conversas | — (obrigatória) |
+| `MIA_AI_ENDPOINT`      | Endpoint do **servidor** da Mia AI        | — (obrigatória) |
+| `MIA_AI_SERVICE_TOKEN` | Autenticação da chamada entre serviços    | — (opcional)    |
+| `MIA_AI_TIMEOUT_MS`    | Tempo máximo de espera pela Mia AI        | `60000`         |
 
 ## Documentação
 

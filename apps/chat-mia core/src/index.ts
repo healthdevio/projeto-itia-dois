@@ -20,6 +20,7 @@ import { serve } from '@hono/node-server';
 import { checkDatabase, closeDatabase } from './db/client.js';
 import { conversationRoutes } from './routes/conversations.js';
 import { messageRoutes } from './routes/messages.js';
+import { loadMiaAIConfig } from './services/mia-ai.js';
 
 const app = new Hono();
 
@@ -60,6 +61,18 @@ app.route('/api/conversations', conversationRoutes);
 const port = parseInt(process.env.CORE_PORT || '3001');
 
 console.log(`[Core] Iniciando servidor na porta ${port}...`);
+
+// A Mia AI só é chamada no envio de mensagens, então uma configuração errada
+// aqui só apareceria no primeiro POST /api/messages. Avisar no boot transforma
+// um 502 confuso em um log óbvio.
+try {
+  const miaAI = loadMiaAIConfig();
+  console.log(`[Core] Mia AI em ${miaAI.endpoint}`);
+} catch (error) {
+  console.warn(
+    `[Core] ATENÇÃO: ${error instanceof Error ? error.message : String(error)}`,
+  );
+}
 
 const server = serve({
   fetch: app.fetch,

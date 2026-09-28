@@ -359,10 +359,27 @@ Em conversas longas, só as `max_context_messages` mensagens mais recentes são 
 
 A Mia AI não guarda conversa. Todo o histórico é reconstruído pelo Core a partir do Postgres no momento de cada envio. Consequência: ela responde com consciência do diálogo, mas uma queda do Core não perde nada, porque o estado nunca esteve nela.
 
+### A fronteira: o Core não sabe o que é IA
+
+O Core não conhece provider, modelo, prompt nem formato de requisição de
+nenhuma API de IA. Isso é do servidor da Mia AI (`apps/packages/mia-ai`). O Core
+monta o contexto e faz uma chamada HTTP; quem decide como gerar o texto é o
+outro lado.
+
+Falar de "a Mia AI tem consciência do contexto" não significa que o Core integra
+um modelo: significa que o Core reconstrói, a cada envio, tudo o que a IA
+precisa para não começar do zero — e ela não precisa guardar nada.
+
+Na prática, o contrato é `POST $MIA_AI_ENDPOINT` com `{ message, context }`, e
+`{ "response": "..." }` de volta. Ver [Message.md](./Message.md#contrato-com-o-servidor-da-mia-ai).
+
+Falhas desse serviço viram `502` com a causa preservada, em vez de um `500`
+genérico.
+
 ### TODO
 
-- [ ] Carregar `history_ids` em `POST /api/messages` (hoje vai `[]`)- [ ] Implementar chamada HTTP real à Mia AI
-- [ ] Adicionar timeout, retries e circuit breaker no envio
-- [ ] Implementar autenticação no envio para a Mia AI
+- [ ] Retry com backoff quando o servidor da Mia AI responde `502`
+- [ ] Streaming da resposta, para a Mia AI aparecer token a token
+- [ ] Circuit breaker para o servidor da Mia AI (hoje só há timeout)
 - [ ] Resumo automático de conversas longas em vez de truncamento
 - [ ] Autenticação de verdade: validar token e derivar `user_id` de um subject, em vez de confiar no header

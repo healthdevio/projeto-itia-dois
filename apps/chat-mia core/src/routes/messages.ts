@@ -12,9 +12,10 @@
 import { Hono } from 'hono';
 
 import { identity, type IdentityVariables } from '../middleware/identity.js';
-import { buildContext, sendToMiaAI } from '../services/mia-ai.js';
+import { MiaAIError, buildContext, sendToMiaAI } from '../services/mia-ai.js';
 import {
   appendMessage,
+  getHistoryIds,
   getOrCreateActiveConversation,
   setConversationState,
 } from '../repositories/conversation-repository.js';
@@ -47,6 +48,8 @@ interface MessageResponseData {
  * - 400: JSON inválido ou campos obrigatórios faltando
  * - 401: Identidade ausente ou inválida
  * - 500: Erro interno
+ * - 502: A Mia AI falhou (chave inválida, limite de taxa, timeout). O corpo
+ *   traz o motivo do provider; a interface usa isso para oferecer retry.
  */
 messageRoutes.post('/', async (c) => {
   const userId = c.get('userId');
@@ -84,7 +87,9 @@ messageRoutes.post('/', async (c) => {
       conversation.id,
       conversation.state,
       conversation.messages,
-      [], // TODO: carregar os ids do histórico deste usuário aqui
+      // Ids das conversas anteriores deste usuário — a Mia AI fica ciente de
+      // que houve diálogos anteriores, sem receber o conteúdo deles.
+      await getHistoryIds(userId),
     );
 
     // A interface só envia mensagens de usuário; a resposta da Mia AI é
@@ -120,22 +125,32 @@ messageRoutes.post('/', async (c) => {
 
     return c.json(response, 200);
   } catch (error) {
-    console.error(`[Core] Erro ao processar mensagem de ${userId}:`, error);
+    // Erro do provider da Mia AI tem causa conhecida (chave inválida, limite
+    // de taxa, timeout). Repassar o motivo ajuda muito mais que um 500
+    // genérico. `502` porque o Core funcionou; foi o upstream que falhou.
+    const providerFailure = error instanceof MiaAIError;
+
+    console.error(
+      `[Core] Erro ao processar mensagem de ${userId}:`,
+      providerFailure ? `[Mia AI] ${error.message}` : error,
+    );
 
     // Marca a conversa em erro para que a interface ofereça retry. O escopo
     // por usuário garante que só a conversa de quem falhou mude de estado.
     try {
       await setConversationState(userId, 'error');
     } catch {
-      // Sem banco disponível não há estado para marcar; o 500 abaixo é o
+      // Sem banco disponível não há estado para marcar; o status abaixo é o
       // suficiente para a interface tratar a falha.
     }
 
     const response: ApiResponse = {
       success: false,
-      error: 'Erro interno ao processar mensagem',
+      error: providerFailure
+        ? (error as MiaAIError).message
+        : 'Erro interno ao processar mensagem',
     };
 
-    return c.json(response, 500);
+    return c.json(response, providerFailure ? 502 : 500);
   }
 });
