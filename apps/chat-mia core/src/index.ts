@@ -1,8 +1,15 @@
 /**
  * Chat Mia Core - Servidor Principal
- * 
+ *
  * Este é o servidor principal do Core do Chat Mia.
- * Responsável por receber mensagens da interface e processá-las.
+ *
+ * Responsabilidades:
+ * - Receber mensagens da interface e repassá-las para a Mia AI
+ *   (`POST /api/messages`).
+ * - Entregar a conversa atual para a interface
+ *   (`GET /api/conversations/current`).
+ * - Guardar a conversa internamente, no Postgres. A conversa nunca é
+ *   enviada para a Mia AI.
  */
 
 import { Hono } from 'hono';
@@ -10,8 +17,9 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { serve } from '@hono/node-server';
 
-import type { Message, ApiResponse } from './models/message.js';
-import { sendToMiaAI } from './services/mia-ai.js';
+import { checkDatabase, closeDatabase } from './db/client.js';
+import { conversationRoutes } from './routes/conversations.js';
+import { messageRoutes } from './routes/messages.js';
 
 const app = new Hono();
 
@@ -21,70 +29,30 @@ app.use('*', logger());
 
 /**
  * Rota de health check
+ *
+ * Reporta também o estado do Postgres, que é a dependência dos endpoints de
+ * conversa. Um banco fora do ar não derruba o servidor: o health check
+ * apenas reporta `database: "down"`.
  */
-app.get('/', (c) => {
-  return c.json({ status: 'ok', service: 'chat-mia-core' });
+app.get('/', async (c) => {
+  const databaseUp = await checkDatabase();
+
+  return c.json({
+    status: databaseUp ? 'ok' : 'degraded',
+    service: 'chat-mia-core',
+    database: databaseUp ? 'up' : 'down',
+  });
 });
 
 /**
- * Endpoint para receber mensagens da interface
- * 
- * POST /api/messages
- * 
- * Recebe uma mensagem do frontend, valida e processa.
- * Retorna código HTTP baseado no resultado:
- * - 200: Sucesso
- * - 400: JSON inválido ou campos obrigatórios faltando
- * - 500: Erro interno
+ * Mensagens da interface para a Mia AI.
  */
-app.post('/api/messages', async (c) => {
-  try {
-    const body = await c.req.json<Message>();
+app.route('/api/messages', messageRoutes);
 
-    // Validação dos campos obrigatórios
-    if (!body.message_id || !body.message || !body.origin) {
-      const response: ApiResponse = {
-        success: false,
-        error: 'Campos obrigatórios faltando: message_id, message, origin'
-      };
-      return c.json(response, 400);
-    }
-
-    // Adiciona data se não fornecida
-    const message: Message = {
-      ...body,
-      date: body.date || new Date().toISOString()
-    };
-
-    console.log(`[Core] Mensagem recebida de ${message.origin}:`, message.message_id);
-
-    // TODO: Processar a mensagem conforme necessário
-    // Exemplo: validações adicionais, transformações, etc.
-
-    // Envia para a Mia AI (integração futura)
-    const miaResponse = await sendToMiaAI(message);
-
-    const response: ApiResponse = {
-      success: true,
-      data: {
-        message_id: message.message_id,
-        mia_ai_response: miaResponse.response
-      }
-    };
-
-    return c.json(response, 200);
-
-  } catch (error) {
-    console.error('[Core] Erro ao processar mensagem:', error);
-    
-    const response: ApiResponse = {
-      success: false,
-      error: 'Erro interno ao processar mensagem'
-    };
-    
-    return c.json(response, 500);
-  }
-});
+/**
+ * Conversa atual para a interface.
+ */
+app.route('/api/conversations', conversationRoutes);
 
 /**
  * Inicia o servidor
@@ -93,9 +61,23 @@ const port = parseInt(process.env.CORE_PORT || '3001');
 
 console.log(`[Core] Iniciando servidor na porta ${port}...`);
 
-serve({
+const server = serve({
   fetch: app.fetch,
   port,
 });
 
 console.log(`[Core] Servidor rodando em http://localhost:${port}`);
+
+/**
+ * Encerra o servidor e fecha o pool de conexões.
+ */
+async function shutdown(signal: string) {
+  console.log(`[Core] Recebido ${signal}, encerrando...`);
+  await closeDatabase();
+  server.close(() => process.exit(0));
+}
+
+process.on('SIGINT', () => void shutdown('SIGINT'));
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+
+export default app;

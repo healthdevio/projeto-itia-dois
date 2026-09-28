@@ -1,28 +1,75 @@
 # Chat Mia Core
 
-O Core do Chat Mia é responsável por receber mensagens da interface, processá-las e enviá-las para a Mia AI.
+O Core do Chat Mia é responsável por:
+
+- Receber mensagens da interface e repassá-las para a Mia AI.
+- Entregar a conversa atual para a interface.
+- Guardar a conversa internamente, no Postgres.
+
+> **A conversa nunca é enviada para a Mia AI.** Ela é estado interno do Core.
+> Apenas as mensagens saem do Core — e cada envio carrega o contexto do diálogo
+> para que a Mia AI tenha consciência do histórico.
+
+## Multi-usuário
+
+Cada usuário tem a sua própria conversa ativa e o seu próprio histórico. Tudo
+é escopado por `user_id`, resolvido a partir do header `X-User-Id`.
+
+```
+curl -H 'X-User-Id: ana' http://localhost:3001/api/conversations/current
+```
+
+Sem o header, os endpoints de conversa e de mensagem respondem `401`.
+
+> ⚠️ **`X-User-Id` não é autenticação.** O Core confia no valor cru do header:
+> qualquer cliente pode enviar o que quiser e impersonar outro usuário. Em um
+> ambiente com usuários reais, coloque um proxy/gateway na frente do Core que
+> valide um token (JWT, sessão, mTLS) e reescreva `X-User-Id` com o subject
+> autenticado. Não exponha o Core diretamente. Ver
+> `src/middleware/identity.ts`.
 
 ## Estrutura
 
 ```
 src/
-├── index.ts              # Servidor principal com os endpoints
+├── index.ts                    # Servidor principal com o wiring dos endpoints
+├── db/
+│   ├── client.ts               # Pool Postgres + cliente Drizzle (conexão preguiçosa)
+│   └── schema.ts               # Tabelas conversations e messages
+├── middleware/
+│   └── identity.ts             # Resolve X-User-Id → contexto (401 se ausente)
 ├── models/
-│   └── message.ts        # Modelo de mensagem e interfaces
-├── services/
-│   └── mia-ai.ts         # Serviço de integração com Mia AI
-├── contracts/            # Contratos (futuro)
-└── events/               # Eventos (futuro)
+│   ├── message.ts              # Modelo de mensagem (entrada da interface)
+│   └── conversation.ts         # Modelo de conversa + máquina de estados
+├── repositories/
+│   └── conversation-repository.ts  # Único acesso às conversas, sempre por usuário
+├── routes/
+│   ├── messages.ts             # POST /api/messages
+│   └── conversations.ts        # Endpoints de conversa
+└── services/
+    └── mia-ai.ts               # Integração com a Mia AI (monta o contexto)
+
+drizzle/                        # Migrations geradas
+drizzle.config.ts
+.env.example
 ```
 
 ## Instalação
 
 ```bash
-# Instalar dependências
 npm install
+cp .env.example .env   # ajuste a DATABASE_URL
+```
 
-# Ou com yarn
-yarn install
+## Banco de dados
+
+A conversa é storeada no Postgres via Drizzle ORM.
+
+```bash
+npm run db:migrate    # aplica as migrations
+npm run db:generate   # gera migration a partir de src/db/schema.ts
+npm run db:push       # sincroniza o schema direto, sem migration
+npm run db:studio     # abre o Drizzle Studio
 ```
 
 ## Execução
@@ -43,24 +90,63 @@ O servidor inicia na porta `3001` por padrão. Para alterar, defina a variável 
 ## Endpoints
 
 ### Health Check
+
 ```
 GET /
 ```
 
-**Response:**
 ```json
 {
   "status": "ok",
-  "service": "chat-mia-core"
+  "service": "chat-mia-core",
+  "database": "up"
 }
 ```
 
+Com o Postgres fora do ar o servidor continua no ar e responde `status: "degraded"`, `database: "down"` — o pool de conexões é preguiçoso. O health check não exige identidade.
+
+### Conversa atual
+
+```
+GET /api/conversations/current
+```
+
+Entrega a conversa em andamento, seu estado e o histórico **daquele usuário**. Cria a conversa automaticamente na primeira chamada, então a interface nunca recebe `404`.
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "9f1c2a44-...",
+    "state": "idle",
+    "messages": ["..."],
+    "active_conversation": { "...": "..." },
+    "history": ["..."]
+  }
+}
+```
+
+Otros endpoints de conversa:
+
+| Método | Rota                         | Descrição                             |
+| ------ | ---------------------------- | ------------------------------------- |
+| `GET`  | `/api/conversations/current` | Conversa atual + histórico do usuário |
+| `GET`  | `/api/conversations/active`  | Só a conversa ativa, sem histórico    |
+| `POST` | `/api/conversations/rotate`  | Encerra a atual e inicia outra        |
+
+Formato completo em [`docs/core/Conversation.md`](../../docs/core/Conversation.md).
+
 ### Enviar Mensagem
+
 ```
 POST /api/messages
 ```
 
+Exige `X-User-Id`. A mensagem entra na conversa ativa **de quem enviou**, e o
+contexto montado para a Mia AI é o daquele usuário.
+
 **Request Body:**
+
 ```json
 {
   "message_id": "msg-123",
@@ -72,6 +158,7 @@ POST /api/messages
 ```
 
 **Response (200):**
+
 ```json
 {
   "success": true,
@@ -83,6 +170,7 @@ POST /api/messages
 ```
 
 **Response (400/500):**
+
 ```json
 {
   "success": false,
@@ -90,21 +178,32 @@ POST /api/messages
 }
 ```
 
+Formato completo em [`docs/core/Message.md`](../../docs/core/Message.md).
+
+## Máquina de estados
+
+O `state` da conversa governa o que a interface renderiza.
+
+| Estado     | Significado                                                  |
+| ---------- | ------------------------------------------------------------ |
+| `greeting` | Conversa recém-criada. Mostrar a mensagem de abertura.       |
+| `idle`     | Pronta para uma nova mensagem.                               |
+| `thinking` | Mensagem enviada, aguardando a Mia AI. Mostrar carregamento. |
+| `error`    | A última operação falhou. Oferecer retry.                    |
+
+O Core aplica as transições sozinho conforme o resultado do envio para a Mia AI.
+
 ## Variáveis de Ambiente
 
-| Variável | Descrição | Padrão |
-|----------|-----------|--------|
-| `CORE_PORT` | Porta do servidor | `3001` |
-| `MIA_AI_ENDPOINT` | Endpoint da Mia AI (futuro) | `http://localhost:3002/api/chat` |
-
-## Integração com Mia AI
-
-O serviço de integração com a Mia AI está localizado em `src/services/mia-ai.ts`. Atualmente é um placeholder que simula a resposta. Para implementar a integração real:
-
-1. Configure a variável de ambiente `MIA_AI_ENDPOINT`
-2. Implemente a chamada HTTP no arquivo `mia-ai.ts`
-3. Adicione tratamento de erros e retries conforme necessário
+| Variável          | Descrição                                 | Padrão                           |
+| ----------------- | ----------------------------------------- | -------------------------------- |
+| `CORE_PORT`       | Porta do servidor                         | `3001`                           |
+| `DATABASE_URL`    | Conexão Postgres que storeia as conversas | — (obrigatória)                  |
+| `MIA_AI_ENDPOINT` | Endpoint da Mia AI (futuro)               | `http://localhost:3002/api/chat` |
 
 ## Documentação
 
-Consulte `docs/core/Message.md` para mais detalhes sobre o modelo de mensagem e o endpoint.
+| Documento                                                      | Conteúdo                                                         |
+| -------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [`docs/core/Conversation.md`](../../docs/core/Conversation.md) | Modelo de conversa, endpoints, persistência e contexto da Mia AI |
+| [`docs/core/Message.md`](../../docs/core/Message.md)           | Modelo de mensagem e endpoint de envio                           |

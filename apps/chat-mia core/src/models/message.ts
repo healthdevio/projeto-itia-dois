@@ -1,6 +1,6 @@
 /**
  * Message Model
- * 
+ *
  * Representa a mensagem recebida da interface e enviada para o Core.
  * Baseado na especificação em docs/core/Message.md
  */

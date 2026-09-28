@@ -1,0 +1,7 @@
+# Segredos. O .gitignore da raiz não cobre .env, e o Core passa a ler
+# DATABASE_URL daqui (ver .env.example).
+.env
+.env.local
+
+node_modules/
+dist/
