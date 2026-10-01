@@ -15,6 +15,7 @@ import {
   boolean,
   check,
   index,
+  integer,
   pgTable,
   primaryKey,
   text,
@@ -106,5 +107,51 @@ export const messages = pgTable(
   ],
 );
 
+/**
+ * Sugestões da conversa.
+ *
+ * São as ações que a interface oferece abaixo da última resposta da Mia AI.
+ * Quem escreve é a Mia AI (via `POST /api/messages`, que repassa o que ela
+ * devolveu) e a própria interface (`POST /api/suggestions`); quem lê é a
+ * interface, em `GET /api/suggestions`.
+ *
+ * O escopo vem da conversa, como nas mensagens: a tabela não tem `user_id`
+ * porque não precisa — `conversation_id` só é alcançável a partir de uma
+ * conversa já filtrada por usuário, e o `ON DELETE CASCADE` leva as sugestões
+ * embora quando a conversa é rotacionada. A conversa nova começa vazia, que é
+ * o comportamento desejado: as sugestões antigas eram daquela resposta.
+ *
+ * `position` preserva a ordem em que a Mia AI sugeriu. A ordem faz parte do que
+ * ela entendeu do contexto, então ela é gravada em vez de ser recalculada por
+ * data — duas sugestões podem ter o mesmo timestamp.
+ */
+export const suggestions = pgTable(
+  'suggestions',
+  {
+    conversationId: text('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    /** Identificador da sugestão, único apenas dentro da conversa. */
+    suggestionId: text('suggestion_id').notNull(),
+    /** Texto exibido na interface e enviado como mensagem ao clicar. */
+    text: text('text').notNull(),
+    /** Ordem sugerida pela Mia AI. 0 é a primeira. */
+    position: integer('position').notNull(),
+    date: timestamp('date', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // A chave é composta como a de `messages`: o id é único DENTRO da
+    // conversa, não no banco inteiro. Dois usuários podem receber a sugestão
+    // "sg-1" sem colidir.
+    primaryKey({ columns: [table.conversationId, table.suggestionId] }),
+    // Carrega as sugestões de uma conversa na ordem em que foram sugeridas.
+    index('suggestions_conversation_position_idx').on(
+      table.conversationId,
+      table.position,
+    ),
+  ],
+);
+
 export type ConversationRow = typeof conversations.$inferSelect;
 export type MessageRow = typeof messages.$inferSelect;
+export type SuggestionRow = typeof suggestions.$inferSelect;

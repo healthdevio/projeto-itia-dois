@@ -5,3 +5,12 @@
 
 node_modules/
 dist/
+
+# Harness local de teste do Core — não versionado, de propósito.
+#
+# `local/` contém um servidor que substitui a Mia AI (chama o backend da
+# Nvidia), um REPL de TTY para exercitar os endpoints e um smoke test. É
+# ferramenta de desenvolvimento de quem está mexendo no Core, não parte do
+# produto: por isso fica fora do git, junto com a NVIDIA_API_KEY que o
+# servidor precisa. Regra versionada, conteúdo não.
+local/

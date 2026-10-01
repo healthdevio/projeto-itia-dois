@@ -43,13 +43,13 @@ O Core não deve ser exposto diretamente nesse cenário. O contrato de identidad
 
 Com a identidade resolvida, o isolamento é garantido em três camadas:
 
-| Garantia                                                   | Onde                         |
-| ---------------------------------------------------------- | ---------------------------- |
-| Nenhum método do repositório pode ser chamado sem `userId` | `conversation-repository.ts` |
-| Toda query filtra por `user_id`                            | `conversation-repository.ts` |
-| No máximo uma conversa ativa **por usuário**               | índice único no Postgres     |
+| Garantia                                                   | Onde                                                     |
+| ---------------------------------------------------------- | -------------------------------------------------------- |
+| Nenhum método do repositório pode ser chamado sem `userId` | `conversation-repository.ts`, `suggestion-repository.ts` |
+| Toda query filtra por `user_id`                            | `conversation-repository.ts`                             |
+| No máximo uma conversa ativa **por usuário**               | índice único no Postgres                                 |
 
-Isso cobre os efeitos colaterais: um erro no envio de um usuário muda o `state` da conversa **dele** apenas, e um `rotate` encerra **a sua** conversa, não a de ninguém mais.
+Isso cobre os efeitos colaterais: um erro no envio de um usuário muda o `state` da conversa **dele** apenas, e um `rotate` encerra **a sua** conversa, não a de ninguém mais. As sugestões herdam o mesmo escopo pela conversa — ver [Suggestion.md](./Suggestion.md#identidade-e-multi-usuário).
 
 ---
 
@@ -274,6 +274,18 @@ A conversa é storeada no Postgres, via Drizzle ORM.
 | `date`            | `timestamptz` | Default `now()`.                                 |
 
 A chave primária de `messages` é o par `(conversation_id, message_id)`.
+
+**`suggestions`**
+
+| Coluna            | Tipo          | Observação                                       |
+| ----------------- | ------------- | ------------------------------------------------ |
+| `conversation_id` | `text`        | FK para `conversations.id`, `ON DELETE CASCADE`. |
+| `suggestion_id`   | `text`        | Id da sugestão. **Único só dentro da conversa.** |
+| `text`            | `text`        | Texto exibido e enviado como mensagem ao clicar. |
+| `position`        | `integer`     | Ordem sugerida pela Mia AI. `0` é a primeira.    |
+| `date`            | `timestamptz` | Default `now()`.                                 |
+
+A chave primária de `suggestions` é o par `(conversation_id, suggestion_id)`, pelo mesmo motivo da de `messages`. A tabela não tem `user_id`: o escopo vem da conversa. Detalhes em [Suggestion.md](./Suggestion.md#persistência).
 
 ### Integridade garantida no banco
 
