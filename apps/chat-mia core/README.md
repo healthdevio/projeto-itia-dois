@@ -4,6 +4,7 @@ O Core do Chat Mia é responsável por:
 
 - Receber mensagens da interface e repassá-las para a Mia AI.
 - Entregar a conversa atual para a interface.
+- Entregar e registrar as sugestões da conversa atual.
 - Guardar a conversa internamente, no Postgres.
 
 > **A conversa nunca é enviada para a Mia AI.** Ela é estado interno do Core.
@@ -35,20 +36,24 @@ src/
 ├── index.ts                    # Servidor principal com o wiring dos endpoints
 ├── db/
 │   ├── client.ts               # Pool Postgres + cliente Drizzle (conexão preguiçosa)
-│   └── schema.ts               # Tabelas conversations e messages
+│   └── schema.ts               # Tabelas conversations, messages e suggestions
 ├── middleware/
 │   └── identity.ts             # Resolve X-User-Id → contexto (401 se ausente)
 ├── models/
 │   ├── message.ts              # Modelo de mensagem (entrada da interface)
-│   └── conversation.ts         # Modelo de conversa + máquina de estados
+│   ├── conversation.ts         # Modelo de conversa + máquina de estados
+│   └── suggestion.ts           # Modelo de sugestão + leitura/validação
 ├── repositories/
-│   └── conversation-repository.ts  # Único acesso às conversas, sempre por usuário
+│   ├── conversation-repository.ts  # Único acesso às conversas, sempre por usuário
+│   └── suggestion-repository.ts    # Único acesso às sugestões, sempre por usuário
 ├── routes/
 │   ├── messages.ts             # POST /api/messages
-│   └── conversations.ts        # Endpoints de conversa
+│   ├── conversations.ts        # Endpoints de conversa
+│   └── suggestions.ts          # GET|POST|DELETE /api/suggestions
 └── services/
     └── mia-ai.ts               # Integração com a Mia AI (monta o contexto)
 
+local/                         # Harness de teste (git-ignored, ver abaixo)
 drizzle/                        # Migrations geradas
 drizzle.config.ts
 .env.example
@@ -164,10 +169,15 @@ contexto montado para a Mia AI é o daquele usuário.
   "success": true,
   "data": {
     "message_id": "msg-123",
-    "mia_ai_response": "[Mia AI] Mensagem msg-123 recebida."
+    "mia_ai_response": "[Mia AI] Mensagem msg-123 recebida.",
+    "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meu agendamento" }]
   }
 }
 ```
+
+`suggestions` vem junto para a interface renderizar as chips sem uma segunda
+chamada. São as sugestões que a Mia AI devolveu com a resposta, já gravadas na
+conversa — quando ela não devolve nenhuma, o campo traz o que já estava lá.
 
 **Response (400/500/502):**
 
@@ -179,6 +189,40 @@ contexto montado para a Mia AI é o daquele usuário.
 ```
 
 Formato completo em [`docs/core/Message.md`](../../docs/core/Message.md).
+
+### Sugestões
+
+```
+GET    /api/suggestions
+POST   /api/suggestions
+DELETE /api/suggestions
+```
+
+Sugestão é a ação que a interface oferece abaixo da última resposta da Mia AI:
+clicar envia o `text` como mensagem. São só dois campos, `suggestion_id` e
+`text`.
+
+Quem **escreve** é a Mia AI (repassada por `POST /api/messages`, que já conhece a
+conversa) e a interface, via `POST`. Quem **lê** é a interface, via `GET`.
+
+```json
+{
+  "success": true,
+  "data": {
+    "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meu agendamento" }]
+  }
+}
+```
+
+A cada resposta da Mia AI as sugestões são substituídas pelas novas — o contexto
+mudou, e uma chip desatualizada levaria o usuário a pedir algo que a Mia AI já
+respondeu. `POST` é o contrário: acrescenta ao fim, sem apagar o que já estava.
+
+Tudo é escopado por `X-User-Id`, como a conversa. Rotacionar a conversa
+(`POST /api/conversations/rotate`) começa uma lista nova, e a antiga vai embora
+junto com a conversa.
+
+Formato completo em [`docs/core/Suggestion.md`](../../docs/core/Suggestion.md).
 
 ## Mia AI
 
@@ -215,12 +259,22 @@ O Core monta o contexto a cada envio e faz `POST $MIA_AI_ENDPOINT` com
 **Resposta (`200`):**
 
 ```json
-{ "response": "Olá! Como posso ajudar?" }
+{
+  "response": "Olá! Como posso ajudar?",
+  "suggestions": [{ "text": "Ver meu agendamento" }]
+}
 ```
 
 Só isso. A conversa não é enviada, e o Core não interpreta nada além do texto de
-`response`. O envelope `success`/`data` do próprio Core também é aceito como
-alternativa, para um servidor feito à mão não ter que acertar o formato.
+`response` e da lista de sugestões. O envelope `success`/`data` do próprio Core
+também é aceito como alternativa, para um servidor feito à mão não ter que
+acertar o formato.
+
+`suggestions` é **opcional**, e o `suggestion_id` dentro dela também: quando
+falta, o Core gera. Cada item pode ser `{ "text": "..." }` ou a string do texto
+direto. Uma resposta sem o campo preserva as sugestões que já estavam na
+conversa; `suggestions: []` limpa. Ver
+[Suggestion.md](../../docs/core/Suggestion.md#substituição-vs-preservação).
 
 ### O contexto é o que dá consciência
 
@@ -237,7 +291,7 @@ O log do servidor mostra o que foi anexado a cada envio, que é a forma mais
 rápida de conferir que a consciência de contexto está funcionando:
 
 ```
-[Mia AI] m2 → http://localhost:3002/api/chat (conversa 6e0cbf75-..., 2 mensagens de contexto, 1 conversas anteriores)
+[Mia AI] m2 → http://localhost:3002/api/chat (conversa 6e0cbf75-..., 2 mensagens de contexto, 1 conversas anteriores, 2 sugestões)
 ```
 
 ### Quando a Mia AI falha
@@ -278,9 +332,31 @@ O Core aplica as transições sozinho conforme o resultado do envio para a Mia A
 | `MIA_AI_SERVICE_TOKEN` | Autenticação da chamada entre serviços    | — (opcional)    |
 | `MIA_AI_TIMEOUT_MS`    | Tempo máximo de espera pela Mia AI        | `60000`         |
 
+Nenhuma delas é nova na feature de sugestão: a sugestão não muda a forma como o
+Core fala com a Mia AI, só o que ele aceita de volta.
+
+## Testar sem a Mia AI
+
+A pasta `local/` traz um harness de desenvolvimento **git-ignored**: um servidor
+que faz o papel da Mia AI (com o backend da Nvidia), um REPL de terminal e um
+smoke test. Ele existe para testar o Core sem a Mia AI de verdade e sem a
+interface.
+
+```bash
+npm run stub    # Mia AI falsa, em :3002
+npm run repl    # REPL de terminal contra o Core
+npm run smoke   # checagem ponta a ponta, sem interação
+```
+
+O `README.md` da pasta tem o passo a passo. A pasta não é versionada porque
+guarda a `NVIDIA_API_KEY` e porque é ferramenta de quem está mexendo no Core, não
+parte do produto — em uma máquina sem ela, os scripts avisam em vez de falhar
+com um stack trace.
+
 ## Documentação
 
 | Documento                                                      | Conteúdo                                                         |
 | -------------------------------------------------------------- | ---------------------------------------------------------------- |
 | [`docs/core/Conversation.md`](../../docs/core/Conversation.md) | Modelo de conversa, endpoints, persistência e contexto da Mia AI |
 | [`docs/core/Message.md`](../../docs/core/Message.md)           | Modelo de mensagem e endpoint de envio                           |
+| [`docs/core/Suggestion.md`](../../docs/core/Suggestion.md)     | Modelo de sugestão, endpoints e limites                          |
