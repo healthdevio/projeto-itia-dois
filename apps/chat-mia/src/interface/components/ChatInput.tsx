@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useState } from 'react';
 
-interface ChatInputProps{
+interface ChatInputProps {
   onSendMessage: (message: string) => void;
 }
-
 
 function ChatInput({ onSendMessage }: ChatInputProps) {
   const [value, setValue] = useState('');
@@ -19,7 +18,7 @@ function ChatInput({ onSendMessage }: ChatInputProps) {
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
             onSendMessage(value);
-            setValue(''); 
+            setValue('');
           }
         }}
       />

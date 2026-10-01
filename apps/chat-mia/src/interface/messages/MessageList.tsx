@@ -1,6 +1,6 @@
-import MessageItem, {type MessageProps} from "./MessageItem";
+import MessageItem, { type MessageProps } from './MessageItem';
 
-interface MessageListProps{
+interface MessageListProps {
   messages: MessageProps[];
 }
 

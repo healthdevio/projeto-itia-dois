@@ -17,10 +17,10 @@ function App() {
     setMessages((currentMessages) => [
       ...currentMessages,
       message,
-    {
-      content: 'Mensagem recebida.',
-      author: 'omnia',
-    },
+      {
+        content: 'Mensagem recebida.',
+        author: 'omnia',
+      },
     ]);
   };
 
@@ -28,7 +28,7 @@ function App() {
     setIsExpanded(!isExpanded);
   };
 
-    return (
+  return (
     <div>
       {isOpen ? (
         isExpanded ? (
