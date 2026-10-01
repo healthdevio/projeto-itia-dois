@@ -7,6 +7,11 @@
  * envio, o Core também carrega o contexto da conversa — as mensagens
  * anteriores e os ids do histórico — para que a Mia AI responda com
  * consciência do diálogo. A conversa em si nunca é enviada.
+ *
+ * A resposta da Mia AI pode vir acompanhada de `suggestions` (ver
+ * `src/services/mia-ai.ts`). Quando vem, o Core substitui as sugestões da
+ * conversa ativa pelas novas e as devolve junto da resposta, para a interface
+ * renderizar as chips sem uma segunda chamada.
  */
 
 import { Hono } from 'hono';
@@ -19,7 +24,12 @@ import {
   getOrCreateActiveConversation,
   setConversationState,
 } from '../repositories/conversation-repository.js';
+import {
+  replaceActiveSuggestions,
+  getActiveSuggestions,
+} from '../repositories/suggestion-repository.js';
 import type { ApiResponse, Message } from '../models/message.js';
+import type { Suggestion } from '../models/suggestion.js';
 
 export const messageRoutes = new Hono<{ Variables: IdentityVariables }>();
 
@@ -32,6 +42,15 @@ messageRoutes.use('*', identity);
 interface MessageResponseData {
   message_id: string;
   mia_ai_response: string;
+
+  /**
+   * Sugestões da conversa ativa depois desta resposta.
+   *
+   * Vem preenchida quando a Mia AI devolveu `suggestions` — nesse caso a lista
+   * anterior foi substituída. Quando a Mia AI não falou de sugestões, é a
+   * lista que já estava na conversa, sem alteração.
+   */
+  suggestions: Suggestion[];
 }
 
 /**
@@ -42,6 +61,10 @@ interface MessageResponseData {
  * Recebe uma mensagem do frontend, valida, persiste na conversa ativa **do
  * usuário que fez a requisição** e repassa para a Mia AI com o contexto
  * acumulado.
+ *
+ * A resposta traz também `suggestions`: as sugestões que a Mia AI devolveu com
+ * a resposta, já gravadas na conversa. A interface renderiza as chips direto
+ * dali, sem precisar de `GET /api/suggestions` logo em seguida.
  *
  * Códigos de resposta:
  * - 200: Sucesso
@@ -113,6 +136,15 @@ messageRoutes.post('/', async (c) => {
     };
     await appendMessage(miaMessage, 'mia', conversation.id);
 
+    // As sugestões da resposta substituem as da resposta anterior: o contexto
+    // já mudou, e uma chip desatualizada levaria o usuário a pedir algo que a
+    // Mia AI já respondeu. `null` = a Mia AI não devolveu o campo, e aí o que
+    // já estava na conversa continua valendo.
+    const suggestions =
+      miaResponse.suggestions === null
+        ? await getActiveSuggestions(userId)
+        : await replaceActiveSuggestions(userId, miaResponse.suggestions);
+
     await setConversationState(userId, 'idle');
 
     const response: ApiResponse<MessageResponseData> = {
@@ -120,6 +152,7 @@ messageRoutes.post('/', async (c) => {
       data: {
         message_id: message.message_id,
         mia_ai_response: miaResponse.response,
+        suggestions,
       },
     };
 

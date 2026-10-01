@@ -83,10 +83,16 @@ O corpo da requisição deve conter o JSON no formato especificado acima.
   "success": true,
   "data": {
     "message_id": "msg-123",
-    "mia_ai_response": "Olá! Como posso ajudar hoje?"
+    "mia_ai_response": "Olá! Como posso ajudar hoje?",
+    "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meu agendamento" }]
   }
 }
 ```
+
+`suggestions` traz as sugestões da conversa depois desta resposta, para a
+interface não precisar de um `GET /api/suggestions` logo em seguida. Vem sempre
+presente: são as que a Mia AI devolveu com a resposta, ou as que já estavam lá
+quando ela não devolveu nenhuma. Ver [Sugestão.md](./Suggestion.md).
 
 ### Response Body (Erro - 400/500/502)
 
@@ -129,7 +135,8 @@ apps/chat-mia core/src/services/mia-ai.ts
 3. O Core grava a mensagem na conversa ativa **do usuário**, já existente ou recém-criada
 4. O Core monta o **contexto** da conversa (mensagens anteriores + ids do histórico) e envia `{ message, context }` para o servidor da Mia AI
 5. O Core grava a resposta da Mia AI na conversa com `role: "mia"`
-6. A resposta da Mia AI é retornada para a interface
+6. Se a resposta trouxe `suggestions`, o Core substitui as sugestões da conversa pelas novas
+7. A resposta da Mia AI e as sugestões da conversa são retornadas para a interface
 
 ### O Core não sabe o que é um modelo de linguagem
 
@@ -178,15 +185,52 @@ Requisição — `POST $MIA_AI_ENDPOINT`:
 Resposta — `200`:
 
 ```json
-{ "response": "Olá! Como posso ajudar?" }
+{
+  "response": "Olá! Como posso ajudar?",
+  "suggestions": [{ "text": "Ver meu agendamento" }]
+}
 ```
 
 O envelope `success`/`data` do próprio Core também é aceito como alternativa,
 para um servidor da Mia AI escrito à mão não ter que acertar o formato exato.
 
+`suggestions` é opcional, e o `suggestion_id` de cada item também: quando falta,
+o Core gera. Cada item aceita `{ "text": "..." }` ou a string do texto direto.
+Ver [Sugestões na resposta](#sugestões-na-resposta).
+
 Se `MIA_AI_SERVICE_TOKEN` estiver definido, vai como `Authorization: Bearer`.
 Isso autentica a chamada **entre serviços** e não tem relação com a identidade
 do usuário, que vem de `X-User-Id`.
+
+### Sugestões na resposta
+
+A Mia AI pode anexar sugestões à resposta — as ações que o usuário poderia tomar
+a seguir. O Core as grava na conversa ativa de quem enviou e as devolve em
+`data.suggestions`, para a interface renderizar as chips sem uma segunda chamada.
+
+```json
+{
+  "success": true,
+  "data": {
+    "message_id": "msg-123",
+    "mia_ai_response": "Você tem consulta amanhã às 14h.",
+    "suggestions": [{ "suggestion_id": "sg-1", "text": "Reagendar" }]
+  }
+}
+```
+
+O campo é **opcional e a diferença importa**:
+
+| O que a Mia AI devolve          | O que o Core faz com as sugestões da conversa |
+| ------------------------------- | --------------------------------------------- |
+| `suggestions: [...]`            | Substitui pelas novas                         |
+| `suggestions: []`               | Limpa                                         |
+| campo `suggestions` **ausente** | **Preserva** as que já estavam                |
+
+Sugestão malformada é descartada sem derrubar a resposta: o texto da Mia AI é o
+que a interface precisa mostrar, e uma sugestão ruim é um detalhe a menos.
+
+O modelo completo está em [Suggestion.md](./Suggestion.md).
 
 ### Contexto e a conversa
 

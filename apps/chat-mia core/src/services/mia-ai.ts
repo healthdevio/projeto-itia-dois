@@ -35,8 +35,15 @@
  * Resposta — `200` com:
  *
  * ```json
- * { "response": "texto da Mia AI" }
+ * {
+ *   "response": "texto da Mia AI",
+ *   "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meu agendamento" }]
+ * }
  * ```
+ *
+ * `suggestions` é opcional: quem decide o que sugerir é a Mia AI, e uma
+ * resposta sem esse campo é válida. Quando vem, o Core guarda as sugestões na
+ * conversa ativa do usuário (ver `src/repositories/suggestion-repository.ts`).
  *
  * A conversa em si nunca é enviada: apenas a mensagem nova e o contexto.
  */
@@ -46,6 +53,7 @@ import type {
   ConversationMessage,
   ConversationState,
 } from '../models/conversation.js';
+import { readSuggestions, type Suggestion } from '../models/suggestion.js';
 
 /**
  * Contexto da conversa repassado junto com a nova mensagem.
@@ -89,6 +97,19 @@ export interface MiaAIRequest {
 export interface MiaAIResponse {
   /** Texto devolvido pelo servidor da Mia AI. */
   response: string;
+
+  /**
+   * Sugestões que a Mia AI anexou à resposta.
+   *
+   * `null` significa "a Mia AI não falou de sugestões" — a resposta veio sem o
+   * campo, e o Core preserva as sugestões que já tinha. Uma lista vazia, ao
+   * contrário, é uma decisão: limpa as sugestões daquela conversa.
+   *
+   * A distinção existe porque a produção das sugestões é responsabilidade da
+   * Mia AI, e um servidor que ainda não devolve o campo não deve apagar o que
+   * a interface está exibindo.
+   */
+  suggestions: Suggestion[] | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -192,25 +213,43 @@ export function buildContext(
 /**
  * Corpo aceito como resposta válida.
  *
- * A forma canônica é `{ "response": "..." }`. O envelope `success`/`data` do
- * próprio Core também é aceito, para um servidor da Mia AI feito à mão não ter
- * que acertar o formato exato.
+ * A forma canônica é `{ "response": "...", "suggestions": [...] }`. O
+ * envelope `success`/`data` do próprio Core também é aceito, para um servidor
+ * da Mia AI feito à mão não ter que acertar o formato exato.
+ *
+ * Sugestões malformadas não invalidam a resposta: o texto da Mia AI é o que a
+ * interface precisa mostrar, e uma sugestão ruim é um detalhe a menos. O que
+ * não for sugestão é descartado — ver `readSuggestions`.
+ *
+ * @returns O texto e as sugestões, ou `null` se não houver `response`.
  */
-function readResponse(body: unknown): string | null {
+function readBody(
+  body: unknown,
+): { response: string; suggestions: Suggestion[] | null } | null {
   if (typeof body !== 'object' || body === null) {
     return null;
   }
 
   const envelope = body as {
     response?: unknown;
-    data?: { response?: unknown };
+    suggestions?: unknown;
+    data?: { response?: unknown; suggestions?: unknown };
   };
 
   const response = envelope.response ?? envelope.data?.response;
 
-  return typeof response === 'string' && response.trim() !== ''
-    ? response
-    : null;
+  if (typeof response !== 'string' || response.trim() === '') {
+    return null;
+  }
+
+  // `undefined` = o campo não veio. `null` = veio e não é uma lista de
+  // sugestões; nesse caso não há o que salvar, e o Core preserva as antigas.
+  const raw = envelope.suggestions ?? envelope.data?.suggestions;
+
+  return {
+    response,
+    suggestions: raw === undefined ? null : readSuggestions(raw),
+  };
 }
 
 /**
@@ -283,7 +322,7 @@ export async function sendToMiaAI(
     throw new MiaAIError('Mia AI respondeu sem corpo JSON.');
   }
 
-  const result = readResponse(body);
+  const result = readBody(body);
 
   if (result === null) {
     throw new MiaAIError(
@@ -295,8 +334,11 @@ export async function sendToMiaAI(
     `[Mia AI] ${message.message_id} → ${config.endpoint} ` +
       `(conversa ${context.conversation_id}, ` +
       `${context.previous_messages.length} mensagens de contexto, ` +
-      `${context.history_ids.length} conversas anteriores)`,
+      `${context.history_ids.length} conversas anteriores` +
+      (result.suggestions === null
+        ? ', sem sugestões)'
+        : `, ${result.suggestions.length} sugestões)`),
   );
 
-  return { response: result };
+  return result;
 }
