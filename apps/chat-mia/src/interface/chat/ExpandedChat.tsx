@@ -22,6 +22,7 @@ function ExpandedChat({
       author: 'user',
     });
   };
+
   return (
     <section className="flex h-[600px] flex-col overflow-hidden rounded-lg border bg-background shadow-lg">
       <ChatHeader isExpanded={isExpanded} onToggleExpanded={onToggleExpanded} />
