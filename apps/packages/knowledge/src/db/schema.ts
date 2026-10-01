@@ -86,14 +86,14 @@ export const users = pgTable('users', {
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
 
-  createdAt: timestamp('created_at', { 
-    withTimezone: true 
+  createdAt: timestamp('created_at', {
+    withTimezone: true,
   })
     .defaultNow()
     .notNull(),
 
-  updatedAt: timestamp('updated_at', { 
-    withTimezone: true 
+  updatedAt: timestamp('updated_at', {
+    withTimezone: true,
   })
     .defaultNow()
     .notNull(),
@@ -104,14 +104,14 @@ export const permissions = pgTable('permissions', {
   name: text('name').notNull().unique(),
   description: text('description'),
 
-  createdAt: timestamp('created_at', { 
-    withTimezone: true 
+  createdAt: timestamp('created_at', {
+    withTimezone: true,
   })
     .defaultNow()
     .notNull(),
 
-  updatedAt: timestamp('updated_at', { 
-    withTimezone: true 
+  updatedAt: timestamp('updated_at', {
+    withTimezone: true,
   })
     .defaultNow()
     .notNull(),
