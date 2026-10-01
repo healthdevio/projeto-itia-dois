@@ -8,6 +8,8 @@
  *   (`POST /api/messages`).
  * - Entregar a conversa atual para a interface
  *   (`GET /api/conversations/current`).
+ * - Entregar e registrar as sugestões da conversa atual
+ *   (`GET|POST|DELETE /api/suggestions`).
  * - Guardar a conversa internamente, no Postgres. A conversa nunca é
  *   enviada para a Mia AI.
  */
@@ -20,6 +22,7 @@ import { serve } from '@hono/node-server';
 import { checkDatabase, closeDatabase } from './db/client.js';
 import { conversationRoutes } from './routes/conversations.js';
 import { messageRoutes } from './routes/messages.js';
+import { suggestionRoutes } from './routes/suggestions.js';
 import { loadMiaAIConfig } from './services/mia-ai.js';
 
 const app = new Hono();
@@ -54,6 +57,14 @@ app.route('/api/messages', messageRoutes);
  * Conversa atual para a interface.
  */
 app.route('/api/conversations', conversationRoutes);
+
+/**
+ * Sugestões da conversa atual.
+ *
+ * Escritas pela Mia AI (via `POST /api/messages`) e pela interface, lidas só
+ * pela interface.
+ */
+app.route('/api/suggestions', suggestionRoutes);
 
 /**
  * Inicia o servidor
