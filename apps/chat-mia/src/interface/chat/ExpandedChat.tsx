@@ -22,10 +22,7 @@ function ExpandedChat({
 
   return (
     <section className="fixed bottom-20 right-4 flex h-[600px] w-[600px] flex-col overflow-hidden rounded-lg border bg-background shadow-lg">
-      <ChatHeader
-        isExpanded={isExpanded}
-        onToggleExpanded={onToggleExpanded}
-      />
+      <ChatHeader isExpanded={isExpanded} onToggleExpanded={onToggleExpanded} />
       <MessageList messages={messages} />
       <ChatInput onSendMessage={handleSendMessage} />
     </section>
