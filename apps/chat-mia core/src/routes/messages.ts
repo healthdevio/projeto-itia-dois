@@ -8,6 +8,11 @@
  * anteriores e os ids do histórico — para que a Mia AI responda com
  * consciência do diálogo. A conversa em si nunca é enviada.
  *
+ * O corpo pode vir acompanhado de `config`, a configuração escolhida na tela
+ * (idioma, tom, tamanho da resposta). O Core valida, completa com os defaults e
+ * repassa para a Mia AI sem interpretar nada — ver
+ * `src/models/chat-config.ts`.
+ *
  * A resposta da Mia AI pode vir acompanhada de `suggestions` (ver
  * `src/services/mia-ai.ts`). Quando vem, o Core substitui as sugestões da
  * conversa ativa pelas novas e as devolve junto da resposta, para a interface
@@ -28,6 +33,12 @@ import {
   replaceActiveSuggestions,
   getActiveSuggestions,
 } from '../repositories/suggestion-repository.js';
+import {
+  formatChatConfig,
+  validateChatConfig,
+  type ChatConfig,
+  type ChatConfigInput,
+} from '../models/chat-config.js';
 import type { ApiResponse, Message } from '../models/message.js';
 import type { Suggestion } from '../models/suggestion.js';
 
@@ -35,6 +46,18 @@ export const messageRoutes = new Hono<{ Variables: IdentityVariables }>();
 
 // Toda rota deste router exige identidade.
 messageRoutes.use('*', identity);
+
+/**
+ * Corpo de `POST /api/messages`.
+ *
+ * É a mensagem mais o `config` opcional da interface. O `config` não faz parte
+ * de `Message` justamente porque a mensagem é persistida e o config não é: ele
+ * vale para este envio e some depois (ver `src/models/chat-config.ts`).
+ */
+interface MessageRequestBody extends Message {
+  /** Configuração escolhida na interface. Todos os campos são opcionais. */
+  config?: ChatConfigInput;
+}
 
 /**
  * Resposta do endpoint de mensagens.
@@ -51,6 +74,16 @@ interface MessageResponseData {
    * lista que já estava na conversa, sem alteração.
    */
   suggestions: Suggestion[];
+
+  /**
+   * Configuração que o Core repassa para a Mia AI neste envio.
+   *
+   * É a que foi pedida, já com o que faltava preenchido pelo default — não
+   * necessariamente a que a interface mandou. Devolver o efetivo é o que
+   * permite à tela mostrar o que vale sem guardar a configuração por conta
+   * própria.
+   */
+  config: ChatConfig;
 }
 
 /**
@@ -60,7 +93,11 @@ interface MessageResponseData {
  *
  * Recebe uma mensagem do frontend, valida, persiste na conversa ativa **do
  * usuário que fez a requisição** e repassa para a Mia AI com o contexto
- * acumulado.
+ * acumulado e a configuração da tela (`config`, opcional).
+ *
+ * A resposta traz `config` com a configuração efetiva — a que foi repassada,
+ * já completada com os defaults. É o que a interface usa para mostrar o que
+ * vale, em vez de ter que reproduzir os defaults sozinha.
  *
  * A resposta traz também `suggestions`: as sugestões que a Mia AI devolveu com
  * a resposta, já gravadas na conversa. A interface renderiza as chips direto
@@ -68,7 +105,8 @@ interface MessageResponseData {
  *
  * Códigos de resposta:
  * - 200: Sucesso
- * - 400: JSON inválido ou campos obrigatórios faltando
+ * - 400: JSON inválido, corpo que não é objeto, campos obrigatórios faltando
+ *   ou `config` inválido. O erro de config diz o campo e os valores aceitos.
  * - 401: Identidade ausente ou inválida
  * - 500: Erro interno
  * - 502: A Mia AI falhou (chave inválida, limite de taxa, timeout). O corpo
@@ -77,9 +115,47 @@ interface MessageResponseData {
 messageRoutes.post('/', async (c) => {
   const userId = c.get('userId');
 
-  try {
-    const body = await c.req.json<Message>();
+  // Corpo inválido é erro do cliente, não do Core: o parse fica fora do try
+  // que trata falha interna, para que JSON quebrado não vire 500.
+  let parsed: unknown;
 
+  try {
+    parsed = await c.req.json();
+  } catch {
+    const response: ApiResponse = {
+      success: false,
+      error: 'JSON inválido no corpo da requisição',
+    };
+    return c.json(response, 400);
+  }
+
+  // `null` e `[]` são JSON válido e não são corpo de requisição. Sem esta
+  // checagem, o acesso a `body.message_id` estouraria e o cliente receberia um
+  // 500 por um corpo que ele mesmo mandou errado.
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    const response: ApiResponse = {
+      success: false,
+      error: 'Corpo da requisição inválido',
+    };
+    return c.json(response, 400);
+  }
+
+  const body = parsed as MessageRequestBody;
+
+  // A configuração vai ser repassada para a Mia AI. Validar antes de qualquer
+  // escrita no banco evita gravar a mensagem de um usuário para só descobrir
+  // depois que o config não prestava.
+  const chatConfig = validateChatConfig(body.config);
+
+  if (!chatConfig.ok) {
+    const response: ApiResponse = {
+      success: false,
+      error: chatConfig.error,
+    };
+    return c.json(response, 400);
+  }
+
+  try {
     // Validação dos campos obrigatórios
     if (!body.message_id || !body.message || !body.origin) {
       const response: ApiResponse = {
@@ -89,15 +165,20 @@ messageRoutes.post('/', async (c) => {
       return c.json(response, 400);
     }
 
-    // Adiciona data se não fornecida
+    // Adiciona data se não fornecida. O `config` fica de fora de propósito: ele
+    // não é persistido, e `appendMessage` lê só os campos da mensagem.
     const message: Message = {
-      ...body,
+      message_id: body.message_id,
+      message: body.message,
+      metadata: body.metadata,
+      origin: body.origin,
       date: body.date || new Date().toISOString(),
     };
 
     console.log(
       `[Core] Mensagem recebida de ${message.origin} (usuário ${userId}):`,
       message.message_id,
+      `· config ${formatChatConfig(chatConfig.config)}`,
     );
 
     // Carrega a conversa ativa DO USUÁRIO. Criada aqui caso seja a primeira
@@ -124,8 +205,13 @@ messageRoutes.post('/', async (c) => {
     await setConversationState(userId, 'thinking');
 
     // Envia para a Mia AI. É aqui que a mensagem sai do Core — a conversa,
-    // não.
-    const miaResponse = await sendToMiaAI({ message, context });
+    // não. O `config` vai junto, sem interpretação: quem decide o que fazer com
+    // ele é a Mia AI.
+    const miaResponse = await sendToMiaAI({
+      message,
+      context,
+      config: chatConfig.config,
+    });
 
     // Persiste a resposta da Mia AI na conversa.
     const miaMessage: Message = {
@@ -153,6 +239,9 @@ messageRoutes.post('/', async (c) => {
         message_id: message.message_id,
         mia_ai_response: miaResponse.response,
         suggestions,
+        // A configuração que a Mia AI recebeu. A interface usa isso para
+        // alinhar a tela com o que de fato vale neste envio.
+        config: chatConfig.config,
       },
     };
 
