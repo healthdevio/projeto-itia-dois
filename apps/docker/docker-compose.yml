@@ -8,12 +8,12 @@ services:
       POSTGRES_USER: omnia_user
       POSTGRES_PASSWORD: ${omniabanco2026}
     ports:
-      - "5433:5432"
+      - '5433:5432'
     volumes:
       - omnia_postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U omnia_user -d omnia"]
+      test: ['CMD-SHELL', 'pg_isready -U omnia_user -d omnia']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -28,7 +28,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://omnia_user:${omniabanco2026}@postgres:5432/omnia
-    restart: "no"
+    restart: 'no'
 
 volumes:
   omnia_postgres_data:
