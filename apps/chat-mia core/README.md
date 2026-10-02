@@ -3,6 +3,8 @@
 O Core do Chat Mia é responsável por:
 
 - Receber mensagens da interface e repassá-las para a Mia AI.
+- Repassar para a Mia AI a configuração que a interface escolheu (idioma, tom,
+  tamanho da resposta), preenchendo o que faltar com o default.
 - Entregar a conversa atual para a interface.
 - Entregar e registrar as sugestões da conversa atual.
 - Guardar a conversa internamente, no Postgres.
@@ -42,7 +44,8 @@ src/
 ├── models/
 │   ├── message.ts              # Modelo de mensagem (entrada da interface)
 │   ├── conversation.ts         # Modelo de conversa + máquina de estados
-│   └── suggestion.ts           # Modelo de sugestão + leitura/validação
+│   ├── suggestion.ts           # Modelo de sugestão + leitura/validação
+│   └── chat-config.ts          # Modelo de configuração + defaults/validação
 ├── repositories/
 │   ├── conversation-repository.ts  # Único acesso às conversas, sempre por usuário
 │   └── suggestion-repository.ts    # Único acesso às sugestões, sempre por usuário
@@ -158,9 +161,17 @@ contexto montado para a Mia AI é o daquele usuário.
   "message": "Olá, como vai?",
   "date": "2026-09-18T10:30:00.000Z",
   "metadata": "info adicional",
-  "origin": "frontend"
+  "origin": "frontend",
+  "config": {
+    "language": "pt-BR",
+    "tone": "informal",
+    "response_length": "short"
+  }
 }
 ```
+
+`config` é opcional: é a configuração que a interface escolheu na tela (idioma,
+tom, tamanho da resposta) e que o Core repassa para a Mia AI sem interpretar.
 
 **Response (200):**
 
@@ -170,7 +181,12 @@ contexto montado para a Mia AI é o daquele usuário.
   "data": {
     "message_id": "msg-123",
     "mia_ai_response": "[Mia AI] Mensagem msg-123 recebida.",
-    "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meu agendamento" }]
+    "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meu agendamento" }],
+    "config": {
+      "language": "pt-BR",
+      "tone": "informal",
+      "response_length": "short"
+    }
   }
 }
 ```
@@ -178,6 +194,10 @@ contexto montado para a Mia AI é o daquele usuário.
 `suggestions` vem junto para a interface renderizar as chips sem uma segunda
 chamada. São as sugestões que a Mia AI devolveu com a resposta, já gravadas na
 conversa — quando ela não devolve nenhuma, o campo traz o que já estava lá.
+
+`config` é a configuração **efetiva**: a que foi repassada, com o que faltava
+preenchido pelo default. A interface mostra o que vale sem precisar reproduzir
+os defaults.
 
 **Response (400/500/502):**
 
@@ -188,7 +208,18 @@ conversa — quando ela não devolve nenhuma, o campo traz o que já estava lá.
 }
 ```
 
-Formato completo em [`docs/core/Message.md`](../../docs/core/Message.md).
+`config` inválido também é `400`, dizendo o campo e os valores aceitos — e sem
+gravar a mensagem nem chamar a Mia AI:
+
+```json
+{
+  "success": false,
+  "error": "config.tone deve ser um de: formal, neutral, informal"
+}
+```
+
+Formato completo em [`docs/core/Message.md`](../../docs/core/Message.md) e
+[`docs/core/ChatConfig.md`](../../docs/core/ChatConfig.md).
 
 ### Sugestões
 
@@ -235,7 +266,7 @@ Formato completo em [`docs/core/Suggestion.md`](../../docs/core/Suggestion.md).
 > trocar de provider não toca este repositório.
 
 O Core monta o contexto a cada envio e faz `POST $MIA_AI_ENDPOINT` com
-`{ message, context }`.
+`{ message, context, config }`.
 
 ### Contrato
 
@@ -252,6 +283,11 @@ O Core monta o contexto a cada envio e faz `POST $MIA_AI_ENDPOINT` com
     ],
     "history_ids": ["8ad9f590-..."],
     "max_context_messages": 20
+  },
+  "config": {
+    "language": "pt-BR",
+    "tone": "neutral",
+    "response_length": "standard"
   }
 }
 ```
@@ -276,6 +312,13 @@ direto. Uma resposta sem o campo preserva as sugestões que já estavam na
 conversa; `suggestions: []` limpa. Ver
 [Suggestion.md](../../docs/core/Suggestion.md#substituição-vs-preservação).
 
+`config` é a configuração que a interface pediu para esta mensagem — idioma, tom
+e tamanho da resposta. Vai no topo, e não dentro do `context`, porque não é
+estado da conversa: é o que a tela mandou agora. O Core repassa sem interpretar,
+preenchendo o que faltar com o default; quem decide o que fazer com as etiquetas
+é a Mia AI, e um servidor que não conhece o campo pode ignorá-lo. Ver
+[ChatConfig.md](../../docs/core/ChatConfig.md).
+
 ### O contexto é o que dá consciência
 
 A mensagem atual **não** entra em `previous_messages`: o contexto é montado
@@ -291,7 +334,7 @@ O log do servidor mostra o que foi anexado a cada envio, que é a forma mais
 rápida de conferir que a consciência de contexto está funcionando:
 
 ```
-[Mia AI] m2 → http://localhost:3002/api/chat (conversa 6e0cbf75-..., 2 mensagens de contexto, 1 conversas anteriores, 2 sugestões)
+[Mia AI] m2 → http://localhost:3002/api/chat (conversa 6e0cbf75-..., 2 mensagens de contexto, 1 conversas anteriores, config pt-BR · neutral · standard, 2 sugestões)
 ```
 
 ### Quando a Mia AI falha
@@ -360,3 +403,4 @@ com um stack trace.
 | [`docs/core/Conversation.md`](../../docs/core/Conversation.md) | Modelo de conversa, endpoints, persistência e contexto da Mia AI |
 | [`docs/core/Message.md`](../../docs/core/Message.md)           | Modelo de mensagem e endpoint de envio                           |
 | [`docs/core/Suggestion.md`](../../docs/core/Suggestion.md)     | Modelo de sugestão, endpoints e limites                          |
+| [`docs/core/ChatConfig.md`](../../docs/core/ChatConfig.md)     | Modelo de configuração e o repasse para a Mia AI                 |

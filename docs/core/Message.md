@@ -20,6 +20,8 @@ Esse json deve incluir os seguintes fields:
 
 `String: origin` Identifica a fonte da mensagem. Obrigatório.
 
+`Object: config` Configuração escolhida pela interface para este envio — idioma, tom e tamanho da resposta. Opcional; quando falta, o Core completa com o default. Não é persistida: vale para esta mensagem. Ver [ChatConfig.md](./ChatConfig.md).
+
 A interface deve esperar por códigos de HTTP dependendo no resultado da transferência.
 
 `200` Sucesso.
@@ -52,7 +54,7 @@ Este endpoint exige o header `X-User-Id`. Sem ele, a resposta é `401`. A mensag
 
 ### Request Body
 
-O corpo da requisição deve conter o JSON no formato especificado acima.
+O corpo da requisição deve conter o JSON no formato especificado acima, com `config` opcional.
 
 **Exemplo de requisição:**
 
@@ -62,19 +64,24 @@ O corpo da requisição deve conter o JSON no formato especificado acima.
   "message": "Olá, como vai?",
   "date": "2026-09-18T10:30:00.000Z",
   "metadata": "info adicional",
-  "origin": "frontend"
+  "origin": "frontend",
+  "config": {
+    "language": "pt-BR",
+    "tone": "informal",
+    "response_length": "short"
+  }
 }
 ```
 
 ### Response Codes
 
-| Código | Descrição                                                                   |
-| ------ | --------------------------------------------------------------------------- |
-| `200`  | Mensagem processada com sucesso                                             |
-| `400`  | JSON inválido ou campos obrigatórios faltando (message_id, message, origin) |
-| `401`  | `X-User-Id` ausente ou inválido                                             |
-| `500`  | Erro interno ao processar mensagem                                          |
-| `502`  | O servidor da Mia AI falhou. O `error` traz a causa reportada por ele       |
+| Código | Descrição                                                                                      |
+| ------ | ---------------------------------------------------------------------------------------------- |
+| `200`  | Mensagem processada com sucesso                                                                |
+| `400`  | JSON inválido, campos obrigatórios faltando (message_id, message, origin) ou `config` inválido |
+| `401`  | `X-User-Id` ausente ou inválido                                                                |
+| `500`  | Erro interno ao processar mensagem                                                             |
+| `502`  | O servidor da Mia AI falhou. O `error` traz a causa reportada por ele                          |
 
 ### Response Body (Sucesso - 200)
 
@@ -84,7 +91,12 @@ O corpo da requisição deve conter o JSON no formato especificado acima.
   "data": {
     "message_id": "msg-123",
     "mia_ai_response": "Olá! Como posso ajudar hoje?",
-    "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meu agendamento" }]
+    "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meu agendamento" }],
+    "config": {
+      "language": "pt-BR",
+      "tone": "informal",
+      "response_length": "short"
+    }
   }
 }
 ```
@@ -94,6 +106,11 @@ interface não precisar de um `GET /api/suggestions` logo em seguida. Vem sempre
 presente: são as que a Mia AI devolveu com a resposta, ou as que já estavam lá
 quando ela não devolveu nenhuma. Ver [Sugestão.md](./Suggestion.md).
 
+`config` traz a configuração efetiva deste envio — a que foi repassada para a
+Mia AI, já com o que faltava preenchido pelo default do Core. É o que permite à
+tela mostrar o que vale sem guardar a configuração por conta própria. Ver
+[ChatConfig.md](./ChatConfig.md).
+
 ### Response Body (Erro - 400/500/502)
 
 ```json
@@ -102,6 +119,18 @@ quando ela não devolveu nenhuma. Ver [Sugestão.md](./Suggestion.md).
   "error": "Campos obrigatórios faltando: message_id, message, origin"
 }
 ```
+
+`config` inválido tem o seu próprio erro, que diz o campo e os valores aceitos:
+
+```json
+{
+  "success": false,
+  "error": "config.tone deve ser um de: formal, neutral, informal"
+}
+```
+
+Nesse caso a mensagem **não** é gravada na conversa e a Mia AI **não** é
+chamada: a validação acontece antes de qualquer escrita.
 
 Quando a falha vem do servidor da Mia AI (`502`), o `error` traz a causa que
 ele reportou, em vez de uma mensagem genérica:
@@ -131,12 +160,12 @@ apps/chat-mia core/src/services/mia-ai.ts
 ### Como funciona
 
 1. A interface envia a mensagem, com `X-User-Id`, para o endpoint `/api/messages`
-2. O Core valida e processa a mensagem
+2. O Core valida e processa a mensagem, e valida o `config` antes de qualquer escrita
 3. O Core grava a mensagem na conversa ativa **do usuário**, já existente ou recém-criada
-4. O Core monta o **contexto** da conversa (mensagens anteriores + ids do histórico) e envia `{ message, context }` para o servidor da Mia AI
+4. O Core monta o **contexto** da conversa (mensagens anteriores + ids do histórico) e envia `{ message, context, config }` para o servidor da Mia AI
 5. O Core grava a resposta da Mia AI na conversa com `role: "mia"`
 6. Se a resposta trouxe `suggestions`, o Core substitui as sugestões da conversa pelas novas
-7. A resposta da Mia AI e as sugestões da conversa são retornadas para a interface
+7. A resposta da Mia AI, as sugestões da conversa e o `config` efetivo são retornados para a interface
 
 ### O Core não sabe o que é um modelo de linguagem
 
@@ -144,12 +173,14 @@ Esta é a fronteira central do design. O Core **não** conhece provider, modelo,
 prompt, temperatura, nem o formato de requisição de nenhuma API de IA. Tudo isso
 é responsabilidade do servidor da Mia AI (`apps/packages/mia-ai`).
 
-O Core sabe apenas duas coisas:
+O Core sabe apenas três coisas:
 
 1. O contrato de contexto `MiaAIContext`, que ele mesmo monta a partir do estado
    que guarda.
-2. O endpoint HTTP da Mia AI, para onde vai `{ message, context }` e de onde
-   volta um texto.
+2. O contrato de configuração `ChatConfig`, que ele repassa sem interpretar —
+   o `formal` é uma etiqueta de interface, e o que ela vira é problema da Mia AI.
+3. O endpoint HTTP da Mia AI, para onde vai `{ message, context, config }` e de
+   onde volta um texto.
 
 Consequências práticas:
 
@@ -178,6 +209,11 @@ Requisição — `POST $MIA_AI_ENDPOINT`:
     ],
     "history_ids": ["8ad9f590-..."],
     "max_context_messages": 20
+  },
+  "config": {
+    "language": "pt-BR",
+    "tone": "neutral",
+    "response_length": "standard"
   }
 }
 ```
@@ -235,11 +271,23 @@ O modelo completo está em [Suggestion.md](./Suggestion.md).
 ### Contexto e a conversa
 
 > **A conversa não é enviada para a Mia AI.** Ela é estado interno do Core, storeado no Postgres.
-> O que chega ao servidor da Mia AI é apenas a mensagem nova e o contexto — as mensagens anteriores e os ids das conversas passadas — para que ela responda com consciência do diálogo.
+> O que chega ao servidor da Mia AI é a mensagem nova, o contexto — as mensagens anteriores e os ids das conversas passadas — e a configuração que a interface pediu. É o suficiente para a Mia AI responder com consciência do diálogo.
 
 Isso significa que a Mia AI não guarda estado: todo o histórico é reconstruído pelo Core a partir do Postgres no momento de cada envio.
 
 O formato do `MiaAIContext` está em [Conversation.md](./Conversation.md#miaaicontext).
+
+### Configuração da conversa
+
+A interface pode mandar `config` junto da mensagem, e o Core o repassa no topo do payload, ao lado de `message` e `context`:
+
+```json
+"config": { "language": "pt-BR", "tone": "formal", "response_length": "detailed" }
+```
+
+Ele fica **fora** do `context` porque não é estado da conversa: o `context` é o que o Core leu do Postgres, e o `config` é o que a tela pediu agora. É um despacho, não um histórico — por isso não é storeado e não volta em `GET /api/conversations`.
+
+O Core valida o formato, preenche o que faltar com o default e repassa sem interpretar. Quem decide o que fazer com as etiquetas é a Mia AI, e um servidor que não conhece o campo pode ignorá-lo. O modelo completo está em [ChatConfig.md](./ChatConfig.md).
 
 ### Estados da conversa durante o envio
 
