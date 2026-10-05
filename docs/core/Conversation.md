@@ -331,7 +331,7 @@ A ausência de `X-User-Id` é independente do banco: responde `401` sem tocar o 
 ### Divisão de responsabilidades
 
 ```
-Interface                 Core                              Mia AI
+Interface                 Core                          provider da Mia AI
    │                        │                                  │
    │ GET /conversations/    │                                  │
    │ current                │                                  │
@@ -348,7 +348,7 @@ Interface                 Core                              Mia AI
    │◄───────────────────────│  grava a resposta (role: "mia")  │
 ```
 
-**A conversa não sai do Core.** A única coisa que atravessa a fronteira é o trio `{ message, context, config }` montado por `src/services/mia-ai.ts`: a mensagem nova, a fatia mínima do diálogo e a configuração que a interface pediu. O `config` não vem da conversa — vem do cliente, e vale só para este envio. Ver [ChatConfig.md](./ChatConfig.md).
+**A conversa não sai do Core.** A única coisa que atravessa a fronteira é o trio `{ message, context, config }` montado por `src/services/mia-ai/`: a mensagem nova, a fatia mínima do diálogo e a configuração que a interface pediu. O `config` não vem da conversa — vem do cliente, e vale só para este envio. Ver [ChatConfig.md](./ChatConfig.md).
 
 O contexto é montado a partir da conversa **do usuário que enviou a mensagem**. Nenhum histórico de outro usuário é lido para construir esse payload.
 
@@ -377,29 +377,38 @@ A mesma coisa vale para a configuração: o `config` do envio é um despacho, n�
 ### A fronteira: o Core não sabe o que é IA
 
 O Core não conhece provider, modelo, prompt nem formato de requisição de
-nenhuma API de IA. Isso é do servidor da Mia AI (`apps/packages/mia-ai`). O Core
-monta o contexto e faz uma chamada HTTP; quem decide como gerar o texto é o
-outro lado.
+nenhuma API de IA. Isso mora atrás da interface `AIProvider`, em
+`src/services/mia-ai/providers/`. O Core monta o contexto e chama o provider;
+quem decide como gerar o texto é o outro lado da interface.
+
+O provider roda dentro do processo do Core — a Mia AI não é mais um serviço
+separado, e não há mais `MIA_AI_ENDPOINT` para configurar. Isso muda o
+transporte, não a fronteira: o provider continua sem conhecer rotas, conversa,
+sugestões ou banco, e o Core continua sem conhecer provider.
 
 O mesmo vale para as opções que a interface escolhe: idioma, tom e tamanho
 chegam como etiquetas e saem como etiquetas. O Core valida o formato, não o
 significado — ele sabe o que `formal` quer dizer na tela, e o que isso vira no
-modelo é do servidor da IA.
+modelo é do provider.
 
 Falar de "a Mia AI tem consciência do contexto" não significa que o Core integra
 um modelo: significa que o Core reconstrói, a cada envio, tudo o que a IA
 precisa para não começar do zero — e ela não precisa guardar nada.
 
-Na prática, o contrato é `POST $MIA_AI_ENDPOINT` com `{ message, context, config }`, e
-`{ "response": "..." }` de volta. Ver [Message.md](./Message.md#contrato-com-o-servidor-da-mia-ai).
+Na prática, o contrato é `AIProvider.respond({ message, context, config })` com
+`{ "response": "...", "suggestions": [...] }` de volta. Ver
+[Message.md](./Message.md#contrato-com-o-provider-da-mia-ai).
 
-Falhas desse serviço viram `502` com a causa preservada, em vez de um `500`
-genérico.
+Falhas do provider viram `502` com a causa preservada, em vez de um `500`
+genérico. O tempo de espera é do provider, e é folgado o bastante para uma
+geração longa: o modelo escreve token a token, e cortar cedo devolvia erro no
+meio da digitação. Ver
+[Tempo de espera pelo modelo](./Message.md#tempo-de-espera-pelo-modelo).
 
 ### TODO
 
-- [ ] Retry com backoff quando o servidor da Mia AI responde `502`
+- [ ] Retry com backoff quando o provider da Mia AI responde `502`
 - [ ] Streaming da resposta, para a Mia AI aparecer token a token
-- [ ] Circuit breaker para o servidor da Mia AI (hoje só há timeout)
+- [ ] Circuit breaker para o provider (hoje só há timeout)
 - [ ] Resumo automático de conversas longas em vez de truncamento
 - [ ] Autenticação de verdade: validar token e derivar `user_id` de um subject, em vez de confiar no header

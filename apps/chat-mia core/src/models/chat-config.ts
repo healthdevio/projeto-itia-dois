@@ -9,14 +9,14 @@
  *
  * O `config` diz **como** o usuário quer ser atendido: o idioma da resposta, o
  * tom, o tamanho. Ele não diz **com o que** a resposta é gerada — provider,
- * modelo, temperatura e prompt continuam sendo da Mia AI, e nenhum deles
- * chega ao Core. É a mesma fronteira de `src/services/mia-ai.ts`, vista do lado
- * de quem manda a configuração.
+ * modelo, temperatura e prompt continuam sendo do lado do provider da Mia AI, e
+ * nenhum deles chega às rotas. É a mesma fronteira de `src/services/mia-ai/`,
+ * vista do lado de quem manda a configuração.
  *
  * ## Quem escreve e quem lê
  *
  * ```
- *    interface              Core                   Mia AI
+ *    interface              Core              provider da Mia AI
  *    │                      │                      │
  *    │ POST /api/messages   │                      │
  *    │ { message, config }  │                      │
@@ -28,14 +28,18 @@
  *    │◄─────────────────────│  { …, config }       │
  * ```
  *
- * A interface escreve, a Mia AI lê — e **ninguém guarda**: o config não tem
+ * O provider mora dentro do Core (`src/services/mia-ai/`), mas continua sendo
+ * uma fronteira: é ele que sabe o que `formal` quer dizer para o modelo, e não
+ * o Core.
+ *
+ * A interface escreve, o provider lê — e **ninguém guarda**: o config não tem
  * tabela, não entra na conversa e não volta em `GET /api/conversations`. Ele
  * vale para a mensagem que o trouxe. É o que diferencia o config da conversa:
  * a conversa é estado do Core, o config é um despacho.
  *
  * ## Todo envio leva um config
  *
- * Ausente ou parcial, o Core completa com `DEFAULT_CHAT_CONFIG`. A Mia AI não
+ * Ausente ou parcial, o Core completa com `DEFAULT_CHAT_CONFIG`. O provider não
  * precisa adivinhar se `tone` sumiu porque a interface não oferece a opção ou
  * porque o Core descartou — o que chega do outro lado está sempre completo.
  * O mesmo config que foi repassado volta na resposta, para a interface conferir
@@ -59,8 +63,8 @@ export type ChatConfigLanguage = (typeof CHAT_CONFIG_LANGUAGES)[number];
  * Tom da resposta.
  *
  * O Core sabe o que cada valor **significa** para quem está na tela, e não o
- * que a Mia AI **faz** com ele. `formal` é uma etiqueta de interface: virar
- * system prompt é com o outro lado.
+ * que o provider da Mia AI **faz** com ele. `formal` é uma etiqueta de
+ * interface: virar system prompt é com o outro lado.
  */
 export const CHAT_CONFIG_TONES = ['formal', 'neutral', 'informal'] as const;
 
@@ -85,8 +89,8 @@ export type ChatConfigResponseLength =
  * Configuração efetiva de um envio.
  *
  * Sempre completa: quem recebe sabe que todos os campos têm valor, sem precisar
- * saber se a interface mandou todos. É o que vai no payload da Mia AI e o que
- * volta na resposta de `POST /api/messages`.
+ * saber se a interface mandou todos. É o que vai para o provider da Mia AI e o
+ * que volta na resposta de `POST /api/messages`.
  */
 export interface ChatConfig {
   /** Idioma em que a resposta deve ser escrita. */
@@ -176,7 +180,7 @@ export type ChatConfigValidation =
  * Chave desconhecida é ignorada, e não recusada, porque o `config` é contrato
  * de dois lados: uma interface mais nova pode mandar um campo que este Core
  * ainda não conhece, e um Core mais velho não pode quebrar o chat por causa
- * disso. O inverso — um servidor da Mia AI que não conhece o `config` — também
+ * disso. O inverso — um provider da Mia AI que não conhece o `config` — também
  * é seguro, porque o campo chega no topo do payload e ele pode simplesmente
  * ignorá-lo.
  *
@@ -230,8 +234,9 @@ export function validateChatConfig(value: unknown): ChatConfigValidation {
 /**
  * Resume um config em uma linha, para os logs.
  *
- * O Core e o servidor da Mia AI registram o mesmo resumo, então dá para conferir
- * nos dois lados que a configuração que a interface pediu é a que chegou.
+ * A rota e o provider registram o mesmo resumo, então um `[Core]` e um
+ * `[Nvidia]` na mesma hora mostram que a configuração que a interface pediu é a
+ * que chegou ao modelo.
  */
 export function formatChatConfig(config: ChatConfig): string {
   return `${config.language} · ${config.tone} · ${config.response_length}`;

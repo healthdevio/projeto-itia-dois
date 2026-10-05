@@ -14,7 +14,7 @@
  * `src/models/chat-config.ts`.
  *
  * A resposta da Mia AI pode vir acompanhada de `suggestions` (ver
- * `src/services/mia-ai.ts`). Quando vem, o Core substitui as sugestões da
+ * `src/services/mia-ai/`). Quando vem, o Core substitui as sugestões da
  * conversa ativa pelas novas e as devolve junto da resposta, para a interface
  * renderizar as chips sem uma segunda chamada.
  */
@@ -22,7 +22,11 @@
 import { Hono } from 'hono';
 
 import { identity, type IdentityVariables } from '../middleware/identity.js';
-import { MiaAIError, buildContext, sendToMiaAI } from '../services/mia-ai.js';
+import {
+  MiaAIError,
+  buildContext,
+  sendToMiaAI,
+} from '../services/mia-ai/index.js';
 import {
   appendMessage,
   getHistoryIds,
@@ -109,8 +113,8 @@ interface MessageResponseData {
  *   ou `config` inválido. O erro de config diz o campo e os valores aceitos.
  * - 401: Identidade ausente ou inválida
  * - 500: Erro interno
- * - 502: A Mia AI falhou (chave inválida, limite de taxa, timeout). O corpo
- *   traz o motivo do provider; a interface usa isso para oferecer retry.
+ * - 502: O provider da Mia AI falhou (chave inválida, limite de taxa, timeout).
+ *   O corpo traz o motivo do provider; a interface usa isso para oferecer retry.
  */
 messageRoutes.post('/', async (c) => {
   const userId = c.get('userId');
@@ -206,7 +210,8 @@ messageRoutes.post('/', async (c) => {
 
     // Envia para a Mia AI. É aqui que a mensagem sai do Core — a conversa,
     // não. O `config` vai junto, sem interpretação: quem decide o que fazer com
-    // ele é a Mia AI.
+    // ele é o provider, que roda dentro do processo (ver
+    // `src/services/mia-ai/`).
     const miaResponse = await sendToMiaAI({
       message,
       context,
@@ -249,7 +254,7 @@ messageRoutes.post('/', async (c) => {
   } catch (error) {
     // Erro do provider da Mia AI tem causa conhecida (chave inválida, limite
     // de taxa, timeout). Repassar o motivo ajuda muito mais que um 500
-    // genérico. `502` porque o Core funcionou; foi o upstream que falhou.
+    // genérico. `502` porque o Core funcionou; foi o provider que falhou.
     const providerFailure = error instanceof MiaAIError;
 
     console.error(

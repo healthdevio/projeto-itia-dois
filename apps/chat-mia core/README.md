@@ -12,6 +12,9 @@ O Core do Chat Mia é responsável por:
 > **A conversa nunca é enviada para a Mia AI.** Ela é estado interno do Core.
 > Apenas as mensagens saem do Core — e cada envio carrega o contexto do diálogo
 > para que a Mia AI tenha consciência do histórico.
+>
+> A Mia AI roda **dentro do Core**, atrás da interface `AIProvider`. O provider
+> em uso é um substituto temporário de teste. Ver [Mia AI](#mia-ai).
 
 ## Multi-usuário
 
@@ -54,7 +57,14 @@ src/
 │   ├── conversations.ts        # Endpoints de conversa
 │   └── suggestions.ts          # GET|POST|DELETE /api/suggestions
 └── services/
-    └── mia-ai.ts               # Integração com a Mia AI (monta o contexto)
+    └── mia-ai/
+        ├── index.ts            # API pública (buildContext, sendToMiaAI)
+        ├── context.ts          # Montagem do contexto da conversa
+        ├── provider.ts         # Interface AIProvider + registro
+        ├── prompt.ts           # config → prompt de chat
+        └── providers/
+            ├── nvidia.ts       # Substituto de teste (Nvidia)
+            └── echo.ts         # Texto fixo, sem chamar modelo
 
 local/                         # Harness de teste (git-ignored, ver abaixo)
 drizzle/                        # Migrations geradas
@@ -258,19 +268,39 @@ Formato completo em [`docs/core/Suggestion.md`](../../docs/core/Suggestion.md).
 ## Mia AI
 
 > **O Core não sabe o que é um modelo de linguagem.** Provider, modelo, prompt,
-> temperatura e o formato de requisição de qualquer API de IA vivem no servidor
-> da Mia AI (`apps/packages/mia-ai`). O Core conhece apenas o contrato HTTP
-> abaixo.
+> temperatura e o formato de requisição de qualquer API de IA vivem atrás da
+> interface `AIProvider`, em `src/services/mia-ai/providers/`.
 >
-> A consequência prática: nenhuma credencial de modelo é passada ao Core, e
-> trocar de provider não toca este repositório.
+> A consequência prática: rotas, conversa, sugestões e persistência não importam
+> nada de provider. Trocar de provider é um arquivo novo e uma linha no registro.
 
-O Core monta o contexto a cada envio e faz `POST $MIA_AI_ENDPOINT` com
-`{ message, context, config }`.
+A Mia AI roda **dentro do Core**, no mesmo processo. O provider em uso é um
+substituto temporário de teste (`nvidia`), que fala com o backend da Nvidia.
+
+```
+Core monta o contexto → AIProvider.respond() → { response, suggestions }
+```
+
+### Estrutura
+
+```
+src/services/mia-ai/
+├── index.ts          API pública: buildContext, sendToMiaAI, MiaAIError
+├── context.ts        MiaAIContext e a montagem do contexto
+├── provider.ts       interface AIProvider + registro dos providers
+├── prompt.ts         { message, context, config } → mensagens de chat
+└── providers/
+    ├── nvidia.ts     substituto de teste: backend da Nvidia
+    └── echo.ts       texto fixo, sem chamar modelo
+```
+
+A modularidade aqui é o que torna o provider descartável: ele está confinado a
+`providers/`, e nada fora desse diretório importa `nvidia` nem `echo`. Trocá-lo
+ou apagá-lo não toca rotas, modelos, repositórios ou banco.
 
 ### Contrato
 
-**Requisição:**
+O que o Core entrega ao provider:
 
 ```json
 {
@@ -292,31 +322,25 @@ O Core monta o contexto a cada envio e faz `POST $MIA_AI_ENDPOINT` com
 }
 ```
 
-**Resposta (`200`):**
+E o que volta:
 
 ```json
 {
   "response": "Olá! Como posso ajudar?",
-  "suggestions": [{ "text": "Ver meu agendamento" }]
+  "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meu agendamento" }]
 }
 ```
 
-Só isso. A conversa não é enviada, e o Core não interpreta nada além do texto de
-`response` e da lista de sugestões. O envelope `success`/`data` do próprio Core
-também é aceito como alternativa, para um servidor feito à mão não ter que
-acertar o formato.
-
-`suggestions` é **opcional**, e o `suggestion_id` dentro dela também: quando
-falta, o Core gera. Cada item pode ser `{ "text": "..." }` ou a string do texto
-direto. Uma resposta sem o campo preserva as sugestões que já estavam na
-conversa; `suggestions: []` limpa. Ver
+A conversa não é enviada. `suggestions` é **opcional**, e o `suggestion_id`
+também: quando falta, o Core gera. Uma resposta sem o campo preserva as
+sugestões que já estavam na conversa; `suggestions: []` limpa. Ver
 [Suggestion.md](../../docs/core/Suggestion.md#substituição-vs-preservação).
 
 `config` é a configuração que a interface pediu para esta mensagem — idioma, tom
 e tamanho da resposta. Vai no topo, e não dentro do `context`, porque não é
 estado da conversa: é o que a tela mandou agora. O Core repassa sem interpretar,
 preenchendo o que faltar com o default; quem decide o que fazer com as etiquetas
-é a Mia AI, e um servidor que não conhece o campo pode ignorá-lo. Ver
+é o provider, e um provider que não conhece o campo pode ignorá-lo. Ver
 [ChatConfig.md](../../docs/core/ChatConfig.md).
 
 ### O contexto é o que dá consciência
@@ -327,30 +351,49 @@ si mesma.
 
 Em conversas longas só as `max_context_messages` mais recentes vão — o histórico
 completo estouraria a janela de contexto da IA. Os ids de conversas anteriores
-vêm em `history_ids`: a Mia AI fica ciente de que houve diálogos antes, sem
+vêm em `history_ids`: o provider fica ciente de que houve diálogos antes, sem
 receber o conteúdo deles.
 
 O log do servidor mostra o que foi anexado a cada envio, que é a forma mais
 rápida de conferir que a consciência de contexto está funcionando:
 
 ```
-[Mia AI] m2 → http://localhost:3002/api/chat (conversa 6e0cbf75-..., 2 mensagens de contexto, 1 conversas anteriores, config pt-BR · neutral · standard, 2 sugestões)
+[Nvidia] 6e0cbf75-... · 2 mensagens de contexto · 1 conversas anteriores · config pt-BR · neutral · standard · 4210ms · 2 sugestões
 ```
+
+O tempo em ms aparece porque é ele que explica a demora: uma resposta `detailed`
+com histórico leva segundos, e isso é o modelo escrevendo, não o Core travado.
+
+### Tempo de espera
+
+A Nvidia **não devolve a resposta pronta**: ela escreve token a token. Uma
+resposta longa passa dos 60 s sem que nada esteja errado — e o teto de 60 s que
+existia cortava a geração no meio da digitação, devolvendo um erro em vez da
+resposta que estava a caminho.
+
+O padrão agora é `NVIDIA_TIMEOUT_MS=300000` (5 min). Ele continua sendo um teto,
+porque um provider pendurado precisa virar erro em algum momento, e continua
+configurável, porque em teste local um teto menor é melhor que esperar cinco
+minutos por um provider que morreu.
 
 ### Quando a Mia AI falha
 
 O Core não sabe se a causa foi chave inválida, limite de taxa ou modelo fora de
-ciclo de vida — ele só sabe que o outro lado não respondeu. O que ele faz é
+ciclo de vida — ele só sabe que o provider não respondeu. O que ele faz é
 preservar a causa e devolvê-la, para que a interface possa oferecer retry com
 sentido:
 
 ```json
 HTTP 502
-{ "success": false, "error": "Mia AI respondeu com erro: Authorization failed" }
+{ "success": false, "error": "NVIDIA 401: {\"detail\":\"invalid api key\"}" }
 ```
 
-`502` significa que o Core funcionou e o serviço do qual ele depende não. Um
+`502` significa que o Core funcionou e o provider do qual ele depende não. Um
 `500` continua significando falha no próprio Core.
+
+Perder as sugestões não derruba a conversa: se a segunda chamada ao modelo
+falhar, a resposta da primeira volta normalmente e as sugestões anteriores
+seguem valendo.
 
 ## Máquina de estados
 
@@ -367,34 +410,51 @@ O Core aplica as transições sozinho conforme o resultado do envio para a Mia A
 
 ## Variáveis de Ambiente
 
-| Variável               | Descrição                                 | Padrão          |
-| ---------------------- | ----------------------------------------- | --------------- |
-| `CORE_PORT`            | Porta do servidor                         | `3001`          |
-| `DATABASE_URL`         | Conexão Postgres que storeia as conversas | — (obrigatória) |
-| `MIA_AI_ENDPOINT`      | Endpoint do **servidor** da Mia AI        | — (obrigatória) |
-| `MIA_AI_SERVICE_TOKEN` | Autenticação da chamada entre serviços    | — (opcional)    |
-| `MIA_AI_TIMEOUT_MS`    | Tempo máximo de espera pela Mia AI        | `60000`         |
+| Variável                | Descrição                                    | Padrão                                |
+| ----------------------- | -------------------------------------------- | ------------------------------------- |
+| `CORE_PORT`             | Porta do servidor                            | `3001`                                |
+| `DATABASE_URL`          | Conexão Postgres que storeia as conversas    | — (obrigatória)                       |
+| `MIA_AI_PROVIDER`       | Provider da Mia AI: `nvidia` ou `echo`       | `nvidia`                              |
+| `NVIDIA_API_KEY`        | Chave do backend da Nvidia                   | — (com `nvidia`)                      |
+| `NVIDIA_MODEL`          | Modelo de chat do NIM                        | `meta/llama-3.3-70b-instruct`         |
+| `NVIDIA_BASE_URL`       | Base do NIM (compatível com a API da OpenAI) | `https://integrate.api.nvidia.com/v1` |
+| `NVIDIA_TIMEOUT_MS`     | Teto de espera pelo modelo                   | `300000` (5 min)                      |
+| `NVIDIA_MAX_TOKENS`     | Tokens máximos por resposta                  | `400`                                 |
+| `MIA_AI_IGNORE_CONFIG`  | `1` = ignora o `config` da interface         | — (opcional)                          |
+| `MIA_AI_NO_SUGGESTIONS` | `1` = não devolve `suggestions`              | — (opcional)                          |
 
-Nenhuma delas é nova na feature de sugestão: a sugestão não muda a forma como o
-Core fala com a Mia AI, só o que ele aceita de volta.
+`NVIDIA_TIMEOUT_MS` é alto de propósito: o modelo escreve token a token, e uma
+resposta longa passa dos 60 s. Ver [Tempo de espera](#tempo-de-espera).
 
-## Testar sem a Mia AI
+## Testar sem a Nvidia
 
-A pasta `local/` traz um harness de desenvolvimento **git-ignored**: um servidor
-que faz o papel da Mia AI (com o backend da Nvidia), um REPL de terminal e um
-smoke test. Ele existe para testar o Core sem a Mia AI de verdade e sem a
-interface.
+Com `MIA_AI_PROVIDER=echo` o Core responde sem chamar modelo nenhum, o fluxo
+inteiro é testado e nada de cota é gasto. O eco mostra o `config` entre
+parênteses, então esse modo também é o jeito mais barato de conferir o repasse
+de configuração.
 
 ```bash
-npm run stub    # Mia AI falsa, em :3002
+MIA_AI_PROVIDER=echo npm run dev
+```
+
+Com a Nvidia de verdade, é só ter `NVIDIA_API_KEY` no `.env`.
+
+## Harness local
+
+A pasta `local/` traz ferramentas de desenvolvimento **git-ignored**: um REPL de
+terminal e um smoke test. Elas exercitam o Core pela interface HTTP, sem
+depender do provider.
+
+```bash
 npm run repl    # REPL de terminal contra o Core
 npm run smoke   # checagem ponta a ponta, sem interação
 ```
 
-O `README.md` da pasta tem o passo a passo. A pasta não é versionada porque
-guarda a `NVIDIA_API_KEY` e porque é ferramenta de quem está mexendo no Core, não
-parte do produto — em uma máquina sem ela, os scripts avisam em vez de falhar
-com um stack trace.
+O `README.md` da pasta tem o passo a passo. O servidor da Mia AI falsa que morava
+aqui foi para dentro do Core (`src/services/mia-ai/providers/nvidia.ts`), então
+não há mais um processo a subir nem `MIA_AI_ENDPOINT` para apontar. A pasta segue
+fora do git porque guarda a `NVIDIA_API_KEY` do `local/.env` e porque é
+ferramenta de quem está mexendo no Core, não parte do produto.
 
 ## Documentação
 

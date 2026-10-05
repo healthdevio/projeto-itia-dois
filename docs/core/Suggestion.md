@@ -211,7 +211,7 @@ A diferença entre as duas abaixo importa, e vem do contrato com a Mia AI:
 | `suggestions: []`               | Limpa — é uma decisão, não uma omissão        |
 | campo `suggestions` **ausente** | **Preserva** as que já estavam                |
 
-A omissão é preservada porque a produção das sugestões é responsabilidade da Mia AI, e um servidor que ainda não devolve o campo não deve apagar o que a interface está exibindo. Detalhe da implementação em `readBody`, em `src/services/mia-ai.ts`.
+A omissão é preservada porque a produção das sugestões é responsabilidade do provider da Mia AI, e um provider que ainda não devolve o campo não deve apagar o que a interface está exibindo. O provider traduz "não produziu lista" para `null` antes de devolver — detalhe em `extractJsonArray`, em `src/services/mia-ai/prompt.ts`.
 
 ### Limites
 
@@ -250,12 +250,13 @@ A tabela **não tem `user_id`**, pelo mesmo motivo das mensagens: `conversation_
 
 ## Testar
 
-O harness de desenvolvimento fica em `apps/chat-mia core/local/` e **é git-ignored**: ele traz um servidor que substitui a Mia AI (com backend da Nvidia) e um REPL de terminal. Ver [`local/README.md`](../../apps/chat-mia%20core/local/README.md).
+O harness de desenvolvimento fica em `apps/chat-mia core/local/` e **é git-ignored**: um REPL de terminal e um smoke test. Ver [`local/README.md`](../../apps/chat-mia%20core/local/README.md).
 
 ```bash
-npm run stub    # Mia AI falsa
 npm run repl    # REPL de terminal contra o Core
 npm run smoke   # checagem ponta a ponta, sem interação
 ```
+
+O provider que produz as sugestões roda dentro do Core, em `src/services/mia-ai/providers/`. Sem chave de modelo, `MIA_AI_PROVIDER=echo` devolve uma lista fixa — o suficiente para o smoke passar sem gastar cota.
 
 O `smoke` cobre o fluxo de sugestão inteiro: leitura vazia, registro pela interface, id gerado pelo Core, substituição pelas sugestões da Mia AI, limpeza, `401` sem identidade, `400` no corpo inválido, o teto de 8 por conversa e o isolamento entre usuários.

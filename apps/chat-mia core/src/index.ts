@@ -12,6 +12,9 @@
  *   (`GET|POST|DELETE /api/suggestions`).
  * - Guardar a conversa internamente, no Postgres. A conversa nunca é
  *   enviada para a Mia AI.
+ *
+ * A Mia AI roda dentro deste processo, atrás da interface `AIProvider`
+ * (`src/services/mia-ai/`). O provider em uso é temporário, de teste.
  */
 
 import { Hono } from 'hono';
@@ -23,7 +26,7 @@ import { checkDatabase, closeDatabase } from './db/client.js';
 import { conversationRoutes } from './routes/conversations.js';
 import { messageRoutes } from './routes/messages.js';
 import { suggestionRoutes } from './routes/suggestions.js';
-import { loadMiaAIConfig } from './services/mia-ai.js';
+import { getProvider } from './services/mia-ai/index.js';
 
 const app = new Hono();
 
@@ -73,12 +76,15 @@ const port = parseInt(process.env.CORE_PORT || '3001');
 
 console.log(`[Core] Iniciando servidor na porta ${port}...`);
 
-// A Mia AI só é chamada no envio de mensagens, então uma configuração errada
-// aqui só apareceria no primeiro POST /api/messages. Avisar no boot transforma
-// um 502 confuso em um log óbvio.
+// O provider da Mia AI só é usado no envio de mensagens, então uma configuração
+// errada aqui só apareceria no primeiro POST /api/messages. Avisar no boot
+// transforma um 502 confuso em um log óbvio.
 try {
-  const miaAI = loadMiaAIConfig();
-  console.log(`[Core] Mia AI em ${miaAI.endpoint}`);
+  const provider = await getProvider();
+
+  console.log(
+    `[Core] Mia AI: provider ${provider.name} · ${provider.describe()}`,
+  );
 } catch (error) {
   console.warn(
     `[Core] ATENÇÃO: ${error instanceof Error ? error.message : String(error)}`,
