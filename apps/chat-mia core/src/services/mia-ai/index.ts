@@ -25,6 +25,9 @@
  *   echo.ts         texto fixo, sem chamar nada
  * ```
  *
+ * O texto do prompt não é deste diretório: vive em
+ * `src/models/prompt-template.ts` e é escolhido por tenant em `prompts.ts`.
+ *
  * ## Tempo de espera
  *
  * Quem espera pelo provider é o provider, com o tempo que o modelo precisa: a
@@ -57,6 +60,12 @@ export {
   type AIProviderResponse,
   type ChatMessage,
 } from './provider.js';
+export {
+  registerPrompt,
+  registeredTenants,
+  resolvePrompt,
+  unregisterPrompt,
+} from './prompts.js';
 
 /** Payload que o Core monta para o provider. */
 export interface MiaAIRequest {
@@ -68,6 +77,14 @@ export interface MiaAIRequest {
 
   /** Configuração escolhida pela interface. Sempre completa. */
   config: ChatConfig;
+
+  /**
+   * Tenant de quem enviou, quando veio.
+   *
+   * Escolhe o prompt. Ausente ou desconhecido usa o padrão — ver
+   * `prompts.ts`.
+   */
+  tenant?: string;
 }
 
 /** Resposta que o Core usa para persistir e devolver à interface. */
@@ -125,5 +142,6 @@ export async function sendToMiaAI(
     message: request.message.message,
     context: request.context,
     config: request.config,
+    tenant: request.tenant,
   });
 }

@@ -44,11 +44,11 @@
 import { readSuggestions } from '../../../models/suggestion.js';
 import { formatChatConfig } from '../../../models/chat-config.js';
 import { MiaAIError } from '../error.js';
+import { resolvePrompt } from '../prompts.js';
 import {
-  SUGGESTION_PROMPT,
-  SUGGESTION_SYSTEM_PROMPT,
   extractJsonArray,
   toChatMessages,
+  toSuggestionPrompt,
 } from '../prompt.js';
 import type {
   AIProvider,
@@ -203,20 +203,17 @@ export function createNvidiaProvider(
   async function suggest(
     reply: string,
     ask: string,
+    tenant?: string,
   ): Promise<unknown[] | null> {
-    const prompt = [
-      'Você acabou de responder a um paciente:',
-      JSON.stringify(reply),
-      '',
-      `A pergunta dele foi: ${JSON.stringify(ask)}`,
-      '',
-      SUGGESTION_PROMPT,
-    ].join('\n');
+    const template = resolvePrompt(tenant);
 
     const raw = await complete(
       [
-        { role: 'system', content: SUGGESTION_SYSTEM_PROMPT },
-        { role: 'user', content: prompt },
+        { role: 'system', content: template.suggestionsSystem },
+        {
+          role: 'user',
+          content: toSuggestionPrompt(reply, ask, template),
+        },
       ],
       SUGGESTION_MAX_TOKENS,
     );
@@ -233,11 +230,22 @@ export function createNvidiaProvider(
       message,
       context,
       config: chatConfig,
+      tenant,
     }: AIProviderRequest): Promise<AIProviderResponse> {
       const started = Date.now();
 
+      // O prompt vem do tenant. Desconhecido cai no padrão, sem erro — o log
+      // mostra `tenant:default` para isso ficar visível na hora.
+      const template = resolvePrompt(tenant);
+
       const response = await complete(
-        toChatMessages(message, context, chatConfig, config.ignoreConfig),
+        toChatMessages(
+          message,
+          context,
+          chatConfig,
+          template,
+          config.ignoreConfig,
+        ),
         config.maxTokens,
       );
 
@@ -247,7 +255,7 @@ export function createNvidiaProvider(
 
       if (!config.noSuggestions) {
         try {
-          const raw = await suggest(response, message);
+          const raw = await suggest(response, message, tenant);
 
           // `null` = o modelo não produziu lista. O Core preserva o que já tinha.
           suggestions = raw === null ? null : readSuggestions(raw);
@@ -260,6 +268,7 @@ export function createNvidiaProvider(
 
       console.log(
         `[Nvidia] ${context.conversation_id} · ` +
+          `tenant ${tenant ?? 'default'} · ` +
           `${context.previous_messages.length} mensagens de contexto · ` +
           `${context.history_ids.length} conversas anteriores · ` +
           `config ${formatChatConfig(chatConfig)}` +

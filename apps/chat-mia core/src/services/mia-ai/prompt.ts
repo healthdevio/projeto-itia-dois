@@ -1,67 +1,50 @@
 /**
  * Montagem de prompt a partir do contrato do Core.
  *
- * Traduz `{ message, context, config }` em mensagens de chat. É o único lugar
- * onde o `config` que a interface escolheu vira instrução de texto — e ele é
- * propositalmente genérico: um provider conversa com um modelo em formato de
- * chat, então este formato serve a todos eles.
+ * Traduz `{ message, context, config }` em mensagens de chat, usando o
+ * `PromptTemplate` do tenant. É o único lugar onde o `config` que a interface
+ * escolheu vira instrução de texto.
  *
- * Depende só dos modelos do Core (`ChatConfig`, `MiaAIContext`) e devolve
+ * Depende dos modelos do Core (`ChatConfig`, `PromptTemplate`) e devolve
  * `ChatMessage[]`. Nada de provider, modelo ou API: por isso o mesmo módulo
- * serve tanto para o substituto de teste quanto para a Mia AI de verdade.
+ * serve tanto para o substituto de teste quanto para a assistente de verdade.
+ *
+ * O texto vem do template, não daqui. Ver `../models/prompt-template.ts` para
+ * o contrato e `prompts.ts` para a escolha por tenant.
  */
 
 import type { ChatConfig } from '../../models/chat-config.js';
+import type { ResolvedPromptTemplate } from '../../models/prompt-template.js';
 import type { MiaAIContext } from './context.js';
 import type { ChatMessage } from './provider.js';
 
-/** O que o provider sempre manda, independente do `config`. */
-export const BASE_PROMPT = [
-  'Você é a Mia AI, assistente de uma clínica de saúde.',
-  'Você recebe o histórico da conversa em previous_messages; a última mensagem',
-  'do usuário é a pergunta atual. Não invente dados do paciente.',
-] as const;
-
-/** Idioma pedido → instrução de idioma para o modelo. */
-const LANGUAGE_HINT: Record<ChatConfig['language'], string> = {
-  'pt-BR': 'Responda em português do Brasil.',
-  'en-US': 'Reply in English.',
-};
-
-/** Tom pedido → instrução de tom para o modelo. */
-const TONE_HINT: Record<ChatConfig['tone'], string> = {
-  formal: 'Fale formalmente, tratando o paciente por você.',
-  neutral: 'Fale de forma direta e natural.',
-  informal: 'Fale de forma informal e simpática.',
-};
-
-/** Tamanho pedido → instrução de tamanho para o modelo. */
-const LENGTH_HINT: Record<ChatConfig['response_length'], string> = {
-  short: 'Responda em 1 a 2 frases.',
-  standard: 'Responda em 2 a 4 frases.',
-  detailed: 'Responda em 5 a 8 frases, com os detalhes que importam.',
-};
-
 /**
- * Monta o system prompt a partir do `config` que o Core repassou.
+ * Monta o system prompt a partir do `config` e do template do tenant.
  *
  * Este é o ponto em que a configuração vira prompt. O Core entregou as
- * etiquetas; quem decide o que `formal` significa para o modelo é daqui.
+ * etiquetas; quem decide o que `formal` significa para o modelo é o template.
  *
  * @param config - Configuração efetiva do envio
+ * @param template - Template do tenant, com os defaults já preenchidos
  * @param ignoreConfig - Quando `true`, o `config` é ignorado e a resposta sai
  *   no padrão. Existe para exercitar o caminho em que o provider ainda não sabe
  *   o que é `config` (ver `MIA_AI_IGNORE_CONFIG`).
  */
-export function systemPrompt(config: ChatConfig, ignoreConfig = false): string {
-  if (ignoreConfig) return BASE_PROMPT.join(' ');
+export function systemPrompt(
+  config: ChatConfig,
+  template: ResolvedPromptTemplate,
+  ignoreConfig = false,
+): string {
+  if (ignoreConfig) return template.persona;
 
   return [
-    ...BASE_PROMPT,
-    LANGUAGE_HINT[config.language],
-    TONE_HINT[config.tone],
-    LENGTH_HINT[config.response_length],
-  ].join(' ');
+    template.persona,
+    template.languageHints?.[config.language],
+    template.toneHints?.[config.tone],
+    template.lengthHints?.[config.response_length],
+  ]
+    .filter((hint): hint is string => typeof hint === 'string' && hint !== '')
+    .join(' ');
 }
 
 /**
@@ -73,16 +56,18 @@ export function systemPrompt(config: ChatConfig, ignoreConfig = false): string {
  * @param message - Texto da mensagem nova
  * @param context - Contexto montado pelo Core
  * @param config - Configuração efetiva do envio
+ * @param template - Template do tenant, com os defaults já preenchidos
  * @param ignoreConfig - Repassa o `config` ao system prompt
  */
 export function toChatMessages(
   message: string,
   context: MiaAIContext,
   config: ChatConfig,
+  template: ResolvedPromptTemplate,
   ignoreConfig = false,
 ): ChatMessage[] {
   const messages: ChatMessage[] = [
-    { role: 'system', content: systemPrompt(config, ignoreConfig) },
+    { role: 'system', content: systemPrompt(config, template, ignoreConfig) },
   ];
 
   const history = context.history_ids.length;
@@ -109,19 +94,26 @@ export function toChatMessages(
 }
 
 /**
- * Pergunta ao modelo quais ações sugerir depois da resposta.
+ * Monta o prompt da chamada que pede as sugestões.
  *
- * O parse é tolerante de propósito: o modelo pode enrolar o JSON em ```json,
- * em prosa, ou devolver só o array. Se nada virar lista, o provider devolve
- * `null` — que é um sinal válido, e o Core preserva as sugestões anteriores em
- * vez de limpar.
+ * @param reply - Resposta que acabou de ser dada
+ * @param ask - Pergunta do usuário que a gerou
+ * @param template - Template do tenant, com os defaults já preenchidos
  */
-export const SUGGESTION_PROMPT = [
-  'Sugira de 2 a 3 ações que ele poderia tomar a seguir, por exemplo',
-  '"ver meu agendamento" ou "falar com a recepção".',
-  'Responda APENAS com um array JSON de strings: nada de texto em volta,',
-  'nada de markdown, nada de explicação.',
-].join('\n');
+export function toSuggestionPrompt(
+  reply: string,
+  ask: string,
+  template: ResolvedPromptTemplate,
+): string {
+  return [
+    'Você acabou de responder a um paciente:',
+    JSON.stringify(reply),
+    '',
+    `A pergunta dele foi: ${JSON.stringify(ask)}`,
+    '',
+    template.suggestions ?? '',
+  ].join('\n');
+}
 
 /** Isola o primeiro array JSON de um texto, com ou sem ``` ao redor. */
 export function extractJsonArray(text: string): unknown[] | null {
@@ -145,6 +137,3 @@ export function extractJsonArray(text: string): unknown[] | null {
 
   return null;
 }
-
-/** System prompt da chamada que devolve só as sugestões. */
-export const SUGGESTION_SYSTEM_PROMPT = 'Você devolve somente JSON válido.';

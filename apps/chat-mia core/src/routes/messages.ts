@@ -13,6 +13,10 @@
  * repassa para a Mia AI sem interpretar nada — ver
  * `src/models/chat-config.ts`.
  *
+ * O header `X-Tenant-Id`, quando presente, escolhe o prompt da requisição. Ele
+ * não interfere no isolamento dos dados: a conversa continua sendo a de quem
+ * enviou, resolvida por `X-User-Id`.
+ *
  * A resposta da Mia AI pode vir acompanhada de `suggestions` (ver
  * `src/services/mia-ai/`). Quando vem, o Core substitui as sugestões da
  * conversa ativa pelas novas e as devolve junto da resposta, para a interface
@@ -119,6 +123,10 @@ interface MessageResponseData {
 messageRoutes.post('/', async (c) => {
   const userId = c.get('userId');
 
+  // Escolhe o prompt, e só o prompt: o tenant não muda quem é o usuário nem a
+  // que conversa ele tem. Ausente ou desconhecido, vale o prompt padrão.
+  const tenantId = c.get('tenantId');
+
   // Corpo inválido é erro do cliente, não do Core: o parse fica fora do try
   // que trata falha interna, para que JSON quebrado não vire 500.
   let parsed: unknown;
@@ -182,6 +190,7 @@ messageRoutes.post('/', async (c) => {
     console.log(
       `[Core] Mensagem recebida de ${message.origin} (usuário ${userId}):`,
       message.message_id,
+      `· tenant ${tenantId ?? 'default'}`,
       `· config ${formatChatConfig(chatConfig.config)}`,
     );
 
@@ -216,6 +225,7 @@ messageRoutes.post('/', async (c) => {
       message,
       context,
       config: chatConfig.config,
+      tenant: tenantId,
     });
 
     // Persiste a resposta da Mia AI na conversa.

@@ -3,8 +3,9 @@
  *
  * A Mia AI — a parte que sabe falar com um modelo de linguagem — é
  * **modular** dentro do Core: o resto do servidor só conhece a interface
- * `AIProvider` deste arquivo. Provider, modelo, prompt e chave de API vivem
- * atrás dela, em `providers/`.
+ * `AIProvider` deste arquivo. Provider, modelo e chave de API vivem atrás
+ * dela, em `providers/`; o texto do prompt vem de `PromptTemplate`
+ * (`src/models/prompt-template.ts`), escolhido por tenant em `prompts.ts`.
  *
  * ## Por que a fronteira é uma interface
  *
@@ -43,6 +44,14 @@ export interface AIProviderRequest {
 
   /** Configuração efetiva deste envio. Sempre completa. */
   config: ChatConfig;
+
+  /**
+   * Id do tenant, para o provider escolher o prompt.
+   *
+   * Ausente ou desconhecido não é erro: o prompt cai no padrão. O provider
+   * decide o que fazer quando ele não conhece o id.
+   */
+  tenant?: string;
 }
 
 /** O que o provider devolve. */
