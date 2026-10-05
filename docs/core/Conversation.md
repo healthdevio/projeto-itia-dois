@@ -339,15 +339,16 @@ Interface                 Core                              Mia AI
    │◄───────────────────────│  (NÃO vai para a Mia AI)         │
    │                        │                                  │
    │ POST /messages         │                                  │
+   │ { message, config }    │                                  │
    │───────────────────────►│  grava msg na conversa           │
    │                        │  monta o contexto                │
    │                        │─────────────────────────────────►│
-   │                        │  { message, context }            │
+   │                        │  { message, context, config }    │
    │                        │◄─────────────────────────────────│
    │◄───────────────────────│  grava a resposta (role: "mia")  │
 ```
 
-**A conversa não sai do Core.** A única coisa que atravessa a fronteira é o par `{ message, context }` montado por `src/services/mia-ai.ts`.
+**A conversa não sai do Core.** A única coisa que atravessa a fronteira é o trio `{ message, context, config }` montado por `src/services/mia-ai.ts`: a mensagem nova, a fatia mínima do diálogo e a configuração que a interface pediu. O `config` não vem da conversa — vem do cliente, e vale só para este envio. Ver [ChatConfig.md](./ChatConfig.md).
 
 O contexto é montado a partir da conversa **do usuário que enviou a mensagem**. Nenhum histórico de outro usuário é lido para construir esse payload.
 
@@ -371,6 +372,8 @@ Em conversas longas, só as `max_context_messages` mensagens mais recentes são 
 
 A Mia AI não guarda conversa. Todo o histórico é reconstruído pelo Core a partir do Postgres no momento de cada envio. Consequência: ela responde com consciência do diálogo, mas uma queda do Core não perde nada, porque o estado nunca esteve nela.
 
+A mesma coisa vale para a configuração: o `config` do envio é um despacho, não estado. Ele não é storeado, não sobrevive à mensagem seguinte e não volta em nenhum endpoint de conversa. Ver [ChatConfig.md](./ChatConfig.md).
+
 ### A fronteira: o Core não sabe o que é IA
 
 O Core não conhece provider, modelo, prompt nem formato de requisição de
@@ -378,11 +381,16 @@ nenhuma API de IA. Isso é do servidor da Mia AI (`apps/packages/mia-ai`). O Cor
 monta o contexto e faz uma chamada HTTP; quem decide como gerar o texto é o
 outro lado.
 
+O mesmo vale para as opções que a interface escolhe: idioma, tom e tamanho
+chegam como etiquetas e saem como etiquetas. O Core valida o formato, não o
+significado — ele sabe o que `formal` quer dizer na tela, e o que isso vira no
+modelo é do servidor da IA.
+
 Falar de "a Mia AI tem consciência do contexto" não significa que o Core integra
 um modelo: significa que o Core reconstrói, a cada envio, tudo o que a IA
 precisa para não começar do zero — e ela não precisa guardar nada.
 
-Na prática, o contrato é `POST $MIA_AI_ENDPOINT` com `{ message, context }`, e
+Na prática, o contrato é `POST $MIA_AI_ENDPOINT` com `{ message, context, config }`, e
 `{ "response": "..." }` de volta. Ver [Message.md](./Message.md#contrato-com-o-servidor-da-mia-ai).
 
 Falhas desse serviço viram `502` com a causa preservada, em vez de um `500`

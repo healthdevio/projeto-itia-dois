@@ -7,13 +7,15 @@
  * provider, modelo, prompt, temperatura nem formato de requisição de nenhuma
  * API de IA. Tudo isso é responsabilidade do servidor da Mia AI.
  *
- * O Core conhece apenas duas coisas:
+ * O Core conhece apenas três coisas:
  *
  * 1. O contrato de contexto, `MiaAIContext` — montado aqui, a partir do estado
  *    que o próprio Core guarda. É isso que torna a Mia AI ciente do diálogo sem
  *    que ela precise ter estado próprio.
- * 2. O endpoint HTTP da Mia AI, para onde vai `{ message, context }` e de onde
- *    volta o texto da resposta.
+ * 2. O contrato de configuração, `ChatConfig` — o que a interface pediu nesta
+ *    mensagem, repassado sem tradução (ver `src/models/chat-config.ts`).
+ * 3. O endpoint HTTP da Mia AI, para onde vai `{ message, context, config }` e
+ *    de onde volta o texto da resposta.
  *
  * ## Contrato com o servidor da Mia AI
  *
@@ -28,9 +30,15 @@
  *     "previous_messages": [{ "message_id": "...", "message": "...", "role": "user" }],
  *     "history_ids": ["..."],
  *     "max_context_messages": 20
- *   }
+ *   },
+ *   "config": { "language": "pt-BR", "tone": "neutral", "response_length": "standard" }
  * }
  * ```
+ *
+ * `config` é a configuração que a interface escolheu para esta mensagem, repassada
+ * sem interpretação — ver `src/models/chat-config.ts`. Ela vem no topo, e não
+ * dentro do `context`, porque não é estado da conversa: é pedido da interface.
+ * Um servidor da Mia AI que não a conhece pode ignorá-la.
  *
  * Resposta — `200` com:
  *
@@ -45,7 +53,8 @@
  * resposta sem esse campo é válida. Quando vem, o Core guarda as sugestões na
  * conversa ativa do usuário (ver `src/repositories/suggestion-repository.ts`).
  *
- * A conversa em si nunca é enviada: apenas a mensagem nova e o contexto.
+ * A conversa em si nunca é enviada: apenas a mensagem nova, o contexto e a
+ * configuração.
  */
 
 import type { Message } from '../models/message.js';
@@ -54,6 +63,7 @@ import type {
   ConversationState,
 } from '../models/conversation.js';
 import { readSuggestions, type Suggestion } from '../models/suggestion.js';
+import { formatChatConfig, type ChatConfig } from '../models/chat-config.js';
 
 /**
  * Contexto da conversa repassado junto com a nova mensagem.
@@ -91,6 +101,18 @@ export interface MiaAIRequest {
 
   /** Contexto da conversa. */
   context: MiaAIContext;
+
+  /**
+   * Configuração escolhida pela interface.
+   *
+   * Vai no topo do payload, e não dentro do `context`, porque não faz parte do
+   * estado da conversa: é o que a **interface** pediu para esta mensagem, e não
+   * o que o Core leu do Postgres. Quem decide o que fazer com ela é a Mia AI —
+   * um servidor que não conhece o campo pode simplesmente ignorá-lo.
+   *
+   * Sempre completa: o Core aplicou `DEFAULT_CHAT_CONFIG` no que faltou.
+   */
+  config: ChatConfig;
 }
 
 /** Resposta da Mia AI. */
@@ -253,11 +275,11 @@ function readBody(
 }
 
 /**
- * Envia uma mensagem para a Mia AI junto com o contexto da conversa.
+ * Envia uma mensagem para a Mia AI junto com o contexto e a configuração.
  *
  * É a única chamada que o Core faz para fora do seu processo.
  *
- * @param request - Mensagem e contexto a enviar
+ * @param request - Mensagem, contexto e config a enviar
  * @param config - Configuração do endpoint
  * @returns Resposta da Mia AI
  */
@@ -265,7 +287,10 @@ export async function sendToMiaAI(
   request: MiaAIRequest,
   config: MiaAIConfig = loadMiaAIConfig(),
 ): Promise<MiaAIResponse> {
-  const { message, context } = request;
+  // `config` abaixo é a configuração do endpoint (endpoint, token, timeout),
+  // então o config da conversa entra renomeado, para não precisar distinguir os
+  // dois a cada uso.
+  const { message, context, config: chatConfig } = request;
 
   let response: Response;
 
@@ -279,7 +304,7 @@ export async function sendToMiaAI(
           ? { Authorization: `Bearer ${config.serviceToken}` }
           : {}),
       },
-      body: JSON.stringify({ message, context }),
+      body: JSON.stringify({ message, context, config: chatConfig }),
       signal: AbortSignal.timeout(config.timeoutMs),
     });
   } catch (error) {
@@ -334,7 +359,8 @@ export async function sendToMiaAI(
     `[Mia AI] ${message.message_id} → ${config.endpoint} ` +
       `(conversa ${context.conversation_id}, ` +
       `${context.previous_messages.length} mensagens de contexto, ` +
-      `${context.history_ids.length} conversas anteriores` +
+      `${context.history_ids.length} conversas anteriores, ` +
+      `config ${formatChatConfig(chatConfig)}` +
       (result.suggestions === null
         ? ', sem sugestões)'
         : `, ${result.suggestions.length} sugestões)`),
