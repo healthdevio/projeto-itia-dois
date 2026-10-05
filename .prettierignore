@@ -7,4 +7,4 @@ apps/chat-mia/README.md
 
 # Harness de teste do Core. Git-ignored, então a formatação dele não é
 # responsabilidade de quem pullou o repositório.
-apps/chat-mia core/local
+apps/chat-core/local

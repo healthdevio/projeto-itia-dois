@@ -1,6 +1,6 @@
 ## Modelo de ChatConfig
 
-Esse documento trata da configuração que a interface escolhe na tela e o Core repassa para a Mia AI: idioma, tom e tamanho da resposta.
+Esse documento trata da configuração que a interface escolhe na tela e o Core repassa para a AI: idioma, tom e tamanho da resposta.
 
 ```json
 { "language": "pt-BR", "tone": "neutral", "response_length": "standard" }
@@ -8,14 +8,14 @@ Esse documento trata da configuração que a interface escolhe na tela e o Core 
 
 #### O que é o config?
 
-É o **como** o usuário quer ser atendido. Não é o **com o que** a resposta é gerada: provider, modelo, temperatura e prompt continuam sendo do lado do provider da Mia AI, e nenhum deles chega às rotas. É a mesma fronteira de [Message.md](./Message.md#o-core-não-sabe-o-que-é-um-modelo-de-linguagem), vista do lado de quem manda a configuração.
+É o **como** o usuário quer ser atendido. Não é o **com o que** a resposta é gerada: provider, modelo, temperatura e prompt continuam sendo do lado do provider da AI, e nenhum deles chega às rotas. É a mesma fronteira de [Message.md](./Message.md#o-core-não-sabe-o-que-é-um-modelo-de-linguagem), vista do lado de quem manda a configuração.
 
-O Core não interpreta nada disso. Ele valida o formato, completa o que faltar e repassa as etiquetas — quem decide o que `formal` significa para o modelo é o provider da Mia AI.
+O Core não interpreta nada disso. Ele valida o formato, completa o que faltar e repassa as etiquetas — quem decide o que `formal` significa para o modelo é o provider da AI.
 
 ### Quem escreve e quem lê
 
 ```
-  interface                 Core              provider da Mia AI
+  interface                 Core              provider da AI
      │ POST /api/messages    │                       │
      │ { message, config }  │                       │
      │──────────────────────►│  valida e completa    │
@@ -42,7 +42,7 @@ A **interface** escreve, o **provider** lê, e **ninguém guarda**. O config nã
 
 Os três são opcionais na entrada e **sempre** presentes na saída. `response_length` não é contagem de tokens: o Core não sabe o que cabe na janela do modelo, e cada provider conta diferente.
 
-Acrescentar um valor a qualquer lista é **mudança de contrato**: uma interface que não conhece a opção nova continua funcionando (manda o que conhece e leva o default no resto), mas um provider da Mia AI que não conhece o valor novo precisa saber o que fazer com ele antes de a interface começar a oferecer.
+Acrescentar um valor a qualquer lista é **mudança de contrato**: uma interface que não conhece a opção nova continua funcionando (manda o que conhece e leva o default no resto), mas um provider da AI que não conhece o valor novo precisa saber o que fazer com ele antes de a interface começar a oferecer.
 
 ### Todo envio leva um config
 
@@ -81,7 +81,7 @@ Exige `X-User-Id` e os campos obrigatórios da mensagem (`message_id`, `message`
   "success": true,
   "data": {
     "message_id": "msg-123",
-    "mia_ai_response": "Olá! Como posso ajudar hoje?",
+    "ai_response": "Olá! Como posso ajudar hoje?",
     "suggestions": [],
     "config": {
       "language": "pt-BR",
@@ -96,13 +96,13 @@ No exemplo, a interface pediu dois campos e o Core entregou os três: `language`
 
 ### Códigos
 
-| Código | Descrição                                                             |
-| ------ | --------------------------------------------------------------------- |
-| `200`  | Mensagem processada, com o config efetivo em `data.config`            |
-| `400`  | `config` inválido. O erro diz o campo e os valores aceitos            |
-| `401`  | `X-User-Id` ausente ou inválido                                       |
-| `500`  | Erro interno ao processar mensagem                                    |
-| `502`  | O provider da Mia AI falhou. O `error` traz a causa reportada por ele |
+| Código | Descrição                                                         |
+| ------ | ----------------------------------------------------------------- |
+| `200`  | Mensagem processada, com o config efetivo em `data.config`        |
+| `400`  | `config` inválido. O erro diz o campo e os valores aceitos        |
+| `401`  | `X-User-Id` ausente ou inválido                                   |
+| `500`  | Erro interno ao processar mensagem                                |
+| `502`  | O provider da AI falhou. O `error` traz a causa reportada por ele |
 
 **Response Body (400):**
 
@@ -115,7 +115,7 @@ No exemplo, a interface pediu dois campos e o Core entregou os três: `language`
 
 O erro traz os valores válidos porque é a interface que corrige: um "config inválido" sem dizer o que era aceito obriga o cliente a adivinhar a lista, e o único lugar onde ela está é este repositório.
 
-A validação acontece **antes** de qualquer escrita: uma mensagem com `config` inválido não é gravada na conversa e não chega ao provider da Mia AI.
+A validação acontece **antes** de qualquer escrita: uma mensagem com `config` inválido não é gravada na conversa e não chega ao provider da AI.
 
 ---
 
@@ -129,13 +129,13 @@ A validação acontece **antes** de qualquer escrita: uma mensagem com `config` 
 | chave que o Core não conhece            | Ignora                                  |
 | `config` que não é objeto               | **`400`**                               |
 
-**Chave desconhecida é ignorada, e não recusada**, porque o config é contrato de dois lados. Uma interface mais nova pode mandar um campo que este Core ainda não conhece, e um Core mais velho não pode quebrar o chat por causa disso. O inverso — um provider da Mia AI que não conhece o `config` — também é seguro, porque o campo chega no topo do payload e ele pode simplesmente ignorá-lo.
+**Chave desconhecida é ignorada, e não recusada**, porque o config é contrato de dois lados. Uma interface mais nova pode mandar um campo que este Core ainda não conhece, e um Core mais velho não pode quebrar o chat por causa disso. O inverso — um provider da AI que não conhece o `config` — também é seguro, porque o campo chega no topo do payload e ele pode simplesmente ignorá-lo.
 
 Já um valor inválido em campo conhecido **é** erro: a interface está oferecendo um caminho que não existe, e um `400` explicando qual valor era válido é mais barato do que uma resposta em tom errado.
 
 ---
 
-## Integração com a Mia AI
+## Integração com a AI
 
 O `config` vai no **topo** do payload, ao lado de `message` e `context` — não dentro do `context`.
 
@@ -165,17 +165,17 @@ O `config` vai no **topo** do payload, ao lado de `message` e `context` — não
 
 Fora do `context` porque **não é estado da conversa**: o `context` é o que o Core leu do Postgres, e o `config` é o que a interface pediu agora. Misturar os dois esconderia essa origem — e é a origem que explica por que o config não sobrevive à próxima mensagem.
 
-A resposta não muda: `{"response": "...", "suggestions": [...]}`. Quem fala com o config é o provider da Mia AI, e ele faz isso como quiser — prompt, parâmetro do modelo, o que souber fazer. O provider atual converte as etiquetas em instrução de system prompt, em `src/services/mia-ai/prompt.ts`.
+A resposta não muda: `{"response": "...", "suggestions": [...]}`. Quem fala com o config é o provider da AI, e ele faz isso como quiser — prompt, parâmetro do modelo, o que souber fazer. O provider atual converte as etiquetas em instrução de system prompt, em `src/services/ai/prompt.ts`.
 
 ### Sem estado no Core
 
-Não há tabela, repositório nem endpoint de config. A implementação está isolada em [`src/models/chat-config.ts`](../../apps/chat-mia%20core/src/models/chat-config.ts): validação, defaults e o resumo que aparece nos logs dos dois lados.
+Não há tabela, repositório nem endpoint de config. A implementação está isolada em [`src/models/chat-config.ts`](../../apps/chat-core/src/models/chat-config.ts): validação, defaults e o resumo que aparece nos logs dos dois lados.
 
 Quando aparecer a necessidade de **lembrar** a escolha do usuário (para a tela já abrir com o tom que ele escolheu da última vez), aí sim o config ganha tabela e um `GET /api/config`. O modelo já está separado para essa hora: `ChatConfig` é o que a interface manda, e o que vier a ser guardado é outra coisa.
 
 ### Logs
 
-O Core e o provider da Mia AI registram o mesmo resumo, então dá para conferir nos dois lados que o que a interface pediu é o que chegou:
+O Core e o provider da AI registram o mesmo resumo, então dá para conferir nos dois lados que o que a interface pediu é o que chegou:
 
 ```
 [Core] Mensagem recebida de tty (usuário tty): tty-6bfefb0c · config pt-BR · formal · short
@@ -189,18 +189,18 @@ longa leva segundos, e isso é o modelo escrevendo, não o Core travado.
 
 ## Testar
 
-O harness de desenvolvimento fica em `apps/chat-mia core/local/` e **é git-ignored**. Ele traz um REPL de terminal e um smoke test. Ver [`local/README.md`](../../apps/chat-mia%20core/local/README.md).
+O harness de desenvolvimento fica em `apps/chat-core/local/` e **é git-ignored**. Ele traz um REPL de terminal e um smoke test. Ver [`local/README.md`](../../apps/chat-core/local/README.md).
 
 ```bash
 npm run repl    # REPL de terminal contra o Core
 npm run smoke   # checagem ponta a ponta, sem interação
 ```
 
-No REPL, `:config tone=formal length=short` escolhe o que o próximo envio vai carregar, e a resposta mostra o config que a Mia AI recebeu. No `smoke`, o repasse é coberto com config ausente, parcial, completo, inválido e com chave desconhecida.
+No REPL, `:config tone=formal length=short` escolhe o que o próximo envio vai carregar, e a resposta mostra o config que a AI recebeu. No `smoke`, o repasse é coberto com config ausente, parcial, completo, inválido e com chave desconhecida.
 
-Com `MIA_AI_PROVIDER=echo` dá para conferir o repasse sem chave de modelo: o eco devolve o config entre parênteses, e o Core o devolve em `data.config`. Para ver um provider que ignora o campo, suba o Core com `MIA_AI_IGNORE_CONFIG=1` — o `config` chega e volta, e a resposta em si sai no padrão.
+Com `AI_PROVIDER=echo` dá para conferir o repasse sem chave de modelo: o eco devolve o config entre parênteses, e o Core o devolve em `data.config`. Para ver um provider que ignora o campo, suba o Core com `AI_IGNORE_CONFIG=1` — o `config` chega e volta, e a resposta em si sai no padrão.
 
 ### TODO
 
 - [ ] Lembrar a configuração entre sessões (`GET /api/config`), se a interface precisar
-- [ ] Configuração por perfil de paciente, se a clínica precisar de mais de um conjunto de opções
+- [ ] Configuração por perfil de usuário, se uma implantação precisar de mais de um conjunto de opções

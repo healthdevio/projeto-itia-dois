@@ -2,14 +2,14 @@
 
 Esse documento trata de como deve ser formatada a conversa atual que o Core entrega para a interface, e de como ela é armazenada.
 
-> **A conversa NÃO é enviada para a Mia AI.**
-> A conversa é estado interno do Core, persistido no Postgres. Apenas as mensagens saem do Core. A cada nova mensagem, o Core monta o contexto (mensagens anteriores + ids do histórico) e o envia junto com a mensagem, para que a Mia AI tenha consciência do diálogo sem nunca ver a conversa como objeto.
+> **A conversa NÃO é enviada para a AI.**
+> A conversa é estado interno do Core, persistido no Postgres. Apenas as mensagens saem do Core. A cada nova mensagem, o Core monta o contexto (mensagens anteriores + ids do histórico) e o envia junto com a mensagem, para que a AI tenha consciência do diálogo sem nunca ver a conversa como objeto.
 
 #### O que é a conversation?
 
 É o retrato completo do que a interface precisa para renderizar a tela de chat: a conversa em andamento, o estado atual da máquina de estados e as conversas anteriores.
 
-Diferente da `message`, que é enviada para a Mia AI, a `conversation` é **lida** pela interface e **guardada** pelo Core. Ela nunca atravessa a fronteira do Core.
+Diferente da `message`, que é enviada para a AI, a `conversation` é **lida** pela interface e **guardada** pelo Core. Ela nunca atravessa a fronteira do Core.
 
 ---
 
@@ -88,11 +88,11 @@ Cria a conversa automaticamente na primeira chamada, de modo que a interface nun
         "role": "user"
       },
       {
-        "message_id": "msg-1-mia",
+        "message_id": "msg-1-ai",
         "message": "Você se chama Ana.",
         "date": "2026-09-28T16:38:38.660Z",
-        "origin": "mia-ai",
-        "role": "mia"
+        "origin": "ai",
+        "role": "assistant"
       }
     ],
     "active_conversation": {
@@ -208,14 +208,14 @@ Existe **exatamente uma** conversa ativa no Core. Todas as demais formam o `hist
 
 Estende o modelo `Message` de `docs/core/Message.md` com um único campo.
 
-| Campo        | Tipo              | Descrição                  |
-| ------------ | ----------------- | -------------------------- |
-| `message_id` | `string`          | Identifica a mensagem.     |
-| `message`    | `string`          | Conteúdo da mensagem.      |
-| `date`       | `string`          | Data. ISO 8601.            |
-| `metadata`   | `string?`         | Metadata sobre a mensagem. |
-| `origin`     | `string`          | Origem da mensagem.        |
-| `role`       | `"user" \| "mia"` | Quem produziu a mensagem.  |
+| Campo        | Tipo                    | Descrição                  |
+| ------------ | ----------------------- | -------------------------- |
+| `message_id` | `string`                | Identifica a mensagem.     |
+| `message`    | `string`                | Conteúdo da mensagem.      |
+| `date`       | `string`                | Data. ISO 8601.            |
+| `metadata`   | `string?`               | Metadata sobre a mensagem. |
+| `origin`     | `string`                | Origem da mensagem.        |
+| `role`       | `"user" \| "assistant"` | Quem produziu a mensagem.  |
 
 `role` é atribuído pelo Core ao persistir. O contrato de **entrada** `POST /api/messages` permanece inalterado: a interface não envia `role`.
 
@@ -227,7 +227,7 @@ Máquina de estados do chat.
 | ---------- | --------------------------------------------------------------------------------------------------- |
 | `greeting` | Conversa recém-criada, sem interação. Mostrar a mensagem de abertura (ex.: _"Como posso ajudar?"_). |
 | `idle`     | Pronta para o usuário enviar uma nova mensagem.                                                     |
-| `thinking` | Mensagem enviada, resposta da Mia AI ainda não chegou. Mostrar o indicador de carregamento.         |
+| `thinking` | Mensagem enviada, resposta da AI ainda não chegou. Mostrar o indicador de carregamento.             |
 | `error`    | A última operação falhou. Oferecer retry.                                                           |
 
 Transições permitidas:
@@ -240,7 +240,7 @@ greeting ──► idle ──► thinking ──► idle
 error ──► idle  |  error ──► greeting  |  idle ──► greeting
 ```
 
-O Core aplica as transições sozinho conforme o resultado do envio para a Mia AI. A interface apenas reage ao `state` recebido.
+O Core aplica as transições sozinho conforme o resultado do envio para a AI. A interface apenas reage ao `state` recebido.
 
 ---
 
@@ -267,7 +267,7 @@ A conversa é storeada no Postgres, via Drizzle ORM.
 | ----------------- | ------------- | ------------------------------------------------ |
 | `conversation_id` | `text`        | FK para `conversations.id`, `ON DELETE CASCADE`. |
 | `message_id`      | `text`        | Id da mensagem. **Único só dentro da conversa.** |
-| `role`            | `text`        | `user` ou `mia`.                                 |
+| `role`            | `text`        | `user` ou `assistant`.                           |
 | `content`         | `text`        | Conteúdo da mensagem.                            |
 | `origin`          | `text`        | Origem.                                          |
 | `metadata`        | `text`        | Opcional.                                        |
@@ -282,7 +282,7 @@ A chave primária de `messages` é o par `(conversation_id, message_id)`.
 | `conversation_id` | `text`        | FK para `conversations.id`, `ON DELETE CASCADE`. |
 | `suggestion_id`   | `text`        | Id da sugestão. **Único só dentro da conversa.** |
 | `text`            | `text`        | Texto exibido e enviado como mensagem ao clicar. |
-| `position`        | `integer`     | Ordem sugerida pela Mia AI. `0` é a primeira.    |
+| `position`        | `integer`     | Ordem sugerida pela AI. `0` é a primeira.        |
 | `date`            | `timestamptz` | Default `now()`.                                 |
 
 A chave primária de `suggestions` é o par `(conversation_id, suggestion_id)`, pelo mesmo motivo da de `messages`. A tabela não tem `user_id`: o escopo vem da conversa. Detalhes em [Suggestion.md](./Suggestion.md#persistência).
@@ -293,7 +293,7 @@ Três invariantes são impostas pelo Postgres, e não apenas pela aplicação:
 
 - **No máximo uma conversa ativa por usuário.** O índice parcial único `conversations_user_single_active_idx` cobre apenas as linhas com `is_active = true` e usa o par `(user_id, is_active)` como chave. Usuários distintos não colidem, porque o `user_id` faz parte da chave; o mesmo usuário, ao tentar abrir uma segunda conversa ativa, recebe violação de unicidade. Duas requisições simultâneas do mesmo usuário são tratadas pelo Core, que devolve a conversa vencedora.
 - **`message_id` único apenas dentro da conversa.** Graças à chave composta, dois usuários podem usar o mesmo `message_id` (`msg-1`) em conversas diferentes, e reenviar a mesma mensagem na mesma conversa continua sendo um no-op — o que torna o envio idempotente.
-- **`role` fechado em `user | mia`.** A constraint `messages_role_check` rejeita qualquer outro valor.
+- **`role` fechado em `user | assistant`.** A constraint `messages_role_check` rejeita qualquer outro valor.
 
 ### Configuração
 
@@ -326,17 +326,17 @@ A ausência de `X-User-Id` é independente do banco: responde `401` sem tocar o 
 
 ---
 
-## Integração com a Mia AI
+## Integração com a AI
 
 ### Divisão de responsabilidades
 
 ```
-Interface                 Core                          provider da Mia AI
+Interface                 Core                          provider da AI
    │                        │                                  │
    │ GET /conversations/    │                                  │
    │ current                │                                  │
    │───────────────────────►│  lê do Postgres                  │
-   │◄───────────────────────│  (NÃO vai para a Mia AI)         │
+   │◄───────────────────────│  (NÃO vai para a AI)         │
    │                        │                                  │
    │ POST /messages         │                                  │
    │ { message, config }    │                                  │
@@ -345,16 +345,16 @@ Interface                 Core                          provider da Mia AI
    │                        │─────────────────────────────────►│
    │                        │  { message, context, config }    │
    │                        │◄─────────────────────────────────│
-   │◄───────────────────────│  grava a resposta (role: "mia")  │
+   │◄───────────────────────│  grava a resposta (role: "assistant")  │
 ```
 
-**A conversa não sai do Core.** A única coisa que atravessa a fronteira é o trio `{ message, context, config }` montado por `src/services/mia-ai/`: a mensagem nova, a fatia mínima do diálogo e a configuração que a interface pediu. O `config` não vem da conversa — vem do cliente, e vale só para este envio. Ver [ChatConfig.md](./ChatConfig.md).
+**A conversa não sai do Core.** A única coisa que atravessa a fronteira é o trio `{ message, context, config }` montado por `src/services/ai/`: a mensagem nova, a fatia mínima do diálogo e a configuração que a interface pediu. O `config` não vem da conversa — vem do cliente, e vale só para este envio. Ver [ChatConfig.md](./ChatConfig.md).
 
 O contexto é montado a partir da conversa **do usuário que enviou a mensagem**. Nenhum histórico de outro usuário é lido para construir esse payload.
 
-### `MiaAIContext`
+### `AIContext`
 
-O contexto não é a conversa: é a fatia mínima que a Mia AI precisa para estar ciente do diálogo.
+O contexto não é a conversa: é a fatia mínima que a AI precisa para estar ciente do diálogo.
 
 | Campo                  | Tipo                    | Descrição                                                   |
 | ---------------------- | ----------------------- | ----------------------------------------------------------- |
@@ -368,9 +368,9 @@ A mensagem atual **não** entra em `previous_messages`: o contexto é montado an
 
 Em conversas longas, só as `max_context_messages` mensagens mais recentes são enviadas — o histórico completo estouraria a janela de contexto da IA.
 
-### Sem estado na Mia AI
+### Sem estado na AI
 
-A Mia AI não guarda conversa. Todo o histórico é reconstruído pelo Core a partir do Postgres no momento de cada envio. Consequência: ela responde com consciência do diálogo, mas uma queda do Core não perde nada, porque o estado nunca esteve nela.
+A AI não guarda conversa. Todo o histórico é reconstruído pelo Core a partir do Postgres no momento de cada envio. Consequência: ela responde com consciência do diálogo, mas uma queda do Core não perde nada, porque o estado nunca esteve nela.
 
 A mesma coisa vale para a configuração: o `config` do envio é um despacho, não estado. Ele não é storeado, não sobrevive à mensagem seguinte e não volta em nenhum endpoint de conversa. Ver [ChatConfig.md](./ChatConfig.md).
 
@@ -378,11 +378,11 @@ A mesma coisa vale para a configuração: o `config` do envio é um despacho, n�
 
 O Core não conhece provider, modelo, prompt nem formato de requisição de
 nenhuma API de IA. Isso mora atrás da interface `AIProvider`, em
-`src/services/mia-ai/providers/`. O Core monta o contexto e chama o provider;
+`src/services/ai/providers/`. O Core monta o contexto e chama o provider;
 quem decide como gerar o texto é o outro lado da interface.
 
-O provider roda dentro do processo do Core — a Mia AI não é mais um serviço
-separado, e não há mais `MIA_AI_ENDPOINT` para configurar. Isso muda o
+O provider roda dentro do processo do Core — a AI não é mais um serviço
+separado, e não há mais endpoint para configurar. Isso muda o
 transporte, não a fronteira: o provider continua sem conhecer rotas, conversa,
 sugestões ou banco, e o Core continua sem conhecer provider.
 
@@ -391,13 +391,13 @@ chegam como etiquetas e saem como etiquetas. O Core valida o formato, não o
 significado — ele sabe o que `formal` quer dizer na tela, e o que isso vira no
 modelo é do provider.
 
-Falar de "a Mia AI tem consciência do contexto" não significa que o Core integra
+Falar de "a AI tem consciência do contexto" não significa que o Core integra
 um modelo: significa que o Core reconstrói, a cada envio, tudo o que a IA
 precisa para não começar do zero — e ela não precisa guardar nada.
 
 Na prática, o contrato é `AIProvider.respond({ message, context, config })` com
 `{ "response": "...", "suggestions": [...] }` de volta. Ver
-[Message.md](./Message.md#contrato-com-o-provider-da-mia-ai).
+[Message.md](./Message.md#contrato-com-o-provider-da-ai).
 
 Falhas do provider viram `502` com a causa preservada, em vez de um `500`
 genérico. O tempo de espera é do provider, e é folgado o bastante para uma
@@ -407,8 +407,8 @@ meio da digitação. Ver
 
 ### TODO
 
-- [ ] Retry com backoff quando o provider da Mia AI responde `502`
-- [ ] Streaming da resposta, para a Mia AI aparecer token a token
+- [ ] Retry com backoff quando o provider da AI responde `502`
+- [ ] Streaming da resposta, para a AI aparecer token a token
 - [ ] Circuit breaker para o provider (hoje só há timeout)
 - [ ] Resumo automático de conversas longas em vez de truncamento
 - [ ] Autenticação de verdade: validar token e derivar `user_id` de um subject, em vez de confiar no header

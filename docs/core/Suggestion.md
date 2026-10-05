@@ -4,10 +4,10 @@ Esse documento trata de como deve ser formatada a sugestão que o Core entrega p
 
 #### O que é a suggestion?
 
-É a ação que a interface oferece abaixo da última resposta da Mia AI. O usuário clica e o texto vai para o input como se ele tivesse digitado.
+É a ação que a interface oferece abaixo da última resposta da AI. O usuário clica e o texto vai para o input como se ele tivesse digitado.
 
 ```json
-{ "suggestion_id": "sg-1", "text": "Ver meu agendamento" }
+{ "suggestion_id": "sg-1", "text": "Ver meus detalhes" }
 ```
 
 Dois campos, e só:
@@ -23,7 +23,7 @@ Dois campos, e só:
 
 ```
         POST /api/messages            POST /api/suggestions
-Mia AI ───────────────────▶┐   interface ──────────────▶┌──▶ Postgres (suggestions)
+AI ───────────────────▶┐   interface ──────────────▶┌──▶ Postgres (suggestions)
                            │                            │
                            ▼        GET /api/suggestions  │
                     ┌──────────────┐◀────────────────────┘
@@ -31,9 +31,9 @@ Mia AI ───────────────────▶┐   interfa
                     └──────────────┘
 ```
 
-A produção da sugestão é da **Mia AI** — o Core não sabe o que é um modelo de linguagem, então não decide o que é uma boa sugestão. O Core é o meio: guarda o que a Mia AI devolveu, no lugar certo, e entrega o que está guardado.
+A produção da sugestão é da **AI** — o Core não sabe o que é um modelo de linguagem, então não decide o que é uma boa sugestão. O Core é o meio: guarda o que a AI devolveu, no lugar certo, e entrega o que está guardado.
 
-> **A sugestão sai do Core, a conversa não.** Assim como as mensagens, as sugestões são estado interno do Core, e a conversa continua nunca sendo enviada para a Mia AI.
+> **A sugestão sai do Core, a conversa não.** Assim como as mensagens, as sugestões são estado interno do Core, e a conversa continua nunca sendo enviada para a AI.
 
 ---
 
@@ -70,11 +70,11 @@ Todos exigem `X-User-Id` e operam apenas nas sugestões da conversa ativa de que
 | `POST`   | `/api/suggestions` | Interface, ao registrar sugestão  |
 | `DELETE` | `/api/suggestions` | Interface, ao descartar as chips  |
 
-> **As sugestões que a Mia AI devolve junto de uma resposta não passam por `POST`.** Elas são persistidas por `POST /api/messages`, que já conhece a conversa em que a resposta foi gerada. Ver [Message.md](./Message.md#sugestões-na-resposta).
+> **As sugestões que a AI devolve junto de uma resposta não passam por `POST`.** Elas são persistidas por `POST /api/messages`, que já conhece a conversa em que a resposta foi gerada. Ver [Message.md](./Message.md#sugestões-na-resposta).
 
 ### `GET /api/suggestions`
 
-Entrega as sugestões da conversa ativa **do usuário**, na ordem em que a Mia AI as sugeriu.
+Entrega as sugestões da conversa ativa **do usuário**, na ordem em que a AI as sugeriu.
 
 Nunca devolve `404`: se o usuário ainda não conversou, a conversa ativa é criada e a resposta é uma lista vazia — que é o que a interface precisa para não renderizar nada.
 
@@ -91,8 +91,8 @@ Nunca devolve `404`: se o usuário ainda não conversou, a conversa ativa é cri
   "success": true,
   "data": {
     "suggestions": [
-      { "suggestion_id": "sg-1", "text": "Ver meu agendamento" },
-      { "suggestion_id": "sg-2", "text": "Falar com a recepção" }
+      { "suggestion_id": "sg-1", "text": "Ver meus detalhes" },
+      { "suggestion_id": "sg-2", "text": "Falar com o suporte" }
     ]
   }
 }
@@ -104,21 +104,21 @@ A lista vem embrulhada em `data.suggestions`, e não solta no `data`, para o cli
 
 ### `POST /api/suggestions`
 
-Acrescenta sugestões ao fim da lista da conversa ativa do usuário, **sem apagar** o que já estava lá. É o caminho para a interface registrar uma sugestão que não veio da Mia AI — um atalho, uma ação de tela.
+Acrescenta sugestões ao fim da lista da conversa ativa do usuário, **sem apagar** o que já estava lá. É o caminho para a interface registrar uma sugestão que não veio da AI — um atalho, uma ação de tela.
 
 O `suggestion_id` é opcional: quando falta, o Core gera um (`sg-<uuid>`). O envelope `success`/`data` do próprio Core é aceito na resposta.
 
 **Request Body** — as duas formas são aceitas:
 
 ```json
-{ "suggestions": [{ "text": "Ver meu agendamento" }] }
+{ "suggestions": [{ "text": "Ver meus detalhes" }] }
 ```
 
 ```json
-{ "text": "Ver meu agendamento" }
+{ "text": "Ver meus detalhes" }
 ```
 
-Nos itens da lista, `{"text": "..."}` e a string do texto direto são equivalentes: `{"suggestions": ["ver meu agendamento"]}` funciona. A mesma tolerância vale para o que a Mia AI devolve.
+Nos itens da lista, `{"text": "..."}` e a string do texto direto são equivalentes: `{"suggestions": ["ver meus detalhes"]}` funciona. A mesma tolerância vale para o que a AI devolve.
 
 Ids repetidos dentro da conversa são ignorados: reenviar a mesma requisição não duplica as chips. E a lista da conversa é limitada a 8 — ver [Limites](#limites).
 
@@ -136,7 +136,7 @@ Ids repetidos dentro da conversa são ignorados: reenviar a mesma requisição n
   "success": true,
   "data": {
     "suggestions": [
-      { "suggestion_id": "sg-1", "text": "Ver meu agendamento" },
+      { "suggestion_id": "sg-1", "text": "Ver meus detalhes" },
       { "suggestion_id": "sg-3", "text": "Ver minha conta" }
     ]
   }
@@ -160,7 +160,7 @@ O índice entra no erro porque a interface corrige o item, não a lista.
 
 ### `DELETE /api/suggestions`
 
-Limpa a lista da conversa ativa **do usuário**. É o que a interface chama depois que o usuário clica numa sugestão e envia a mensagem: as chips antigas deixaram de fazer sentido, e a próxima resposta da Mia AI trará as novas.
+Limpa a lista da conversa ativa **do usuário**. É o que a interface chama depois que o usuário clica numa sugestão e envia a mensagem: as chips antigas deixaram de fazer sentido, e a próxima resposta da AI trará as novas.
 
 Nenhuma outra conversa é afetada. Sem sugestões para remover, a resposta é `200` com `deleted: 0` — apagar de uma lista vazia não é erro.
 
@@ -190,10 +190,10 @@ Nenhuma outra conversa é afetada. Sem sugestões para remover, a resposta é `2
   "success": true,
   "data": {
     "message_id": "msg-123",
-    "mia_ai_response": "Você tem consulta amanhã às 14h.",
+    "ai_response": "Você tem consulta amanhã às 14h.",
     "suggestions": [
       { "suggestion_id": "sg-1", "text": "Reagendar" },
-      { "suggestion_id": "sg-2", "text": "Falar com a recepção" }
+      { "suggestion_id": "sg-2", "text": "Falar com o suporte" }
     ]
   }
 }
@@ -201,17 +201,17 @@ Nenhuma outra conversa é afetada. Sem sugestões para remover, a resposta é `2
 
 ### Substituição vs. preservação
 
-A cada resposta da Mia AI, as sugestões são **substituídas** pelas novas. O contexto mudou, e uma chip desatualizada levaria o usuário a pedir algo que a Mia AI já respondeu.
+A cada resposta da AI, as sugestões são **substituídas** pelas novas. O contexto mudou, e uma chip desatualizada levaria o usuário a pedir algo que a AI já respondeu.
 
-A diferença entre as duas abaixo importa, e vem do contrato com a Mia AI:
+A diferença entre as duas abaixo importa, e vem do contrato com a AI:
 
-| O que a Mia AI devolve          | O que o Core faz com as sugestões da conversa |
+| O que a AI devolve              | O que o Core faz com as sugestões da conversa |
 | ------------------------------- | --------------------------------------------- |
 | `suggestions: [...]`            | Substitui pelas novas                         |
 | `suggestions: []`               | Limpa — é uma decisão, não uma omissão        |
 | campo `suggestions` **ausente** | **Preserva** as que já estavam                |
 
-A omissão é preservada porque a produção das sugestões é responsabilidade do provider da Mia AI, e um provider que ainda não devolve o campo não deve apagar o que a interface está exibindo. O provider traduz "não produziu lista" para `null` antes de devolver — detalhe em `extractJsonArray`, em `src/services/mia-ai/prompt.ts`.
+A omissão é preservada porque a produção das sugestões é responsabilidade do provider da AI, e um provider que ainda não devolve o campo não deve apagar o que a interface está exibindo. O provider traduz "não produziu lista" para `null` antes de devolver — detalhe em `extractJsonArray`, em `src/services/ai/prompt.ts`.
 
 ### Limites
 
@@ -223,7 +223,7 @@ A omissão é preservada porque a produção das sugestões é responsabilidade 
 
 O que excede é tratado assim:
 
-- **Vindo da Mia AI** — as entradas fora do limite são descartadas, em silêncio. Uma sugestão ruim não deve derrubar a resposta que a acompanhou.
+- **Vindo da AI** — as entradas fora do limite são descartadas, em silêncio. Uma sugestão ruim não deve derrubar a resposta que a acompanhou.
 - **Vindo da interface (`POST`)** — é `400`, com o índice do item. Quem chamou está esperando uma gravação e precisa saber o que estava errado.
 
 O teto de 8 vale para a **conversa**, não para a requisição. Registrar numa lista cheia descarta as mais antigas, nunca as que acabaram de entrar — a interface está sempre olhando para uma lista do mesmo tamanho, e não pode ver sumir justamente o que ela acabou de mandar.
@@ -244,19 +244,19 @@ Tabela `suggestions`, com migration em `drizzle/0001_add_suggestions.sql`.
 
 A tabela **não tem `user_id`**, pelo mesmo motivo das mensagens: `conversation_id` só é alcançável a partir de uma conversa já filtrada por usuário, e o `ON DELETE CASCADE` leva as sugestões embora quando a conversa é encerrada.
 
-`position` existe porque a ordem faz parte do que a Mia AI entendeu do contexto. Recalcular por data não daria o mesmo resultado: duas sugestões podem ter o mesmo timestamp, e `POST /api/suggestions` acrescenta ao fim da lista.
+`position` existe porque a ordem faz parte do que a AI entendeu do contexto. Recalcular por data não daria o mesmo resultado: duas sugestões podem ter o mesmo timestamp, e `POST /api/suggestions` acrescenta ao fim da lista.
 
 ---
 
 ## Testar
 
-O harness de desenvolvimento fica em `apps/chat-mia core/local/` e **é git-ignored**: um REPL de terminal e um smoke test. Ver [`local/README.md`](../../apps/chat-mia%20core/local/README.md).
+O harness de desenvolvimento fica em `apps/chat-core/local/` e **é git-ignored**: um REPL de terminal e um smoke test. Ver [`local/README.md`](../../apps/chat-core/local/README.md).
 
 ```bash
 npm run repl    # REPL de terminal contra o Core
 npm run smoke   # checagem ponta a ponta, sem interação
 ```
 
-O provider que produz as sugestões roda dentro do Core, em `src/services/mia-ai/providers/`. Sem chave de modelo, `MIA_AI_PROVIDER=echo` devolve uma lista fixa — o suficiente para o smoke passar sem gastar cota.
+O provider que produz as sugestões roda dentro do Core, em `src/services/ai/providers/`. Sem chave de modelo, `AI_PROVIDER=echo` devolve uma lista fixa — o suficiente para o smoke passar sem gastar cota.
 
-O `smoke` cobre o fluxo de sugestão inteiro: leitura vazia, registro pela interface, id gerado pelo Core, substituição pelas sugestões da Mia AI, limpeza, `401` sem identidade, `400` no corpo inválido, o teto de 8 por conversa e o isolamento entre usuários.
+O `smoke` cobre o fluxo de sugestão inteiro: leitura vazia, registro pela interface, id gerado pelo Core, substituição pelas sugestões da AI, limpeza, `401` sem identidade, `400` no corpo inválido, o teto de 8 por conversa e o isolamento entre usuários.
