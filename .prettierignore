@@ -3,7 +3,7 @@ node_modules
 dist
 build
 coverage
-apps/chat-mia/README.md
+apps/chat-omnia/README.md
 
 # Harness de teste do Core. Git-ignored, então a formatação dele não é
 # responsabilidade de quem pullou o repositório.

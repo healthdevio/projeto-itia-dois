@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Definir um fluxo de versionamento para o projeto Chat Mia, estabelecendo um padrão para criação de tasks, desenvolvimento, commits, Pull Requests, revisão de código, integração e disponibilização das versões.
+Definir um fluxo de versionamento para o projeto Chat Omnia, estabelecendo um padrão para criação de tasks, desenvolvimento, commits, Pull Requests, revisão de código, integração e disponibilização das versões.
 
 ## Implementação
 

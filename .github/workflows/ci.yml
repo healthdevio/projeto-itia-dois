@@ -30,7 +30,7 @@ jobs:
           cache: npm
           cache-dependency-path: |
             package-lock.json
-            apps/chat-mia/package-lock.json
+            apps/chat-omnia/package-lock.json
 
       - name: Instalar dependências da raiz
         run: npm ci
@@ -39,17 +39,17 @@ jobs:
         run: npm run format:check
 
       - name: Instalar dependências do frontend
-        working-directory: apps/chat-mia
+        working-directory: apps/chat-omnia
         run: npm ci
 
       - name: Verificar TypeScript
-        working-directory: apps/chat-mia
+        working-directory: apps/chat-omnia
         run: npm run typecheck
 
       - name: Verificar ESLint
-        working-directory: apps/chat-mia
+        working-directory: apps/chat-omnia
         run: npm run lint
 
       - name: Gerar build do frontend
-        working-directory: apps/chat-mia
+        working-directory: apps/chat-omnia
         run: npm run build
