@@ -223,12 +223,12 @@ Estende o modelo `Message` de `docs/core/Message.md` com um único campo.
 
 Máquina de estados do chat.
 
-| Estado      | Significado para a interface                                                                        |
-| ----------- | --------------------------------------------------------------------------------------------------- |
-| `idle`      | Pronta para uma nova mensagem. Sem mensagens, é recém-criada: mostrar a abertura.                   |
-| `streaming` | Mensagem enviada, resposta ainda não chegou. Mostrar o carregamento.                                |
-| `success`   | A última troca terminou bem. Mostrar a resposta.                                                    |
-| `error`     | A última operação falhou. Oferecer retry.                                                           |
+| Estado      | Significado para a interface                                                      |
+| ----------- | --------------------------------------------------------------------------------- |
+| `idle`      | Pronta para uma nova mensagem. Sem mensagens, é recém-criada: mostrar a abertura. |
+| `streaming` | Mensagem enviada, resposta ainda não chegou. Mostrar o carregamento.              |
+| `success`   | A última troca terminou bem. Mostrar a resposta.                                  |
+| `error`     | A última operação falhou. Oferecer retry.                                         |
 
 Transições aplicadas pelo Core a cada envio:
 
@@ -240,6 +240,8 @@ error ──► streaming  |  error ──► idle
 ```
 
 O Core aplica as transições sozinho conforme o resultado do envio para a AI. A interface apenas reage ao `state` recebido.
+
+As transições são **validadas no repositório**: `transitionConversationState` recusa qualquer movimento fora da tabela com `InvalidStateTransitionError`, sem escrever nada — a conversa continua no estado anterior e a rota devolve `500`, porque uma transição ilegal é sempre bug do Core, nunca do cliente. A única escrita que não passa pela máquina é o `rotate`, que encerra a conversa (lifecycle, não transição: pode fechar até uma conversa em `streaming`).
 
 `streaming` cobre a espera inteira pela resposta — hoje ela chega de uma vez, e o nome já antecipa o streaming de verdade (token a token), quando ele existir.
 
@@ -255,14 +257,14 @@ A conversa é storeada no Postgres, via Drizzle ORM.
 
 **`conversations`**
 
-| Coluna       | Tipo          | Observação                               |
-| ------------ | ------------- | ---------------------------------------- |
-| `id`         | `text`        | Primary key.                             |
-| `user_id`    | `text`        | Dono da conversa. `NOT NULL`.            |
+| Coluna       | Tipo          | Observação                           |
+| ------------ | ------------- | ------------------------------------ |
+| `id`         | `text`        | Primary key.                         |
+| `user_id`    | `text`        | Dono da conversa. `NOT NULL`.        |
 | `state`      | `text`        | `ConversationState`. Default `idle`. |
-| `is_active`  | `boolean`     | Default `false`.                         |
-| `created_at` | `timestamptz` | Default `now()`.                         |
-| `updated_at` | `timestamptz` | Default `now()`.                         |
+| `is_active`  | `boolean`     | Default `false`.                     |
+| `created_at` | `timestamptz` | Default `now()`.                     |
+| `updated_at` | `timestamptz` | Default `now()`.                     |
 
 **`messages`**
 

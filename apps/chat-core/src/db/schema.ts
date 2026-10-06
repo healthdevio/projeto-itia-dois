@@ -41,10 +41,7 @@ export const conversations = pgTable(
      * `src/middleware/identity.ts`; nunca do corpo da requisição.
      */
     userId: text('user_id').notNull(),
-    state: text('state')
-      .$type<ConversationState>()
-      .notNull()
-      .default('idle'),
+    state: text('state').$type<ConversationState>().notNull().default('idle'),
     isActive: boolean('is_active').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()

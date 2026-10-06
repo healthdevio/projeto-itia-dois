@@ -26,7 +26,11 @@ import type {
   ConversationView,
   MessageRole,
 } from '../models/conversation.js';
-import { normalizeConversationState } from '../models/conversation.js';
+import {
+  canTransition,
+  normalizeConversationState,
+  InvalidStateTransitionError,
+} from '../models/conversation.js';
 import type { Message } from '../models/message.js';
 
 /** Quantas conversas anteriores o `history` carrega por padrão. */
@@ -257,6 +261,11 @@ export async function getConversationView(
 /**
  * Atualiza o estado da conversa ativa de um usuário.
  *
+ * Escrita direta, sem validar a transição. É o que `rotateConversation` usa:
+ * encerrar uma conversa não é uma transição do chat (pode fechar até uma
+ * conversa em `streaming`), então a máquina não se aplica. Quem muda estado
+ * como parte do fluxo de envio usa `transitionConversationState`, que valida.
+ *
  * Sem `userId` isto mudaria a conversa de todo mundo; o escopo é obrigatório.
  */
 export async function setConversationState(
@@ -269,6 +278,33 @@ export async function setConversationState(
     .where(
       and(eq(conversations.userId, userId), eq(conversations.isActive, true)),
     );
+}
+
+/**
+ * Avança o estado da conversa ativa obedecendo à máquina.
+ *
+ * É o único caminho que o fluxo de envio usa para mudar estado. Uma transição
+ * fora da tabela lança `InvalidStateTransitionError` **sem escrever nada** —
+ * a conversa continua no estado anterior, consistente, e o 500 que sai da rota
+ * diz que o bug é do Core, não do cliente.
+ *
+ * A checagem é leitura-then-escrita, não atômica: dois envios simultâneos do
+ * mesmo usuário podem intercalar. Na prática o segundo sobrescreve o primeiro
+ * com um estado igualmente válido (ambos partem de estados que permitem o
+ * destino), então a conversa nunca termina num estado impossível — só pode
+ * terminar num estado que o cliente já trata como transitório (`streaming`).
+ */
+export async function transitionConversationState(
+  userId: string,
+  to: ConversationState,
+): Promise<void> {
+  const active = await getOrCreateActiveConversation(userId);
+
+  if (!canTransition(active.state, to)) {
+    throw new InvalidStateTransitionError(active.state, to);
+  }
+
+  await setConversationState(userId, to);
 }
 
 /**
