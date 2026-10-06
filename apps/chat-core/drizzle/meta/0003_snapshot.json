@@ -177,12 +177,8 @@
           "name": "messages_conversation_id_conversations_id_fk",
           "tableFrom": "messages",
           "tableTo": "conversations",
-          "columnsFrom": [
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["conversation_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -190,10 +186,7 @@
       "compositePrimaryKeys": {
         "messages_conversation_id_message_id_pk": {
           "name": "messages_conversation_id_message_id_pk",
-          "columns": [
-            "conversation_id",
-            "message_id"
-          ]
+          "columns": ["conversation_id", "message_id"]
         }
       },
       "uniqueConstraints": {},
@@ -270,12 +263,8 @@
           "name": "suggestions_conversation_id_conversations_id_fk",
           "tableFrom": "suggestions",
           "tableTo": "conversations",
-          "columnsFrom": [
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["conversation_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -283,10 +272,7 @@
       "compositePrimaryKeys": {
         "suggestions_conversation_id_suggestion_id_pk": {
           "name": "suggestions_conversation_id_suggestion_id_pk",
-          "columns": [
-            "conversation_id",
-            "suggestion_id"
-          ]
+          "columns": ["conversation_id", "suggestion_id"]
         }
       },
       "uniqueConstraints": {},
