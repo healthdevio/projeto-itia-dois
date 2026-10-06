@@ -9,6 +9,9 @@ function App() {
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState<MessageProps[]>([]);
+  const [state] = useState<'greeting' | 'idle' | 'thinking' | 'error'>(
+    'greeting',
+  );
 
   const toggleChat = () => {
     setIsOpen(!isOpen);
@@ -35,6 +38,7 @@ function App() {
             onToggleExpanded={onToggleExpanded}
             messages={messages}
             onSendMessage={addMessage}
+            state={state}
           />
         ) : (
           <MiniChat
@@ -42,6 +46,7 @@ function App() {
             onToggleExpanded={onToggleExpanded}
             messages={messages}
             onSendMessage={addMessage}
+            state={state}
           />
         )
       ) : null}
