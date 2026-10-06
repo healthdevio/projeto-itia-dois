@@ -153,7 +153,7 @@ Variante enxuta de `/current`: devolve **apenas** a conversa ativa, sem o `histo
 
 ### `POST /api/conversations/rotate`
 
-Encerra a conversa em andamento **do usuário** — que passa a integrar o `history` dele — e cria uma nova conversa ativa, já no estado `greeting`. Não afeta a conversa de nenhum outro usuário.
+Encerra a conversa em andamento **do usuário** — que passa a integrar o `history` dele — e cria uma nova conversa ativa, já no estado `idle`. Não afeta a conversa de nenhum outro usuário.
 
 | Código | Descrição                        |
 | ------ | -------------------------------- |
@@ -166,7 +166,7 @@ Encerra a conversa em andamento **do usuário** — que passa a integrar o `hist
   "success": true,
   "data": {
     "id": "ee809cb9-...",
-    "state": "greeting",
+    "state": "idle",
     "messages": [],
     "created_at": "2026-09-28T16:40:00.000Z",
     "updated_at": "2026-09-28T16:40:00.000Z"
@@ -223,24 +223,27 @@ Estende o modelo `Message` de `docs/core/Message.md` com um único campo.
 
 Máquina de estados do chat.
 
-| Estado     | Significado para a interface                                                                        |
-| ---------- | --------------------------------------------------------------------------------------------------- |
-| `greeting` | Conversa recém-criada, sem interação. Mostrar a mensagem de abertura (ex.: _"Como posso ajudar?"_). |
-| `idle`     | Pronta para o usuário enviar uma nova mensagem.                                                     |
-| `thinking` | Mensagem enviada, resposta da AI ainda não chegou. Mostrar o indicador de carregamento.             |
-| `error`    | A última operação falhou. Oferecer retry.                                                           |
+| Estado      | Significado para a interface                                                                        |
+| ----------- | --------------------------------------------------------------------------------------------------- |
+| `idle`      | Pronta para uma nova mensagem. Sem mensagens, é recém-criada: mostrar a abertura.                   |
+| `streaming` | Mensagem enviada, resposta ainda não chegou. Mostrar o carregamento.                                |
+| `success`   | A última troca terminou bem. Mostrar a resposta.                                                    |
+| `error`     | A última operação falhou. Oferecer retry.                                                           |
 
-Transições permitidas:
+Transições aplicadas pelo Core a cada envio:
 
 ```
-greeting ──► idle ──► thinking ──► idle
-                │          │
-                │          └──────► error
-                └─────────────────► error
-error ──► idle  |  error ──► greeting  |  idle ──► greeting
+idle ──► streaming ──► success
+           │              │
+           └────► error ◄──┘
+error ──► streaming  |  error ──► idle
 ```
 
 O Core aplica as transições sozinho conforme o resultado do envio para a AI. A interface apenas reage ao `state` recebido.
+
+`streaming` cobre a espera inteira pela resposta — hoje ela chega de uma vez, e o nome já antecipa o streaming de verdade (token a token), quando ele existir.
+
+Valores antigos (`greeting`, `thinking`) ainda podem estar no banco: na leitura, o Core os normaliza para o equivalente atual (`idle`, `streaming`), e a próxima escrita já grava o valor novo. Ver `normalizeConversationState` em `src/models/conversation.ts`.
 
 ---
 
@@ -256,7 +259,7 @@ A conversa é storeada no Postgres, via Drizzle ORM.
 | ------------ | ------------- | ---------------------------------------- |
 | `id`         | `text`        | Primary key.                             |
 | `user_id`    | `text`        | Dono da conversa. `NOT NULL`.            |
-| `state`      | `text`        | `ConversationState`. Default `greeting`. |
+| `state`      | `text`        | `ConversationState`. Default `idle`. |
 | `is_active`  | `boolean`     | Default `false`.                         |
 | `created_at` | `timestamptz` | Default `now()`.                         |
 | `updated_at` | `timestamptz` | Default `now()`.                         |

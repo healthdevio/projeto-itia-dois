@@ -191,6 +191,7 @@ tom, tamanho da resposta) e que o Core repassa para a AI sem interpretar.
   "data": {
     "message_id": "msg-123",
     "ai_response": "[AI] Mensagem msg-123 recebida.",
+    "state": "success",
     "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meus detalhes" }],
     "config": {
       "language": "pt-BR",
@@ -399,12 +400,12 @@ seguem valendo.
 
 O `state` da conversa governa o que a interface renderiza.
 
-| Estado     | Significado                                              |
-| ---------- | -------------------------------------------------------- |
-| `greeting` | Conversa recém-criada. Mostrar a mensagem de abertura.   |
-| `idle`     | Pronta para uma nova mensagem.                           |
-| `thinking` | Mensagem enviada, aguardando a AI. Mostrar carregamento. |
-| `error`    | A última operação falhou. Oferecer retry.                |
+| Estado      | Significado                                                              |
+| ----------- | ------------------------------------------------------------------------ |
+| `idle`      | Pronta para uma nova mensagem. Sem mensagens, é recém-criada: mostrar a abertura. |
+| `streaming` | Mensagem enviada, resposta a caminho. Mostrar carregamento.              |
+| `success`   | A última troca terminou bem. Mostrar a resposta.                         |
+| `error`     | A última operação falhou. Oferecer retry.                                |
 
 O Core aplica as transições sozinho conforme o resultado do envio para a AI.
 

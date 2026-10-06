@@ -91,6 +91,7 @@ O corpo da requisição deve conter o JSON no formato especificado acima, com `c
   "data": {
     "message_id": "msg-123",
     "ai_response": "Olá! Como posso ajudar hoje?",
+    "state": "success",
     "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meus detalhes" }],
     "config": {
       "language": "pt-BR",
@@ -100,6 +101,10 @@ O corpo da requisição deve conter o JSON no formato especificado acima, com `c
   }
 }
 ```
+
+`state` traz o estado da conversa depois do envio (`success`) — é o que tira
+a interface do carregamento sem precisar reler a conversa. Em caso de falha
+não há `data`: o `state` (`error`) é lido em `GET /api/conversations/current`.
 
 `suggestions` traz as sugestões da conversa depois desta resposta, para a
 interface não precisar de um `GET /api/suggestions` logo em seguida. Vem sempre
@@ -321,12 +326,12 @@ O Core valida o formato, preenche o que faltar com o default e repassa sem inter
 
 O Core alterna o `state` da conversa conforme o resultado, para que a interface saiba o que renderizar:
 
-| Momento                           | `state`    |
-| --------------------------------- | ---------- |
-| Antes do envio                    | `idle`     |
-| Mensagem gravada, aguardando a AI | `thinking` |
-| Resposta gravada                  | `idle`     |
-| Falha no envio                    | `error`    |
+| Momento                           | `state`     |
+| --------------------------------- | ----------- |
+| Antes do envio                    | `idle`      |
+| Mensagem gravada, aguardando a AI | `streaming` |
+| Resposta gravada                  | `success`   |
+| Falha no envio                    | `error`     |
 
 A máquina de estados completa está em [Conversation.md](./Conversation.md#conversationstate).
 
