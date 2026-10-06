@@ -1,0 +1,33 @@
+{
+  "name": "chat-ai-core",
+  "version": "1.0.0",
+  "description": "Core service for chat",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "harness": "node -e \"require('node:fs').existsSync('local/repl.ts')||process.exit(console.error('Harness local ausente: a pasta local/ e git-ignored (ver local/README.md).'),1)\"",
+    "repl": "npm run --silent harness && tsx local/repl.ts",
+    "smoke": "npm run --silent harness && tsx local/smoke.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.11.0",
+    "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.45.3",
+    "hono": "^4.4.0",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/pg": "^8.11.10",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.15.0",
+    "typescript": "^5.5.0"
+  }
+}
