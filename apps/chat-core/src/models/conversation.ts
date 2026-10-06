@@ -16,17 +16,22 @@ import type { Message } from './message.js';
 /**
  * Estados possíveis da conversa (máquina de estados do chat).
  *
- * `greeting`  Conversa recém-criada, sem interação do usuário. A interface
- *             mostra a mensagem de abertura (ex.: "Como posso ajudar?").
- * `idle`      Pronta para o usuário enviar uma nova mensagem.
- * `thinking`  Uma mensagem foi repassada para a AI e a resposta ainda não
- *             chegou. A interface mostra o indicador de carregamento.
+ * É o que a interface usa para decidir o que renderizar:
+ *
+ * `idle`      Pronta para uma nova mensagem. Uma conversa `idle` sem mensagens
+ *             é uma conversa recém-criada: a interface mostra a abertura
+ *             (ex.: "Como posso ajudar?").
+ * `streaming` Uma mensagem foi enviada e a resposta ainda não chegou. A
+ *             interface mostra o indicador de carregamento. O nome antecipa o
+ *             streaming de verdade (token a token): hoje a resposta chega de
+ *             uma vez, e `streaming` cobre a espera inteira.
+ * `success`   A última troca terminou bem. A interface mostra a resposta.
  * `error`     A última operação falhou. A interface deve permitir retry.
  */
 export const CONVERSATION_STATES = [
-  'greeting',
   'idle',
-  'thinking',
+  'streaming',
+  'success',
   'error',
 ] as const;
 
@@ -35,14 +40,15 @@ export type ConversationState = (typeof CONVERSATION_STATES)[number];
 /**
  * Transições permitidas da máquina de estados.
  *
- * `null` como origem significa "qualquer estado" (estado inicial).
- * Um array vazio como destino significa estado terminal.
+ * O Core aplica as transições sozinho conforme o resultado do envio; a
+ * interface apenas lê o `state`. `canTransition` existe para quem precisar
+ * validar — as rotas escrevem os estados diretamente.
  */
 const STATE_TRANSITIONS: Record<ConversationState, ConversationState[]> = {
-  greeting: ['idle', 'error'],
-  idle: ['thinking', 'greeting', 'error'],
-  thinking: ['idle', 'error'],
-  error: ['idle', 'greeting'],
+  idle: ['streaming', 'error'],
+  streaming: ['success', 'error'],
+  success: ['streaming', 'error'],
+  error: ['streaming', 'idle'],
 };
 
 /**
@@ -54,6 +60,27 @@ export function canTransition(
 ): boolean {
   if (from === to) return true;
   return STATE_TRANSITIONS[from].includes(to);
+}
+
+/**
+ * Normaliza um estado lido do banco para a máquina atual.
+ *
+ * Conversas gravadas antes da máquina `idle`/`streaming`/`success`/`error`
+ * ainda têm os valores antigos (`greeting`, `thinking`). Em vez de quebrar a
+ * leitura, elas são mapeadas para o equivalente mais próximo — o dado continua
+ * válido, e a próxima escrita já grava o valor novo.
+ *
+ * Um valor realmente desconhecido cai em `idle` com um aviso: é o estado que
+ * menos presume sobre a conversa.
+ */
+export function normalizeConversationState(value: unknown): ConversationState {
+  if (isConversationState(value)) return value;
+
+  if (value === 'greeting') return 'idle';
+  if (value === 'thinking') return 'streaming';
+
+  console.warn(`[Core] estado de conversa desconhecido: ${String(value)}`);
+  return 'idle';
 }
 
 /**

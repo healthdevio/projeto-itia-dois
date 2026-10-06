@@ -44,6 +44,7 @@ import {
   type ChatConfigInput,
 } from '../models/chat-config.js';
 import type { ApiResponse, Message } from '../models/message.js';
+import type { ConversationState } from '../models/conversation.js';
 import type { Suggestion } from '../models/suggestion.js';
 
 export const messageRoutes = new Hono<{ Variables: IdentityVariables }>();
@@ -65,10 +66,21 @@ interface MessageRequestBody extends Message {
 
 /**
  * Resposta do endpoint de mensagens.
+ *
+ * Traz o `state` da conversa depois do envio para que a interface atualize a
+ * tela sem precisar de um `GET /api/conversations/current` logo em seguida.
  */
 interface MessageResponseData {
   message_id: string;
   ai_response: string;
+
+  /**
+   * Estado da conversa depois deste envio: `success` no 200.
+   *
+   * A interface usa isso para sair do carregamento. Em caso de falha não há
+   * `data` — o `state` da conversa (`error`) é lido na conversa atual.
+   */
+  state: ConversationState;
 
   /**
    * Sugestões da conversa ativa depois desta resposta.
@@ -106,6 +118,9 @@ interface MessageResponseData {
  * A resposta traz também `suggestions`: as sugestões que a AI devolveu com
  * a resposta, já gravadas na conversa. A interface renderiza as chips direto
  * dali, sem precisar de `GET /api/suggestions` logo em seguida.
+ *
+ * E traz `state`: o estado da conversa depois do envio (`success`), para a
+ * interface sair do carregamento sem precisar reler a conversa.
  *
  * Códigos de resposta:
  * - 200: Sucesso
@@ -209,9 +224,9 @@ messageRoutes.post('/', async (c) => {
     // persistida com role `assistant` abaixo.
     await appendMessage(message, 'user', conversation.id);
 
-    // Enquanto a AI processa, a interface mostra o indicador de
-    // carregamento.
-    await setConversationState(userId, 'thinking');
+    // Enquanto a AI processa, a conversa fica em `streaming` e a interface
+    // mostra o indicador de carregamento.
+    await setConversationState(userId, 'streaming');
 
     // Envia para a AI. É aqui que a mensagem sai do Core — a conversa,
     // não. O `config` vai junto, sem interpretação: quem decide o que fazer com
@@ -242,13 +257,16 @@ messageRoutes.post('/', async (c) => {
         ? await getActiveSuggestions(userId)
         : await replaceActiveSuggestions(userId, aiResponse.suggestions);
 
-    await setConversationState(userId, 'idle');
+    // A troca terminou bem: a conversa marca `success`, que é o que a
+    // interface usa para sair do carregamento e mostrar a resposta.
+    await setConversationState(userId, 'success');
 
     const response: ApiResponse<MessageResponseData> = {
       success: true,
       data: {
         message_id: message.message_id,
         ai_response: aiResponse.response,
+        state: 'success',
         suggestions,
         // A configuração que a AI recebeu. A interface usa isso para
         // alinhar a tela com o que de fato vale neste envio.
