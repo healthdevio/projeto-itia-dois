@@ -112,8 +112,7 @@ export function readSuggestions(value: unknown): Suggestion[] {
 
 /** Resultado da validação de uma lista de sugestões vinda da interface. */
 export type SuggestionValidation =
-  | { ok: true; suggestions: Suggestion[] }
-  | { ok: false; error: string };
+  { ok: true; suggestions: Suggestion[] } | { ok: false; error: string };
 
 /**
  * Valida uma lista de sugestões vinda da **interface**.

@@ -163,8 +163,7 @@ function readField<F extends keyof ChatConfig>(
 
 /** Resultado da validação de um config vindo da interface. */
 export type ChatConfigValidation =
-  | { ok: true; config: ChatConfig }
-  | { ok: false; error: string };
+  { ok: true; config: ChatConfig } | { ok: false; error: string };
 
 /**
  * Valida e completa o `config` de uma requisição da interface.

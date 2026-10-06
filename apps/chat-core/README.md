@@ -400,12 +400,12 @@ seguem valendo.
 
 O `state` da conversa governa o que a interface renderiza.
 
-| Estado      | Significado                                                              |
-| ----------- | ------------------------------------------------------------------------ |
+| Estado      | Significado                                                                       |
+| ----------- | --------------------------------------------------------------------------------- |
 | `idle`      | Pronta para uma nova mensagem. Sem mensagens, é recém-criada: mostrar a abertura. |
-| `streaming` | Mensagem enviada, resposta a caminho. Mostrar carregamento.              |
-| `success`   | A última troca terminou bem. Mostrar a resposta.                         |
-| `error`     | A última operação falhou. Oferecer retry.                                |
+| `streaming` | Mensagem enviada, resposta a caminho. Mostrar carregamento.                       |
+| `success`   | A última troca terminou bem. Mostrar a resposta.                                  |
+| `error`     | A última operação falhou. Oferecer retry.                                         |
 
 O Core aplica as transições sozinho conforme o resultado do envio para a AI.
 
