@@ -31,7 +31,7 @@ import {
   appendMessage,
   getHistoryIds,
   getOrCreateActiveConversation,
-  setConversationState,
+  transitionConversationState,
 } from '../repositories/conversation-repository.js';
 import {
   replaceActiveSuggestions,
@@ -226,7 +226,7 @@ messageRoutes.post('/', async (c) => {
 
     // Enquanto a AI processa, a conversa fica em `streaming` e a interface
     // mostra o indicador de carregamento.
-    await setConversationState(userId, 'streaming');
+    await transitionConversationState(userId, 'streaming');
 
     // Envia para a AI. É aqui que a mensagem sai do Core — a conversa,
     // não. O `config` vai junto, sem interpretação: quem decide o que fazer com
@@ -259,7 +259,7 @@ messageRoutes.post('/', async (c) => {
 
     // A troca terminou bem: a conversa marca `success`, que é o que a
     // interface usa para sair do carregamento e mostrar a resposta.
-    await setConversationState(userId, 'success');
+    await transitionConversationState(userId, 'success');
 
     const response: ApiResponse<MessageResponseData> = {
       success: true,
@@ -288,8 +288,10 @@ messageRoutes.post('/', async (c) => {
 
     // Marca a conversa em erro para que a interface ofereça retry. O escopo
     // por usuário garante que só a conversa de quem falhou mude de estado.
+    // `error` é alcançável de todos os estados, então esta transição nunca é
+    // recusada — e se um dia for, o `catch` vazio abaixo mantém o 500.
     try {
-      await setConversationState(userId, 'error');
+      await transitionConversationState(userId, 'error');
     } catch {
       // Sem banco disponível não há estado para marcar; o status abaixo é o
       // suficiente para a interface tratar a falha.

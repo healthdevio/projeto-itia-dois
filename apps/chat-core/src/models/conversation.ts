@@ -63,6 +63,23 @@ export function canTransition(
 }
 
 /**
+ * Transição que a máquina não permite.
+ *
+ * É sempre um bug do próprio Core — a interface nunca escolhe estados, só lê.
+ * Por isso cai no `500`: não há nada que o cliente possa corrigir e retry não
+ * adianta. O log carrega o `from → to` para achar o escritor culpado.
+ */
+export class InvalidStateTransitionError extends Error {
+  constructor(
+    readonly from: ConversationState,
+    readonly to: ConversationState,
+  ) {
+    super(`Transição de estado inválida: ${from} → ${to}`);
+    this.name = 'InvalidStateTransitionError';
+  }
+}
+
+/**
  * Normaliza um estado lido do banco para a máquina atual.
  *
  * Conversas gravadas antes da máquina `idle`/`streaming`/`success`/`error`

@@ -241,6 +241,8 @@ error ──► streaming  |  error ──► idle
 
 O Core aplica as transições sozinho conforme o resultado do envio para a AI. A interface apenas reage ao `state` recebido.
 
+As transições são **validadas no repositório**: `transitionConversationState` recusa qualquer movimento fora da tabela com `InvalidStateTransitionError`, sem escrever nada — a conversa continua no estado anterior e a rota devolve `500`, porque uma transição ilegal é sempre bug do Core, nunca do cliente. A única escrita que não passa pela máquina é o `rotate`, que encerra a conversa (lifecycle, não transição: pode fechar até uma conversa em `streaming`).
+
 `streaming` cobre a espera inteira pela resposta — hoje ela chega de uma vez, e o nome já antecipa o streaming de verdade (token a token), quando ele existir.
 
 Valores antigos (`greeting`, `thinking`) ainda podem estar no banco: na leitura, o Core os normaliza para o equivalente atual (`idle`, `streaming`), e a próxima escrita já grava o valor novo. Ver `normalizeConversationState` em `src/models/conversation.ts`.
