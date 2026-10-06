@@ -26,6 +26,7 @@ import type {
   ConversationView,
   MessageRole,
 } from '../models/conversation.js';
+import { normalizeConversationState } from '../models/conversation.js';
 import type { Message } from '../models/message.js';
 
 /** Quantas conversas anteriores o `history` carrega por padrão. */
@@ -104,7 +105,7 @@ async function loadHistory(
   for (const row of rows) {
     history.push({
       id: row.id,
-      state: row.state,
+      state: normalizeConversationState(row.state),
       messages: await loadMessages(row.id),
       created_at: row.createdAt.toISOString(),
       updated_at: row.updatedAt.toISOString(),
@@ -135,13 +136,17 @@ async function buildView(
 
 /**
  * Carrega uma conversa a partir de uma linha do banco.
+ *
+ * O estado passa por `normalizeConversationState`: linhas gravadas pela
+ * máquina antiga (`greeting`, `thinking`) são lidas como o equivalente atual,
+ * em vez de vazar um valor que a interface não conhece mais.
  */
 async function hydrate(
   row: typeof conversations.$inferSelect,
 ): Promise<Conversation> {
   return {
     id: row.id,
-    state: row.state,
+    state: normalizeConversationState(row.state),
     messages: await loadMessages(row.id),
     created_at: row.createdAt.toISOString(),
     updated_at: row.updatedAt.toISOString(),
@@ -189,7 +194,7 @@ export async function getOrCreateActiveConversation(
     await db.insert(conversations).values({
       id,
       userId,
-      state: 'greeting',
+      state: 'idle',
       isActive: true,
       createdAt: now,
       updatedAt: now,
@@ -208,7 +213,7 @@ export async function getOrCreateActiveConversation(
 
   return {
     id,
-    state: 'greeting',
+    state: 'idle',
     messages: [],
     created_at: now.toISOString(),
     updated_at: now.toISOString(),
@@ -326,7 +331,7 @@ export async function rotateConversation(
   await db.insert(conversations).values({
     id,
     userId,
-    state: 'greeting',
+    state: 'idle',
     isActive: true,
     createdAt: now,
     updatedAt: now,
@@ -334,7 +339,7 @@ export async function rotateConversation(
 
   return {
     id,
-    state: 'greeting',
+    state: 'idle',
     messages: [],
     created_at: now.toISOString(),
     updated_at: now.toISOString(),

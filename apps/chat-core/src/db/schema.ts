@@ -44,7 +44,7 @@ export const conversations = pgTable(
     state: text('state')
       .$type<ConversationState>()
       .notNull()
-      .default('greeting'),
+      .default('idle'),
     isActive: boolean('is_active').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()

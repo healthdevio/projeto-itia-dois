@@ -112,7 +112,7 @@ conversationRoutes.get('/active', async (c) => {
  * POST /api/conversations/rotate
  *
  * Encerra a conversa em andamento do usuário — que passa a integrar o
- * `history` dele — e cria uma nova conversa ativa, já no estado `greeting`.
+ * `history` dele — e cria uma nova conversa ativa, já no estado `idle`.
  * Não afeta a conversa de nenhum outro usuário.
  *
  * Códigos de resposta:
