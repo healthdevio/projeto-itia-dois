@@ -1,0 +1,27 @@
+# Normaliza fim de linha no repositório.
+#
+# O prettier roda com "endOfLine": "lf" (ver .prettierrc) e a CI verifica isso em
+# Linux, onde LF é o padrão. Sem estas regras, quem develope no Windows com
+# core.autocrlf=true recebe os arquivos com CRLF, o prettier --check reprova
+# arquivos que estão corretos no repositório, e a diferença aparece como ruído
+# em todo commit.
+#
+# Este arquivo vale para qualquer sistema: ele manda o Git normalizar para LF
+# ao gravar no repositório, e escrever LF no disco ao checar a árvore.
+* text=auto eol=lf
+
+# Scripts que o Windows precisa ler com CRLF para funcionar.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binários: nunca converter, nunca mexer nas linhas.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
