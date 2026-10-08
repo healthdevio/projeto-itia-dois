@@ -1,7 +1,7 @@
 # Compose de implantação. Serve à homologação e à produção: o que muda entre os
 # dois é o .env (imagem, porta, secrets), não este arquivo.
 #
-#   IMAGE_CORE=... IMAGE_WEB=... IMAGE_KNOWLEDGE=... ./deploy.sh /srv/omnia/prod
+#   IMAGE_CORE=... IMAGE_WEB=... ./deploy.sh /srv/omnia/prod
 #
 # ## O Postgres NÃO é deste compose
 #
