@@ -187,15 +187,22 @@ jobs:
         with:
           ref: ${{ needs.build.outputs.sha }}
 
+      # Diagnóstico do scp: se o `source` não resolver, o drone-scp falha com
+      # "tar: empty archive" sem dizer qual caminho não existiu. Esta lista
+      # transforma um erro opaco em um caminho visível.
+      - name: Conferir os arquivos que serão enviados
+        run: ls -la apps/docker/docker-compose.deploy.yml apps/docker/deploy.sh
+
       - name: Enviar o compose e o script
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: |
-            apps/docker/docker-compose.deploy.yml
-            apps/docker/deploy.sh
+          # Uma linha separada por vírgula. O bloco `|` com quebra de linha
+          # final vira um terceiro item vazio na lista, e o glob do tar não
+          # resolve — daí o "empty archive".
+          source: apps/docker/docker-compose.deploy.yml,apps/docker/deploy.sh
           target: /srv/omnia/homolog
 
       # `env:` define as variáveis no runner; `envs:` (dentro de `with:`) diz
@@ -237,15 +244,16 @@ jobs:
         with:
           ref: ${{ needs.build.outputs.sha }}
 
+      - name: Conferir os arquivos que serão enviados
+        run: ls -la apps/docker/docker-compose.deploy.yml apps/docker/deploy.sh
+
       - name: Enviar o compose e o script
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: |
-            apps/docker/docker-compose.deploy.yml
-            apps/docker/deploy.sh
+          source: apps/docker/docker-compose.deploy.yml,apps/docker/deploy.sh
           target: /srv/omnia/prod
 
       - name: Aplicar
