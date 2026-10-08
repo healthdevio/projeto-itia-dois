@@ -1,0 +1,148 @@
+# ```
+# push ──> CI (ci.yml) ──> CD (cd.yml) ──> publicar imagem ──> deploy na VM
+# ```
+
+# ## Este arquivo ainda não faz deploy
+#
+# Só o primeiro movimento: constrói e publica. O deploy na VM é o job `deploy`,
+# que entra no próximo passo. Ver docs/estrutura/deploy.md.
+#
+# ## Duas formas de disparar
+#
+# `workflow_run`     automático, depois que a CI passa
+# `workflow_dispatch` manual, pelo botão "Run workflow" na aba Actions
+#
+# O manual existe porque `workflow_run` só enxerga workflows que estão na branch
+# padrão (`main`). Entre o merge do cd.yml na develop e o merge na main, o
+# automático não dispara — e falha em silêncio, sem erro nenhum. O botão manual
+# cobre esse intervalo.
+
+name: CD (Continuous Delivery)
+
+on:
+  workflow_run:
+    # Nome exato do workflow em ci.yml. Se o `name:` de lá mudar, este
+    # workflow_run para de disparar — e sem erro visível.
+    workflows: ['CI (Continuous Integration)']
+    types: [completed]
+
+  workflow_dispatch:
+
+# `packages: write` é o que permite publicar no ghcr.io. Sem isso o `docker
+# push` falha com "denied". O GITHUB_TOKEN é automático — não precisa criar.
+permissions:
+  contents: read
+  packages: write
+
+# Um deploy por vez. `cancel-in-progress: false` de propósito: em produção um
+# deploy em andamento não pode ser cancelado no meio, porque a imagem antiga pode
+# já ter saído do registry.
+concurrency:
+  group: cd-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}
+
+jobs:
+  build:
+    name: Construir e publicar
+    runs-on: ubuntu-latest
+
+    # `workflow_run` não aceita filtro de branch no `on:`, então as condições
+    # vêm todas aqui.
+    #
+    # O primeiro termo é o disparo manual, que não tem `workflow_run` e por isso
+    # passaria pela checagem de baixo como branch vazia.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       (github.event.workflow_run.head_branch == 'develop' ||
+        github.event.workflow_run.head_branch == 'main'))
+
+    steps:
+      # Os dois gatilhos trazem o commit em lugares diferentes:
+      #   workflow_run      → event.workflow_run.head_sha
+      #   workflow_dispatch → github.sha
+      #
+      # Sem este passo, o `if:` de cima passaria, mas o checkout cairia na
+      # branch padrão e a imagem seria de outro código — sem erro no log.
+      - name: Resolver commit e branch
+        id: ctx
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            echo "branch=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            echo "branch=${{ github.event.workflow_run.head_branch }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resumo do que será publicado
+        run: |
+          echo "commit: ${{ steps.ctx.outputs.sha }}"
+          echo "branch: ${{ steps.ctx.outputs.branch }}"
+
+      - name: Baixar o código
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.ctx.outputs.sha }}
+
+      - name: Configurar Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Autenticar no ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Tag por commit, nunca `latest`.
+      #
+      # `latest` é um ponteiro que se move: se um deploy der errado não há como
+      # voltar, porque ele já aponta para outra imagem. Com o sha, o rollback é
+      # `docker pull ghcr.io/healthdevio/chat-core:5f62538`.
+      #
+      # A tag com o nome da branch serve só para inspeção: mostra "o que está em
+      # main" sem precisar saber o sha. O deploy usa sempre a tag do sha.
+      - name: Calcular as tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/chat-core
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/chat-web
+          tags: |
+            type=sha,prefix=
+            type=raw,value=${{ steps.ctx.outputs.branch }}
+
+      - name: Publicar a imagem do Core
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/docker/Dockerfile.core
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Publicar a imagem da interface
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/docker/Dockerfile.web
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: O que foi publicado
+        run: |
+          echo "branch: ${{ steps.ctx.outputs.branch }}"
+          echo "commit: ${{ steps.ctx.outputs.sha }}"
+          echo
+          echo '${{ steps.meta.outputs.tags }}' | tr ' ' '\n'
