@@ -203,6 +203,10 @@ jobs:
           # final vira um terceiro item vazio na lista, e o glob do tar não
           # resolve — daí o "empty archive".
           source: apps/docker/docker-compose.deploy.yml,apps/docker/deploy.sh
+          # Sem isto o tar mantém a árvore: o arquivo cairia em
+          # /srv/omnia/homolog/apps/docker/deploy.sh, e o script executado
+          # continuaria sendo a cópia antiga que está na raiz.
+          strip_components: 2
           target: /srv/omnia/homolog
 
       # `env:` define as variáveis no runner; `envs:` (dentro de `with:`) diz
@@ -254,6 +258,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           source: apps/docker/docker-compose.deploy.yml,apps/docker/deploy.sh
+          strip_components: 2
           target: /srv/omnia/prod
 
       - name: Aplicar
