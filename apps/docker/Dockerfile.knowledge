@@ -1,0 +1,24 @@
+# Imagem das migrations do pacote knowledge (apps/packages/knowledge/drizzle).
+#
+# Diferente de apps/docker/Dockerfile (que é o recipe do compose de
+# desenvolvimento), esta é publicada no registry e consumida pelo
+# docker-compose.deploy.yml — o deploy só faz pull, sem código-fonte no servidor.
+#
+# Única imagem que ainda roda drizzle-kit: o pacote knowledge não tem migrator
+# próprio. Quando tiver, ela some e o serviço passa a usar a imagem do Core.
+#
+# Sai depois de aplicar as migrations (restart: no) e nunca recebe tráfego.
+
+FROM node:22-alpine
+
+WORKDIR /app
+
+COPY apps/packages/knowledge/package.json apps/packages/knowledge/package-lock.json ./
+
+RUN npm ci
+
+COPY apps/packages/knowledge/drizzle.config.ts ./
+COPY apps/packages/knowledge/drizzle ./drizzle
+COPY apps/packages/knowledge/src ./src
+
+CMD ["npx", "drizzle-kit", "migrate"]
