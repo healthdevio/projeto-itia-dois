@@ -1,0 +1,102 @@
+# Compose de implantação. Serve à homologação e à produção: o que muda entre os
+# dois é o .env (imagem, porta, secrets), não este arquivo.
+#
+#   IMAGE_CORE=... IMAGE_WEB=... IMAGE_KNOWLEDGE=... ./deploy.sh /srv/omnia/prod
+#
+# ## O Postgres NÃO é deste compose
+#
+# O banco já existe na VM (container `omnia-postgres`, volume
+# `ubuntu_omnia_postgres_data`) e é gerenciado pelo Portainer. Aqui ele é apenas
+# **alcançado**, não criado: o Core se conecta ao container existente pela rede
+# externa `omnia-db`.
+#
+# Subir um Postgres aqui criaria um banco NOVO e VAZIO, com volume separado, e o
+# Core passaria a falar com ele — ignorando o banco real. Por isso não há
+# serviço `postgres` neste arquivo.
+#
+# Ver `docs/estrutura/deploy.md` para a criação da rede.
+
+name: omnia
+
+services:
+  # Migrations do Core (apps/chat-core/drizzle). Sai depois de aplicar.
+  migrate-core:
+    image: ${IMAGE_CORE:?defina IMAGE_CORE no .env}
+    restart: 'no'
+    depends_on:
+      db:
+        condition: service_completed_successfully
+    networks: [omnia-db]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-omnia_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-omnia}
+    command: ['node', 'dist/db/migrate.js']
+
+  # Migrations do knowledge NÃO são aplicadas aqui.
+  #
+  # Elas criam users, permissions, api_integrations e chat_history — tabelas que
+  # nenhum serviço do Omnia lê. O Core tem o schema dele próprio
+  # (conversations, messages, suggestions) e é só ele que o compose deploya.
+  #
+  # O pacote continua com migrations aplicadas pelo compose de desenvolvimento
+  # (apps/docker/docker-compose.yml), que é onde ele está em uso.
+  #
+  # Quando o knowledge virar produto, volte este serviço e acrescente
+  # IMAGE_KNOWLEDGE ao .env.
+
+  core:
+    image: ${IMAGE_CORE:?defina IMAGE_CORE no .env}
+    restart: unless-stopped
+    depends_on:
+      migrate-core:
+        condition: service_completed_successfully
+    networks: [omnia-db]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-omnia_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-omnia}
+      CORE_PORT: '3001'
+      AI_PROVIDER: ${AI_PROVIDER:-echo}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
+      NVIDIA_MODEL: ${NVIDIA_MODEL:-meta/llama-3.3-70b-instruct}
+      NVIDIA_BASE_URL: ${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
+      NVIDIA_TIMEOUT_MS: ${NVIDIA_TIMEOUT_MS:-300000}
+      NVIDIA_MAX_TOKENS: ${NVIDIA_MAX_TOKENS:-400}
+    expose:
+      - '3001'
+
+  # Espera o Postgres responder e sai. Não gerencia o container: o banco é de
+  # outro stack (Portainer) e este compose não tem autoridade sobre ele.
+  #
+  # Sai com 0 quando o banco respondeu — por isso quem espera por ele usa
+  # `service_completed_successfully`, e não `service_healthy`: um container que
+  # termina nunca fica "healthy".
+  db:
+    image: postgres:16-alpine
+    networks: [omnia-db]
+    restart: 'no'
+    entrypoint:
+      - sh
+      - -c
+      - |
+        until pg_isready -h postgres -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"; do
+          echo "aguardando o postgres..."; sleep 2
+        done
+        echo "postgres pronto"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-omnia_user}
+      POSTGRES_DB: ${POSTGRES_DB:-omnia}
+
+  web:
+    image: ${IMAGE_WEB:?defina IMAGE_WEB no .env}
+    restart: unless-stopped
+    depends_on:
+      core:
+        condition: service_healthy
+    networks: [omnia-db]
+    ports:
+      - '${WEB_PORT:-8080}:80'
+
+networks:
+  # Rede externa: criada uma vez na VM (ver deploy.md) e compartilhada com o
+  # `omnia-postgres`, que é gerenciado pelo Portainer.
+  omnia-db:
+    external: true
+    name: ${OMNIA_DB_NETWORK:-omnia-db}

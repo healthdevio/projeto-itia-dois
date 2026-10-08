@@ -1,0 +1,23 @@
+# Contexto de build do Docker. Os Dockerfiles em apps/docker partem da raiz do
+# repositório, então sem isto cada build enviaria node_modules, .git e dist de
+# todos os apps — o .git sozinho passa de 100 MB, e como muda a cada commit ele
+# invalidaria a camada do npm ci.
+
+.git
+.github
+
+**/node_modules
+**/dist
+**/coverage
+**/.next
+
+# Segredos: .env é git-ignored, mas o arquivo existe na máquina de quem builda.
+# Os .env.* (templates, sem senha) também ficam de fora: nenhum Dockerfile usa.
+**/.env
+**/.env.*
+
+apps/chat-core/local
+**/.vscode
+**/.idea
+**/*.log
+**/.DS_Store

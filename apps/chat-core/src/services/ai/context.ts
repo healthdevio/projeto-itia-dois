@@ -21,7 +21,8 @@ export function buildContext(
     conversation_id: conversationId,
     state,
     previous_messages: messages.slice(-maxContextMessages),
-    history_ids: historyIds,
+    // Cópia: o contexto é entregue ao provider e registrado no log.
+    history_ids: [...historyIds],
     max_context_messages: maxContextMessages,
   };
 }
