@@ -85,14 +85,30 @@ scp -i "C:\Users\Alec\Downloads\ssh-key-2026-09-22.key" `
 O `cd` no repositório é obrigatório: sem ele o erro é
 `stat local "...": No such file or directory`, e parece que o problema é na VM.
 
-## Login no registry (uma vez)
+## Login no registry (uma vez, feito)
+
+As imagens são **privadas** — o `ghcr.io` herda a visibilidade do repositório,
+que é privado. Estar na rede não basta: sem credencial, o `pull` falha.
 
 ```bash
-echo "$GHCR_TOKEN" | sudo docker login ghcr.io -u SEU_USUARIO --password-stdin
+# SEM sudo — o ubuntu já está no grupo docker
+nano /tmp/tok
+# cola o token, Ctrl+O, Enter, Ctrl+X
+
+docker login ghcr.io -u Aleczinho --password-stdin < /tmp/tok
+rm /tmp/tok
+
+cat ~/.docker/config.json     # deve conter "ghcr.io"
 ```
 
-`GITHUB_TOKEN` do repositório serve, com escopo `read:packages`. Para **push**,
-`write:packages`.
+Feito em 8 de outubro de 2026.
+
+O `-u` é o usuário da conta que **criou** o token, não o `ubuntu` da VM. Com
+`sudo`, a credencial vai para `/root/.docker/` e o `deploy.sh` — que roda como
+`ubuntu` — não acha.
+
+Como colar o token sem errar, e a diferença entre `unauthorized` e
+`manifest unknown`: ver [config_github.md](config_github.md).
 
 ## Fazer o deploy
 

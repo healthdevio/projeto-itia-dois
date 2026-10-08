@@ -1,97 +1,102 @@
 # Pipeline de CI/CD
 
-Estado atual, em outubro de 2026. O que está pronto, o que está rodando e o
-que falta.
+Estado atual, em outubro de 2026.
 
 ## Onde cada coisa está
 
-| Onde                    | O quê                            | Estado                  |
-| ----------------------- | -------------------------------- | ----------------------- |
-| `develop` local         | trabalho de CI/CD, não commitado | pronto para review      |
-| GitHub Actions          | `ci.yml`                         | escrito, nunca executou |
-| GitHub Actions          | `cd.yml`                         | **não existe**          |
-| VM `167.126.20.64`      | Postgres, CloudBeaver, Portainer | rodando                 |
-| VM `/srv/omnia/homolog` | `.env` + compose + `deploy.sh`   | **pronto**              |
-| VM `/srv/omnia/prod`    | `.env` + compose + `deploy.sh`   | **pronto**              |
-| ghcr.io                 | imagens do Omnia                 | **não existem**         |
+| Onde                    | O quê                            | Estado                   |
+| ----------------------- | -------------------------------- | ------------------------ |
+| `develop`               | CI + CD, mergeados (PR #28, #29) | ativo                    |
+| `main`                  | CI antiga, 1 job                 | **CD ainda não acordou** |
+| GitHub Actions          | `ci.yml`, `cd.yml`               | ambos na `develop`       |
+| VM `167.126.20.64`      | Postgres, CloudBeaver, Portainer | rodando                  |
+| VM `/srv/omnia/homolog` | `.env` + compose + `deploy.sh`   | pronto                   |
+| VM `/srv/omnia/prod`    | `.env` + compose + `deploy.sh`   | pronto                   |
+| ghcr.io                 | imagens do Omnia                 | **não publicadas**       |
 
 ## Documentos
 
-| Documento                    | Conteúdo                                   |
-| ---------------------------- | ------------------------------------------ |
-| [ci.md](ci.md)               | Os 4 jobs da CI e o que cada um valida     |
-| [docker.md](docker.md)       | Imagens, compose de deploy, nginx          |
-| [ambientes.md](ambientes.md) | Os 3 `.env`, rede externa, senhas          |
-| [deploy.md](deploy.md)       | Passo a passo na VM, diagnóstico, rollback |
-| [testes.md](testes.md)       | A suíte do Core: o que cobre e o que não   |
+| Documento                            | Conteúdo                                   |
+| ------------------------------------ | ------------------------------------------ |
+| [ci.md](ci.md)                       | Os 4 jobs da CI e o que cada um valida     |
+| [docker.md](docker.md)               | Imagens, compose de deploy, nginx          |
+| [ambientes.md](ambientes.md)         | Os 3 `.env`, rede externa, senhas          |
+| [config_github.md](config_github.md) | Secrets, ambientes e limites do plano      |
+| [deploy.md](deploy.md)               | Passo a passo na VM, diagnóstico, rollback |
+| [testes.md](testes.md)               | A suíte do Core: o que cobre e o que não   |
 
-## O que já está pronto na VM
+## A CI
 
-A preparação do servidor foi feita e verificada:
-
-- `.env` criado em homolog e prod
-- `docker-compose.deploy.yml` e `deploy.sh` copiados
-- Permissões corrigidas: `sudo chown -R $USER:$USER /srv/omnia`
-- Rede externa `omnia-db` criada, com o `omnia-postgres` conectado
-
-O `docker compose config` sai com código 0 e resolve a senha corretamente.
-
-## O que impede o deploy
-
-**As imagens não existem.** `ghcr.io/healthdevio/chat-core:main` nunca foi
-publicada. O `deploy.sh` falha no `pull` com `manifest unknown` até o `cd.yml`
-construir e publicar.
-
-Nome das imagens, já decidido:
+PR #28 mergeado. Rodou pela primeira vez com os 4 jobs:
 
 ```
-ghcr.io/healthdevio/chat-core
-ghcr.io/healthdevio/chat-omnia
+Frontend (chat-omnia)      24s
+Core (chat-core)            32s
+Formatação (prettier)      35s
+Imagens Docker              53s
 ```
 
-## O que o `cd.yml` vai fazer
+O job **Imagens Docker** é o que mais importava: os Dockerfiles foram escritos
+sem nunca terem sido executados. Passou.
 
-Não escrito ainda. O desenho:
+## O CD — primeiro movimento
+
+PR #29 mergeado na `develop`. O `cd.yml` constrói e publica `chat-core` e
+`chat-web` no `ghcr.io`, mas só depois que a CI passa.
+
+```yaml
+on:
+  workflow_run: # automático, quando a CI termina com success
+    workflows: ['CI (Continuous Integration)']
+  workflow_dispatch: # manual, pelo botão na aba Actions
+```
+
+### Por que o CD ainda não roda
+
+`workflow_run` e `workflow_dispatch` só funcionam se o workflow estiver na branch
+padrão, que aqui é `main`. O `cd.yml` está na `develop`.
+
+A falha é silenciosa: sem erro, sem aviso, o CD simplesmente não dispara.
 
 ```
-push em develop ──> build ──> push ──> deploy homolog (automático)
-push em main    ──> build ──> push ──> deploy prod (aprovação manual)
+1. PR develop → main        (cd.yml chega na branch padrão)
+2. próximo push             (CD dispara e publica as imagens)
+3. imagens existem          (aí o deploy na VM pode ser testado)
 ```
 
-Precisa de:
+## O que falta
 
-- **`packages: write`** no `GITHUB_TOKEN`, para publicar no ghcr.io
-- **Chave privada do repositório** (`core.chat-core`, `core.chat-web`) para o
-  login no ghcr.io
-- **Chave SSH de deploy** nos secrets, para alcançar a VM
-- **Environment `production`** com required reviewer, para a aprovação manual
+**Etapa 2 — o job de deploy.** Entra na VM por SSH e roda o `deploy.sh`:
 
-O acesso SSH já funciona: a chave em
-`C:\Users\Alec\Downloads\ssh-key-2026-09-22.key` está em
-`~/.ssh/authorized_keys` na VM, e `ssh ubuntu@167.126.20.64` responde.
+```
+develop ──> /srv/omnia/homolog ──> environment: homolog
+main    ──> /srv/omnia/prod    ──> environment: production
+```
 
-## O banco na VM
+Precisa do `docker login ghcr.io` na VM, porque as imagens são privadas — ver
+[config_github.md](config_github.md).
 
-|                |                                     |
-| -------------- | ----------------------------------- |
-| Container      | `omnia-postgres`                    |
-| Imagem         | `pgvector/pgvector:pg16`            |
-| Volume         | `ubuntu_omnia_postgres_data`        |
-| Gerenciado por | Portainer (não pelo compose)        |
-| Porta pública  | `0.0.0.0:3000`                      |
-| Estado         | **vazio** — nenhuma tabela do Omnia |
+## Estado da VM
 
-As migrations do Drizzle nunca rodaram lá; o primeiro deploy cria o schema.
+|                |                                         |
+| -------------- | --------------------------------------- |
+| Container      | `omnia-postgres`                        |
+| Imagem         | `pgvector/pgvector:pg16`                |
+| Volume         | `ubuntu_omnia_postgres_data`            |
+| Gerenciado por | Portainer (não pelo compose)            |
+| Porta pública  | `0.0.0.0:3000`                          |
+| Estado         | **vazio** — nenhuma tabela do Omnia     |
+| Rede           | `omnia-db`, compartilhada com o compose |
 
 ## Pendências conhecidas
 
-- **`develop` remoto já foi atualizado** com `chore(core): remove all source
-comments` (2.013 linhas em 21 arquivos). O trabalho de CI/CD foi reaplicado
-  por cima sem conflito.
+- **O CD não acorda até o `cd.yml` chegar na `main`.**
 - **`omnia-postgres` está publicado na internet** (`0.0.0.0:3000`). Mesma coisa
   para o CloudBeaver (8978) e o Portainer (8000). Fechar é `ports` → `expose`
   no Portainer.
-- **A senha do banco é a mesma do dev local**, e apareceu em print de tela nesta
-  conversa. Ver [ambientes.md](ambientes.md).
+- **A senha do banco é a mesma do dev local**, e apareceu em print de tela. Ver
+  [ambientes.md](ambientes.md).
 - **`apps/packages/knowledge/.env` está versionado**, com senha dentro. Anterior
   a este trabalho.
+- **A chave privada do SSH está em `Downloads`**, que é pasta sujeita a limpeza
+  e antivírus. Considerar mover para `C:\Users\Alec\.ssh\`.
