@@ -38,6 +38,17 @@ try {
     '[Core] Falha ao aplicar migrations:',
     error instanceof Error ? error.message : String(error),
   );
+
+  // O Drizzle embrulha o erro do Postgres: `message` traz só o SQL que falhou,
+  // e o motivo real ("relation does not exist", "duplicate key") vem em
+  // `cause`. Sem esta linha o log mostra a query e nada sobre a causa.
+  if (error instanceof Error && error.cause) {
+    console.error(
+      '[Core] Causa:',
+      error.cause instanceof Error ? error.cause.message : String(error.cause),
+    );
+  }
+
   await pool.end();
   process.exit(1);
 }
