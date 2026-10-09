@@ -85,8 +85,9 @@ cria** — só o alcança, pela rede externa `omnia-db`.
 Subir um Postgres aqui criaria um banco novo e vazio, com volume separado, e o
 Core passaria a falar com ele em vez do banco real.
 
-`deploy.sh` cria a rede se faltar. Ver [deploy.md](deploy.md) para conectar o
-`omnia-postgres` a ela — **já feito** na VM.
+`deploy.sh` cria a rede se faltar. Ver
+[pre-requisitos.md](../ci_cd/pre-requisitos.md) para conectar o `omnia-postgres` a
+ela — **já feito** na VM.
 
 O serviço `db` existe só para o Core não subir antes do banco responder: espera o
 `pg_isready` passar e sai. Não gerencia o container alheio.
