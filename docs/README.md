@@ -9,6 +9,7 @@ o pacote de conhecimento (`apps/packages/knowledge`) e a infraestrutura
 | Você quer...               | Leia                                                                                      |
 | -------------------------- | ----------------------------------------------------------------------------------------- |
 | _entender a pipeline_      | [`docs/ci_cd/`](../docs/ci_cd/README.md)                                                  |
+| _diagnosticar um erro_     | [`docs/ci_cd/problemas/`](../docs/ci_cd/problemas/README.md)                              |
 | _usar a API_               | [`docs/core/`](../docs/core/README.md)                                                    |
 | _entender o versionamento_ | [`docs/estrutura/fluxo_de_versionamento.md`](../docs/estrutura/fluxo_de_versionamento.md) |
 | _rodar localmente_         | [Pré-requisitos](../docs/ci_cd/pre-requisitos.md)                                         |

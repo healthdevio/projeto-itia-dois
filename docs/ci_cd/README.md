@@ -10,6 +10,7 @@ precisa estar pronto para isso acontecer.
 | [publicacao.md](publicacao.md)         | Construção e publicação das imagens             |
 | [deploy.md](deploy.md)                 | O que acontece na VM, serviço por serviço       |
 | [operacao.md](operacao.md)             | Verificar, diagnosticar e reverter              |
+| [problemas/](problemas/README.md)      | **Diagnóstico.** Por sintoma, causa e resolução |
 
 ## As três etapas
 
