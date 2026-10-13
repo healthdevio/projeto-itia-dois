@@ -1,11 +1,11 @@
 # P1-T06 --- Mensagens e campo de envio
 
--   **Task:** P1-T06
--   **Nome:** Implementar mensagens e campo de envio
--   **Status:** Concluída e integrada
--   **PR:** #19
--   **Commit principal registrado:**
-    `7723e8a675659f91591e113b8a9789d27b9b41f`
+- **Task:** P1-T06
+- **Nome:** Implementar mensagens e campo de envio
+- **Status:** Concluída e integrada
+- **PR:** #19
+- **Commit principal registrado:**
+  `7723e8a675659f91591e113b8a9789d27b9b41f`
 
 ## Objetivo
 
@@ -16,7 +16,7 @@ para o usuário enviar uma mensagem.
 
 A task introduziu a estrutura visual de:
 
-``` text
+```text
 MessageItem
 MessageList
 ChatInput
@@ -24,13 +24,13 @@ ChatInput
 
 As mensagens foram diferenciadas visualmente entre:
 
-``` ts
+```ts
 author: 'user' | 'omnia'
 ```
 
 O fluxo atual da Interface é:
 
-``` text
+```text
 ChatInput
    ↓
 MiniChat / ExpandedChat
@@ -50,7 +50,7 @@ estado local.
 Após o envio, o `App` adicionava a mensagem do usuário e uma resposta
 temporária:
 
-``` text
+```text
 Mensagem recebida.
 ```
 
@@ -61,33 +61,33 @@ representa a Mia AI real**.
 
 A task não implementou:
 
--   chamada real ao Core;
--   REST;
--   SSE;
--   Mia AI;
--   RAG;
--   banco vetorial;
--   contratos definitivos do Chat Core.
+- chamada real ao Core;
+- REST;
+- SSE;
+- Mia AI;
+- RAG;
+- banco vetorial;
+- contratos definitivos do Chat Core.
 
 ## Validação
 
--   `npm run typecheck`
--   `npm run build`
--   `npm run format`
--   `git diff --check`
--   teste manual do envio
--   teste de renderização das mensagens.
+- `npm run typecheck`
+- `npm run build`
+- `npm run format`
+- `git diff --check`
+- teste manual do envio
+- teste de renderização das mensagens.
 
 ## Critérios de aceite
 
--   [x] Mensagens do usuário exibidas.
--   [x] Mensagens da Mia exibidas.
--   [x] Diferenciação visual.
--   [x] Campo de entrada funcional.
--   [x] Ação de envio preparada.
--   [x] Integração com Mini Chat.
--   [x] Integração com Expanded Chat.
--   [x] Build/typecheck aprovados.
+- [x] Mensagens do usuário exibidas.
+- [x] Mensagens da Mia exibidas.
+- [x] Diferenciação visual.
+- [x] Campo de entrada funcional.
+- [x] Ação de envio preparada.
+- [x] Integração com Mini Chat.
+- [x] Integração com Expanded Chat.
+- [x] Build/typecheck aprovados.
 
 ## Pontos técnicos a corrigir antes da integração real
 

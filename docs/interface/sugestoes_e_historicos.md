@@ -1,17 +1,16 @@
 # P1-T08 --- Sugestões e histórico
 
-
 > **Status desta documentação: WIP.**
 >
 > A Task 08 foi iniciada, possui implementação local preservada em
 > commit, mas **não está concluída nem integrada à `develop` na
 > arquitetura atual**.
 
--   **Task:** P1-T08
--   **Nome:** Implementar sugestões e histórico
--   **Status:** Em andamento / WIP
--   **Branch histórica:** `feat/implementa-estados-visuais-chat`
--   **Commit WIP:** `9cd9e42 wip: implementação inicial da task 08`
+- **Task:** P1-T08
+- **Nome:** Implementar sugestões e histórico
+- **Status:** Em andamento / WIP
+- **Branch histórica:** `feat/implementa-estados-visuais-chat`
+- **Commit WIP:** `9cd9e42 wip: implementação inicial da task 08`
 
 ## Objetivo
 
@@ -25,7 +24,7 @@ reproduzir regras de negócio.
 
 A documentação atual de sugestões define:
 
-``` text
+```text
 Suggestion
 ├── suggestion_id
 └── text
@@ -33,7 +32,7 @@ Suggestion
 
 O Core possui:
 
-``` text
+```text
 GET    /api/suggestions
 POST   /api/suggestions
 DELETE /api/suggestions
@@ -43,7 +42,7 @@ Eles exigem o header `X-User-Id`.
 
 Exemplo de resposta:
 
-``` json
+```json
 {
   "success": true,
   "data": {
@@ -69,10 +68,10 @@ componentes React.
 
 O commit `9cd9e42` contém:
 
--   alteração de `App.tsx`;
--   alteração de `MiniChat.tsx`;
--   novo `SuggestionItem.tsx`;
--   novo `transport/rest/suggestions.ts`.
+- alteração de `App.tsx`;
+- alteração de `MiniChat.tsx`;
+- novo `SuggestionItem.tsx`;
+- novo `transport/rest/suggestions.ts`.
 
 A implementação WIP iniciou uma função `getSuggestions()` para consultar
 `GET /api/suggestions`, armazenar sugestões no estado da Interface e
@@ -82,7 +81,7 @@ renderizar itens de sugestão.
 
 A implementação WIP encontrou:
 
-``` text
+```text
 Property 'suggestions' does not exist on type 'IntrinsicAttributes'
 ```
 
@@ -112,7 +111,7 @@ migrado/revisado, não simplesmente copiado para a branch atual.
 
 ## Arquitetura esperada
 
-``` text
+```text
 Componentes React
        ↓
 Hook / camada de estado
@@ -124,7 +123,7 @@ Chat Core
 
 Não:
 
-``` text
+```text
 Componentes React
        ↓
 fetch()
@@ -134,18 +133,18 @@ Chat Core
 
 ## Critérios para conclusão
 
--   [ ] Sugestões carregadas pelo transport.
--   [ ] Sugestões renderizadas.
--   [ ] Seleção de sugestão funcionando.
--   [ ] Histórico renderizado.
--   [ ] Estados loading/empty/error.
--   [ ] Contratos alinhados com Core.
--   [ ] Sem HTTP dentro dos componentes.
--   [ ] Typecheck aprovado.
--   [ ] Build aprovado.
--   [ ] Testes apropriados.
--   [ ] PR aberto.
--   [ ] PR integrado à `develop`.
+- [ ] Sugestões carregadas pelo transport.
+- [ ] Sugestões renderizadas.
+- [ ] Seleção de sugestão funcionando.
+- [ ] Histórico renderizado.
+- [ ] Estados loading/empty/error.
+- [ ] Contratos alinhados com Core.
+- [ ] Sem HTTP dentro dos componentes.
+- [ ] Typecheck aprovado.
+- [ ] Build aprovado.
+- [ ] Testes apropriados.
+- [ ] PR aberto.
+- [ ] PR integrado à `develop`.
 
 ## Clean Code e QA
 

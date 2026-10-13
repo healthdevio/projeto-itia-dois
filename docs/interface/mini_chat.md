@@ -1,10 +1,10 @@
 # P1-T04 --- Mini Chat
 
--   **Task:** P1-T04
--   **Nome:** Construir o Mini Chat
--   **Status:** Concluída e integrada
--   **PR:** #8
--   **Título do PR:** `feat: implementa mini chat`
+- **Task:** P1-T04
+- **Nome:** Construir o Mini Chat
+- **Status:** Concluída e integrada
+- **PR:** #8
+- **Título do PR:** `feat: implementa mini chat`
 
 ## Objetivo
 
@@ -14,7 +14,7 @@ Criar a primeira janela do chatbot após a ativação do botão flutuante.
 
 O `MiniChat` passou a compor:
 
-``` text
+```text
 MiniChat
 ├── ChatHeader
 ├── ChatStateView
@@ -24,7 +24,7 @@ MiniChat
 
 O componente recebe:
 
-``` ts
+```ts
 isExpanded
 onToggleExpanded
 messages
@@ -39,7 +39,7 @@ e delega a atualização ao componente pai.
 
 O fluxo ficou:
 
-``` text
+```text
 FloatingChatButton
         ↓
       App
@@ -55,31 +55,31 @@ O `App` permanece como ponto de coordenação do estado de abertura.
 
 O PR explicitamente não implementou:
 
--   Mia AI;
--   API;
--   REST;
--   SSE;
--   RAG;
--   banco vetorial;
--   persistência real.
+- Mia AI;
+- API;
+- REST;
+- SSE;
+- RAG;
+- banco vetorial;
+- persistência real.
 
 Isso foi uma decisão correta de escopo: a task precisava entregar a
 interface, não antecipar a integração.
 
 ## Validação
 
--   `npm run format`
--   `npm run build`
--   teste manual de abertura e fechamento.
+- `npm run format`
+- `npm run build`
+- teste manual de abertura e fechamento.
 
 ## Critérios de aceite
 
--   [x] Mini Chat aparece após ativação.
--   [x] Estrutura visual organizada.
--   [x] Abertura controlada pelo estado do pai.
--   [x] Preparado para expansão.
--   [x] Sem lógica interna da IA.
--   [x] Build aprovado.
+- [x] Mini Chat aparece após ativação.
+- [x] Estrutura visual organizada.
+- [x] Abertura controlada pelo estado do pai.
+- [x] Preparado para expansão.
+- [x] Sem lógica interna da IA.
+- [x] Build aprovado.
 
 ## Observação arquitetural
 

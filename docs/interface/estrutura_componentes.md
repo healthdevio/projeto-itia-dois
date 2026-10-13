@@ -1,11 +1,11 @@
 # P1-T02 --- Estrutura dos componentes da Interface
 
--   **Task:** P1-T02
--   **Nome:** Estruturar os componentes da Interface
--   **Status:** Concluída
--   **PR:** #1
--   **Commit:**
-    `405c060 feat: adiciona estrutura dos componentes da interface`
+- **Task:** P1-T02
+- **Nome:** Estruturar os componentes da Interface
+- **Status:** Concluída
+- **PR:** #1
+- **Commit:**
+  `405c060 feat: adiciona estrutura dos componentes da interface`
 
 ## Objetivo
 
@@ -17,7 +17,7 @@ interface.
 
 A organização inicial separou:
 
-``` text
+```text
 interface/
 ├── chat/
 ├── components/
@@ -34,18 +34,18 @@ responsabilidades diferentes dentro de `apps/chat-omnia/src/interface/`.
 
 Entre os componentes estruturados ao longo das tasks:
 
--   `FloatingChatButton`
--   `MiniChat`
--   `ExpandedChat`
--   `ChatHeader`
--   `ChatInput`
--   `LoadingIndicator`
--   `MessageItem`
--   `MessageList`
--   `HistoryItem`
--   `HistoryPanel`
--   `ChatStateView`
--   `SuggestionList`
+- `FloatingChatButton`
+- `MiniChat`
+- `ExpandedChat`
+- `ChatHeader`
+- `ChatInput`
+- `LoadingIndicator`
+- `MessageItem`
+- `MessageList`
+- `HistoryItem`
+- `HistoryPanel`
+- `ChatStateView`
+- `SuggestionList`
 
 ## Decisão arquitetural
 
@@ -54,11 +54,11 @@ cada task pudesse evoluir uma responsabilidade específica.
 
 Isso evita:
 
--   componente monolítico;
--   mistura de UI com transporte;
--   dependência direta da Mia AI;
--   regras de negócio dentro da Interface;
--   dificuldade para testar componentes isoladamente.
+- componente monolítico;
+- mistura de UI com transporte;
+- dependência direta da Mia AI;
+- regras de negócio dentro da Interface;
+- dificuldade para testar componentes isoladamente.
 
 ## Relação com React
 
@@ -77,11 +77,11 @@ Request.
 
 ## Critérios atendidos
 
--   [x] Diretórios de responsabilidade criados.
--   [x] Componentes principais identificados.
--   [x] Estrutura preparada para evolução.
--   [x] Sem regras da Mia AI dentro dos componentes.
--   [x] Compatível com as tasks seguintes.
+- [x] Diretórios de responsabilidade criados.
+- [x] Componentes principais identificados.
+- [x] Estrutura preparada para evolução.
+- [x] Sem regras da Mia AI dentro dos componentes.
+- [x] Compatível com as tasks seguintes.
 
 ## Clean Code aplicado
 

@@ -1,12 +1,12 @@
 # P1-T07 --- Estados visuais do Chat
 
--   **Task:** P1-T07
--   **Nome:** Implementar os estados visuais da Interface
--   **Status:** Concluída e integrada
--   **PR:** #21
--   **Commit de merge registrado:** `1618ac2`
--   **Commit da implementação registrado:**
-    `1fab4c44d60011185a57ec7fcba3176649b83bf4`
+- **Task:** P1-T07
+- **Nome:** Implementar os estados visuais da Interface
+- **Status:** Concluída e integrada
+- **PR:** #21
+- **Commit de merge registrado:** `1618ac2`
+- **Commit da implementação registrado:**
+  `1fab4c44d60011185a57ec7fcba3176649b83bf4`
 
 ## Objetivo
 
@@ -18,7 +18,7 @@ ou diante de um erro.
 
 A implementação visual atual possui:
 
-``` text
+```text
 greeting
 idle
 thinking
@@ -31,7 +31,7 @@ O `ChatStateView` seleciona a apresentação correspondente.
 
 Apresenta uma mensagem inicial:
 
-``` text
+```text
 Como posso ajudar?
 ```
 
@@ -43,7 +43,7 @@ Apresenta o `LoadingIndicator`.
 
 Apresenta uma mensagem de falha:
 
-``` text
+```text
 Não foi possível enviar sua mensagem. Tente novamente.
 ```
 
@@ -54,7 +54,7 @@ da conversa continuar.
 
 ## Arquitetura visual
 
-``` text
+```text
 MiniChat
    └── ChatStateView
         ├── greeting
@@ -76,8 +76,8 @@ O `LoadingIndicator` foi separado para não duplicar sua implementação.
 
 O PR registrou:
 
--   `npm run build` aprovado;
--   teste visual dos estados `greeting`, `thinking`, `idle` e `error`.
+- `npm run build` aprovado;
+- teste visual dos estados `greeting`, `thinking`, `idle` e `error`.
 
 ## Diferença em relação ao Core
 
@@ -85,7 +85,7 @@ Este ponto é importante para a próxima integração.
 
 A Interface atualmente trabalha com:
 
-``` text
+```text
 greeting
 idle
 thinking
@@ -101,12 +101,12 @@ oficial.
 
 ## Cuidados
 
--   Não permitir estados incompatíveis simultaneamente.
--   Não fazer o componente visual conhecer regras internas do Core.
--   Não transformar `ChatStateView` em uma máquina de estados de
-    negócio.
--   O estado real deve vir do contrato de integração quando a Task 14/15
-    for executada.
+- Não permitir estados incompatíveis simultaneamente.
+- Não fazer o componente visual conhecer regras internas do Core.
+- Não transformar `ChatStateView` em uma máquina de estados de
+  negócio.
+- O estado real deve vir do contrato de integração quando a Task 14/15
+  for executada.
 
 ## Clean Code
 
