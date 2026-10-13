@@ -21,26 +21,26 @@ não diretamente nos componentes visuais.
 
 ## Princípios utilizados
 
--   React + TypeScript para a Interface.
--   Vite como ferramenta de desenvolvimento/build.
--   Tailwind CSS para estilos.
--   shadcn/ui e Lucide para componentes/ícones.
--   Git/GitHub com branches e Pull Requests.
--   Separação entre apresentação, estado, transporte e domínio.
--   Clean Code: nomes significativos, funções pequenas,
-    responsabilidades únicas, baixo acoplamento e refatoração
-    incremental.
--   Validação antes da integração: typecheck/build/formatação e testes
-    manuais quando aplicáveis.
+- React + TypeScript para a Interface.
+- Vite como ferramenta de desenvolvimento/build.
+- Tailwind CSS para estilos.
+- shadcn/ui e Lucide para componentes/ícones.
+- Git/GitHub com branches e Pull Requests.
+- Separação entre apresentação, estado, transporte e domínio.
+- Clean Code: nomes significativos, funções pequenas,
+  responsabilidades únicas, baixo acoplamento e refatoração
+  incremental.
+- Validação antes da integração: typecheck/build/formatação e testes
+  manuais quando aplicáveis.
 
 ## Identificação
 
--   **Task:** P1-T01
--   **Nome:** Configurar o ambiente Front-end
--   **Camada:** Interface
--   **Status:** Concluída
--   **Projeto atual:** Chat Omnia
--   **Aplicação atual:** `apps/chat-omnia/`
+- **Task:** P1-T01
+- **Nome:** Configurar o ambiente Front-end
+- **Camada:** Interface
+- **Status:** Concluída
+- **Projeto atual:** Chat Omnia
+- **Aplicação atual:** `apps/chat-omnia/`
 
 ## Objetivo
 
@@ -50,17 +50,17 @@ e ferramentas de qualidade.
 
 ## O que foi realizado
 
--   Criação/configuração da aplicação React com Vite.
--   Configuração de TypeScript e JSX.
--   Configuração do Tailwind CSS.
--   Configuração do shadcn/ui.
--   Configuração de aliases de importação.
--   Instalação das dependências necessárias.
--   Configuração de scripts de desenvolvimento, build, typecheck, lint e
-    formatação.
--   Validação da execução local e do build.
--   Evolução posterior da aplicação até a estrutura atual
-    `apps/chat-omnia`.
+- Criação/configuração da aplicação React com Vite.
+- Configuração de TypeScript e JSX.
+- Configuração do Tailwind CSS.
+- Configuração do shadcn/ui.
+- Configuração de aliases de importação.
+- Instalação das dependências necessárias.
+- Configuração de scripts de desenvolvimento, build, typecheck, lint e
+  formatação.
+- Validação da execução local e do build.
+- Evolução posterior da aplicação até a estrutura atual
+  `apps/chat-omnia`.
 
 A documentação oficial do TypeScript confirma que arquivos JSX com
 TypeScript devem utilizar `.tsx` e que a opção `jsx` precisa estar
@@ -68,16 +68,16 @@ configurada. O projeto utiliza essa base.
 
 ## Stack registrada
 
--   React `^19.2.8`
--   React DOM `^19.2.8`
--   TypeScript `~6.0.2`
--   Vite `^8.3.0`
--   Tailwind CSS `^4.3.3`
--   `@tailwindcss/vite`
--   shadcn `^4.21.0`
--   Lucide React
--   ESLint
--   Prettier
+- React `^19.2.8`
+- React DOM `^19.2.8`
+- TypeScript `~6.0.2`
+- Vite `^8.3.0`
+- Tailwind CSS `^4.3.3`
+- `@tailwindcss/vite`
+- shadcn `^4.21.0`
+- Lucide React
+- ESLint
+- Prettier
 
 A documentação atual do Tailwind recomenda a integração via plugin
 `@tailwindcss/vite`, coerente com a configuração adotada. O shadcn
@@ -115,7 +115,7 @@ reduzir acoplamento a caminhos relativos profundos.
 
 Foram utilizados:
 
-``` bash
+```bash
 npm install
 npm run typecheck
 npm run build
@@ -127,12 +127,12 @@ passou a funcionar normalmente após a sincronização das dependências.
 
 ## Cuidados
 
--   Não adicionar dependências sem necessidade.
--   Manter a versão de Node usada localmente alinhada com CI/Docker.
--   Não misturar configuração da Interface com regras de domínio.
--   Validar build/typecheck após mudanças estruturais.
--   Revisar vulnerabilidades reportadas pelo npm antes de qualquer
-    `npm audit fix --force`.
+- Não adicionar dependências sem necessidade.
+- Manter a versão de Node usada localmente alinhada com CI/Docker.
+- Não misturar configuração da Interface com regras de domínio.
+- Validar build/typecheck após mudanças estruturais.
+- Revisar vulnerabilidades reportadas pelo npm antes de qualquer
+  `npm audit fix --force`.
 
 ## Relação com Clean Code
 
@@ -142,17 +142,17 @@ alteração deve ser aplicado também à configuração.
 
 ## Referências técnicas
 
--   Vite: https://vite.dev/guide/
--   React: https://react.dev/learn
--   React --- estado e compartilhamento de estado:
-    https://react.dev/learn/sharing-state-between-components
--   TypeScript + React/JSX:
-    https://www.typescriptlang.org/docs/handbook/react.html
--   Tailwind CSS com Vite:
-    https://tailwindcss.com/docs/installation/using-vite
--   Tailwind CSS responsivo:
-    https://tailwindcss.com/docs/responsive-design
--   shadcn/ui: https://ui.shadcn.com/docs
--   shadcn/ui + Vite: https://ui.shadcn.com/docs/installation/vite
--   Lucide: https://lucide.dev/
--   GitHub Pull Requests: https://docs.github.com/en/pull-requests
+- Vite: https://vite.dev/guide/
+- React: https://react.dev/learn
+- React --- estado e compartilhamento de estado:
+  https://react.dev/learn/sharing-state-between-components
+- TypeScript + React/JSX:
+  https://www.typescriptlang.org/docs/handbook/react.html
+- Tailwind CSS com Vite:
+  https://tailwindcss.com/docs/installation/using-vite
+- Tailwind CSS responsivo:
+  https://tailwindcss.com/docs/responsive-design
+- shadcn/ui: https://ui.shadcn.com/docs
+- shadcn/ui + Vite: https://ui.shadcn.com/docs/installation/vite
+- Lucide: https://lucide.dev/
+- GitHub Pull Requests: https://docs.github.com/en/pull-requests

@@ -1,42 +1,30 @@
+# Publica as imagens no ghcr.io depois que a CI passa, e implanta na VM.
+#
 # ```
-# push ──> CI (ci.yml) ──> CD (cd.yml) ──> publicar imagem ──> deploy na VM
+# push ──> CI (ci.yml) ──> CD (cd.yml) ──> publicar ──> deploy
 # ```
-
-# ## Este arquivo ainda não faz deploy
 #
-# Só o primeiro movimento: constrói e publica. O deploy na VM é o job `deploy`,
-# que entra no próximo passo. Ver docs/estrutura/deploy.md.
-#
-# ## Duas formas de disparar
-#
-# `workflow_run`     automático, depois que a CI passa
-# `workflow_dispatch` manual, pelo botão "Run workflow" na aba Actions
-#
-# O manual existe porque `workflow_run` só enxerga workflows que estão na branch
-# padrão (`main`). Entre o merge do cd.yml na develop e o merge na main, o
-# automático não dispara — e falha em silêncio, sem erro nenhum. O botão manual
-# cobre esse intervalo.
+# develop vira homologação, main vira produção. Ver docs/ci_cd/.
 
 name: CD (Continuous Delivery)
 
 on:
   workflow_run:
-    # Nome exato do workflow em ci.yml. Se o `name:` de lá mudar, este
-    # workflow_run para de disparar — e sem erro visível.
+    # Nome exato do `name:` de ci.yml. Se mudar lá, para de disparar sem erro.
     workflows: ['CI (Continuous Integration)']
     types: [completed]
 
+  # Cobre o intervalo entre o cd.yml entrar na develop e chegar na main, em que
+  # o workflow_run ainda não enxerga este arquivo.
   workflow_dispatch:
 
-# `packages: write` é o que permite publicar no ghcr.io. Sem isso o `docker
-# push` falha com "denied". O GITHUB_TOKEN é automático — não precisa criar.
+# `packages: write` habilita o push no ghcr.io. O GITHUB_TOKEN já existe.
 permissions:
   contents: read
   packages: write
 
-# Um deploy por vez. `cancel-in-progress: false` de propósito: em produção um
-# deploy em andamento não pode ser cancelado no meio, porque a imagem antiga pode
-# já ter saído do registry.
+# Deploy em andamento não é cancelado: em produção isso pode deixar a imagem
+# anterior sem retorno no registry.
 concurrency:
   group: cd-${{ github.ref_name }}
   cancel-in-progress: false
@@ -50,19 +38,16 @@ jobs:
     name: Construir e publicar
     runs-on: ubuntu-latest
 
-    # `steps.*.outputs` só vale dentro do próprio job. O job de deploy precisa
-    # saber a branch e as tags, então elas viram outputs do job.
+    # `steps.*.outputs` não atravessa jobs — o que o job de deploy precisa
+    # precisa ser declarado aqui.
     outputs:
       branch: ${{ steps.ctx.outputs.branch }}
       sha: ${{ steps.ctx.outputs.sha }}
       image-core: ${{ steps.images.outputs.core }}
       image-web: ${{ steps.images.outputs.web }}
 
-    # `workflow_run` não aceita filtro de branch no `on:`, então as condições
-    # vêm todas aqui.
-    #
-    # O primeiro termo é o disparo manual, que não tem `workflow_run` e por isso
-    # passaria pela checagem de baixo como branch vazia.
+    # `workflow_run` não aceita filtro de branch no `on:`. O primeiro termo
+    # cobre o disparo manual, que não tem `workflow_run`.
     if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
@@ -70,12 +55,8 @@ jobs:
         github.event.workflow_run.head_branch == 'main'))
 
     steps:
-      # Os dois gatilhos trazem o commit em lugares diferentes:
-      #   workflow_run      → event.workflow_run.head_sha
-      #   workflow_dispatch → github.sha
-      #
-      # Sem este passo, o `if:` de cima passaria, mas o checkout cairia na
-      # branch padrão e a imagem seria de outro código — sem erro no log.
+      # Os gatilhos trazem o commit de lugares diferentes; sem normalizar, o
+      # disparo manual cairia na branch padrão e publicaria o código errado.
       - name: Resolver commit e branch
         id: ctx
         run: |
@@ -112,24 +93,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Tag por commit, nunca `latest`.
+      # Tags explícitas por build. Um gerador único de tags seria compartilhado
+      # pelos dois builds, e cada um publicaria nas duas imagens: o `chat-core`
+      # acabaria contendo a imagem do nginx, com `node: not found` no
+      # migrate-core.
       #
-      # `latest` é um ponteiro que se move: se um deploy der errado não há como
-      # voltar, porque ele já aponta para outra imagem. Com o sha, o rollback é
-      # `docker pull ghcr.io/healthdevio/chat-core:5f62538`.
-      #
-      # A tag com o nome da branch serve só para inspeção: mostra "o que está em
-      # main" sem precisar saber o sha. O deploy usa sempre a tag do sha.
-      #
-      # ## Por que as tags são explícitas e não vêm do metadata-action
-      #
-      # O `metadata-action` com várias imagens gera uma lista de tags para
-      # TODAS elas. Passar essa mesma lista nos dois `build-push-action` faz cada
-      # build publicar nas duas: o Core vai também para `chat-web`, e a
-      # interface também para `chat-core`. O último push sobrescreve o outro, e
-      # `chat-core` acaba contendo a imagem do nginx — sem `node`, sem `dist`.
-      #
-      # O sintoma é `node: not found` no `migrate-core`, longe da causa.
+      # Tag por commit, nunca `latest`: `latest` se move, e sem número de versão
+      # não há como reverter. A tag de branch é só para inspeção.
       - name: Publicar a imagem do Core
         uses: docker/build-push-action@v6
         with:
@@ -160,9 +130,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Referência completa com a tag do commit. O `deploy.sh` recebe isto como
-      # IMAGE_CORE e IMAGE_WEB e grava no .env da VM — é isso que faz o
-      # `docker compose pull` na VM buscar exatamente a imagem deste commit.
+      # Referência completa que o deploy.sh grava no .env da VM.
       - name: Montar as referências
         id: images
         run: |
@@ -177,14 +145,9 @@ jobs:
           echo "${{ steps.images.outputs.core }}"
           echo "${{ steps.images.outputs.web }}"
 
-  # Os dois jobs de deploy são idênticos exceto pelo diretório e pelo ambiente do
-  # GitHub. Poderia ser um job só com matriz, mas a matriz esconde a diferença
-  # entre homologação e produção num bloco `include:` difícil de ler, e aqui a
-  # diferença é justamente o que importa.
-  #
-  # Os arquivos de deploy são enviados a cada deploy em vez de serem copiados à
-  # mão: uma cópia na VM desatualizada é um compose diferente do repositório, e
-  # o primeiro sintoma é um deploy que roda com a configuração antiga.
+  # Dois jobs e não uma matriz: a diferença entre os ambientes é o que importa,
+  # e uma matriz a esconderia num `include:`. Os arquivos vão por scp a cada
+  # deploy, para o repositório continuar sendo a fonte da verdade.
 
   deploy-homolog:
     name: Deploy homologação
@@ -200,34 +163,26 @@ jobs:
         with:
           ref: ${{ needs.build.outputs.sha }}
 
-      # Diagnóstico do scp: se o `source` não resolver, o drone-scp falha com
-      # "tar: empty archive" sem dizer qual caminho não existiu. Esta lista
-      # transforma um erro opaco em um caminho visível.
+      # Sem este `ls`, um `source` que não resolve vira um "tar: empty archive"
+      # sem dizer qual caminho faltou.
       - name: Conferir os arquivos que serão enviados
         run: ls -la apps/docker/docker-compose.deploy.yml apps/docker/deploy.sh
 
+      # `source` numa linha: em bloco `|` o item final vazio quebra o glob.
+      # `strip_components` remove apps/docker/, senão o script executado seria a
+      # cópia antiga que está na raiz.
       - name: Enviar o compose e o script
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          # Uma linha separada por vírgula. O bloco `|` com quebra de linha
-          # final vira um terceiro item vazio na lista, e o glob do tar não
-          # resolve — daí o "empty archive".
           source: apps/docker/docker-compose.deploy.yml,apps/docker/deploy.sh
-          # Sem isto o tar mantém a árvore: o arquivo cairia em
-          # /srv/omnia/homolog/apps/docker/deploy.sh, e o script executado
-          # continuaria sendo a cópia antiga que está na raiz.
           strip_components: 2
           target: /srv/omnia/homolog
 
-      # `env:` define as variáveis no runner; `envs:` (dentro de `with:`) diz
-      # quais delas atravessam o SSH. Sem o `envs`, a action não repassa
-      # nada, e o deploy.sh aborta com "informe IMAGE_CORE".
-      #
-      # O parêntese do `envs` não é decorativo: sem ele a lista é lida como um
-      # argumento só.
+      # `env:` define no runner, `envs:` diz o que atravessa o SSH. Sem o
+      # `envs` o deploy.sh aborta com "informe IMAGE_CORE".
       - name: Aplicar
         uses: appleboy/ssh-action@v1.2.2
         env:
@@ -248,9 +203,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
 
-    # O ambiente `production` aceita apenas `main` (ver
-    # docs/estrutura/config_github.md). Um deploy vindo de outra branch é
-    # barrado pelo próprio GitHub antes deste job rodar.
+    # O environment production aceita só `main`, então uma branch errada é
+    # barrada pelo próprio GitHub antes deste job rodar.
     environment: production
 
     if: needs.build.outputs.branch == 'main'

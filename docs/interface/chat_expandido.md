@@ -1,10 +1,10 @@
 # P1-T05 --- Chat Expandido
 
--   **Task:** P1-T05
--   **Nome:** Construir a visualização expandida
--   **Status:** Concluída e integrada
--   **PR:** #14
--   **Título do PR:** `feat: implementa chat expandido`
+- **Task:** P1-T05
+- **Nome:** Construir a visualização expandida
+- **Status:** Concluída e integrada
+- **PR:** #14
+- **Título do PR:** `feat: implementa chat expandido`
 
 ## Objetivo
 
@@ -15,7 +15,7 @@ maior para conversação.
 
 O `ExpandedChat` reutiliza:
 
-``` text
+```text
 ExpandedChat
 ├── ChatHeader
 ├── ChatStateView
@@ -27,7 +27,7 @@ A diferença principal é o espaço disponível.
 
 A interface atual utiliza:
 
-``` text
+```text
 h-[calc(100vh-6rem)]
 max-h-[600px]
 w-[600px]
@@ -40,14 +40,14 @@ excessivo e causasse problemas de overflow.
 
 O `App` controla:
 
-``` ts
+```ts
 isOpen
 isExpanded
 ```
 
 A transição é:
 
-``` text
+```text
 MiniChat
    ↓ expandir
 ExpandedChat
@@ -69,30 +69,30 @@ Isso reduz duplicação e mantém o comportamento visual consistente.
 
 Não foram implementados:
 
--   mensagens reais;
--   Mia AI;
--   REST;
--   SSE;
--   RAG;
--   banco vetorial;
--   persistência real.
+- mensagens reais;
+- Mia AI;
+- REST;
+- SSE;
+- RAG;
+- banco vetorial;
+- persistência real.
 
 ## Validação
 
--   `npm run format`
--   `git diff --check`
--   `npm run build`
--   teste manual da transição mini → expandido → mini
--   validação visual de overflow.
+- `npm run format`
+- `git diff --check`
+- `npm run build`
+- teste manual da transição mini → expandido → mini
+- validação visual de overflow.
 
 ## Critérios de aceite
 
--   [x] Chat expandido.
--   [x] Transição mini/expandido.
--   [x] Reutilização dos componentes.
--   [x] Mensagens preservadas durante a troca.
--   [x] Área maior para conversação.
--   [x] Build aprovado.
+- [x] Chat expandido.
+- [x] Transição mini/expandido.
+- [x] Reutilização dos componentes.
+- [x] Mensagens preservadas durante a troca.
+- [x] Área maior para conversação.
+- [x] Build aprovado.
 
 ## Clean Code
 

@@ -1,12 +1,12 @@
 ## P1-T03 --- Botao_Flutuante
 
--   **Task:** P1-T03
--   **Nome:** Implementar o botão flutuante
--   **Status:** Concluída e integrada à `develop`
--   **PR:** #5
--   **Commit registrado:**
-    `7638cb8 feat: implementa botão flutuante do chat`
--   **Branch histórica:** `feat/implementa-botao-flutuante`
+- **Task:** P1-T03
+- **Nome:** Implementar o botão flutuante
+- **Status:** Concluída e integrada à `develop`
+- **PR:** #5
+- **Commit registrado:**
+  `7638cb8 feat: implementa botão flutuante do chat`
+- **Branch histórica:** `feat/implementa-botao-flutuante`
 
 ## Objetivo
 
@@ -17,7 +17,7 @@ permite abrir e fechar a interface.
 
 O componente recebe:
 
-``` ts
+```ts
 isOpen: boolean
 onClick: () => void
 ```
@@ -31,30 +31,30 @@ Ele:
 
 Ele **não** deve:
 
--   chamar API;
--   fazer `fetch`;
--   consumir SSE;
--   manipular mensagens;
--   acessar histórico;
--   executar lógica da Mia AI;
--   conter regras de negócio.
+- chamar API;
+- fazer `fetch`;
+- consumir SSE;
+- manipular mensagens;
+- acessar histórico;
+- executar lógica da Mia AI;
+- conter regras de negócio.
 
 ## Implementação
 
 O botão utiliza ícones do Lucide e classes Tailwind para:
 
--   posicionamento flutuante;
--   formato circular;
--   hover;
--   foco;
--   transições;
--   estado aberto/fechado.
+- posicionamento flutuante;
+- formato circular;
+- hover;
+- foco;
+- transições;
+- estado aberto/fechado.
 
 O `App` mantém o estado `isOpen` e passa esse estado para o botão.
 
 Fluxo:
 
-``` text
+```text
 App
  └── isOpen
       └── FloatingChatButton
@@ -70,27 +70,27 @@ Também foi utilizado foco visível para navegação por teclado.
 
 ## Validação
 
--   `npm run build`
--   `npm run format`
--   teste manual no navegador
--   abertura e fechamento
--   troca de ícone
--   hover
--   foco
--   revisão das alterações antes do commit
--   Pull Request
+- `npm run build`
+- `npm run format`
+- teste manual no navegador
+- abertura e fechamento
+- troca de ícone
+- hover
+- foco
+- revisão das alterações antes do commit
+- Pull Request
 
 ## Critérios de aceite
 
--   [x] Botão visível.
--   [x] Botão acionável.
--   [x] Posicionamento flutuante.
--   [x] Ícone de abertura/fechamento.
--   [x] Estado controlado pelo pai.
--   [x] Feedback visual.
--   [x] Acessibilidade básica.
--   [x] Build aprovado.
--   [x] PR integrado.
+- [x] Botão visível.
+- [x] Botão acionável.
+- [x] Posicionamento flutuante.
+- [x] Ícone de abertura/fechamento.
+- [x] Estado controlado pelo pai.
+- [x] Feedback visual.
+- [x] Acessibilidade básica.
+- [x] Build aprovado.
+- [x] PR integrado.
 
 ## Clean Code
 
