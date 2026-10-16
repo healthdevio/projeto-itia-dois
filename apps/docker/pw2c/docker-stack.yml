@@ -1,0 +1,148 @@
+# Stack do Chat Omnia no Swarm da PW2C.
+#
+# Substitui o docker-compose.deploy.yml quando o deploy acontece no cluster.
+# O que muda em relacao ao compose:
+#
+#   - o Postgres ENTRA na stack. No compose ele vivia fora, gerenciado pelo
+#     Portainer numa rede externa. Aqui a stack e dona do banco.
+#   - `depends_on` nao funciona no Swarm. O Swarm nao sabe esperar o Postgres
+#     subir. O Core espera sozinho, no start.
+#   - nao existe servico de migration que sai. No compose, `migrate-core` rodava
+#     e terminava. No Swarm todo servico e perpetual, entao a migration roda
+#     dentro do Core, antes do servidor HTTP subir (ver entrypoint no Dockerfile).
+#   - a rede e `overlay`, e o Swarm resolve `postgres`, `core` e `web` por nome.
+#
+# Imagens: registry.cloud.grupopw2c.com.br
+# Stack:    omnia
+
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    command: ['postgres', '-c', 'shared_preload_libraries=pg_stat_statements']
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-omnia}
+      POSTGRES_USER: ${POSTGRES_USER:-omnia_user}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - omnia_postgres_data:/var/lib/postgresql/data
+    networks:
+      - omnia_net
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        # ## Por que o Postgres fica preso ao compute01
+        #
+        # O volume `omnia_postgres_data` e LOCAL: ele nao viaja entre nos do
+        # Swarm. Se o container do Postgres mudar de servidor, sobe la um banco
+        # VAZIO, e o Core passa a conectar num banco sem as tabelas dele.
+        #
+        # O sintoma e o mesmo de migration nao aplicada: "relation
+        # conversations does not exist". A diferenca e que a migration roda e
+        # reporta sucesso -- ela cria o schema no banco errado.
+        #
+        # A constraint usa node.hostname em vez de label porque o nome do no e
+        # um fato que ja existe: nao ha passo de preparacao, e nao ha risco de o
+        # label faltar e o Postgres ficar em Pending. Para conferir o nome exato:
+        #
+        #   docker node ls
+        #
+        # Se algum dia o banco precisar mudar de servidor, e o volume inteiro
+        # junto: `docker service rm omnia_postgres` e subir de novo, ja com a
+        # constraint apontando para o novo no.
+        constraints:
+          - node.hostname == compute01
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        parallelism: 1
+        order: stop-first
+        failure_action: pause
+
+  core:
+    image: ${OMNIA_CORE_IMAGE:-registry.cloud.grupopw2c.com.br/chat-core:latest}
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-omnia_user}:omnia@postgres:5432/${POSTGRES_DB:-omnia}
+      CORE_PORT: '3001'
+      AI_PROVIDER: ${AI_PROVIDER:-echo}
+      NVIDIA_API_KEY_FILE: /run/secrets/nvidia_api_key
+      NVIDIA_MODEL: ${NVIDIA_MODEL:-meta/llama-3.3-70b-instruct}
+      NVIDIA_BASE_URL: ${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
+      NVIDIA_TIMEOUT_MS: ${NVIDIA_TIMEOUT_MS:-300000}
+      NVIDIA_MAX_TOKENS: ${NVIDIA_MAX_TOKENS:-400}
+    secrets:
+      - nvidia_api_key
+    networks:
+      - omnia_net
+    deploy:
+      mode: replicated
+      # 1 replica e obrigatorio: a migration roda no start do Core, e duas tasks
+      #=subindo juntas rodariam a migration ao mesmo tempo.
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+      restart_policy:
+        condition: any
+        delay: 5s
+
+  web:
+    image: ${OMNIA_WEB_IMAGE:-registry.cloud.grupopw2c.com.br/chat-web:latest}
+    ports:
+      - target: 80
+        published: ${OMNIA_WEB_PORT:-8080}
+        protocol: tcp
+        mode: host
+    networks:
+      - omnia_net
+    # `depends_on` fica aqui por documentacao. No Swarm ele e ignorado: quem
+    # espera o Core subir e o proprio nginx, que so passa a responder depois que
+    # o Core aceita conexao.
+    depends_on:
+      - core
+    deploy:
+      mode: replicated
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+      restart_policy:
+        condition: any
+        delay: 5s
+
+volumes:
+  # ## Volume local, e isso e uma escolha -- nao um default
+  #
+  # Sem `driver_opts` de driver compartilhado, este volume vive num so no. E o
+  # que mantem o banco inteiro num servidor e protege os dados de uma task
+  # vazia em outro no -- mas significa que:
+  #
+  #   - se aquele servidor cair, o banco vai com ele. Sem replica, sem backup
+  #     automatico.
+  #   - `docker stack deploy` de uma versao nova de volume pode pedir remocao.
+  #
+  # A alternativa e um driver de volume compartilhado (NFS, Ceph, etc.), que
+  # precisa estar instalado no cluster. O Mongo do projeto da empresa usa o
+  # mesmo padrao local, entao seguir igual mantem a operacao compativel com a
+  # deles.
+  omnia_postgres_data:
+
+networks:
+  omnia_net:
+    driver: overlay
+    attachable: true
+
+secrets:
+  postgres_password:
+    external: true
+  nvidia_api_key:
+    external: true
