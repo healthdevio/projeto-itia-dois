@@ -7,7 +7,6 @@ cluster.
 
 ```
 [ ] O no compute01 confirmado no Swarm
-[ ] Secrets do Postgres e da chave da Nvidia criados
 [ ] Stack "omnia" criada no Portainer com o docker-stack.yml
 [ ] .Env da stack preenchido no Portainer
 [ ] OMNIA_CORE_IMAGE e OMNIA_WEB_IMAGE presentes no .Env
@@ -50,24 +49,21 @@ flowchart TB
     W[web] --> C
 ```
 
-## 2. Secrets do Swarm
+## 2. A senha no `.Env`
 
-A senha do banco e a chave da Nvidia não vão no `.env` nem no compose. São
-secrets, criados uma vez no servidor:
+A senha do Postgres é uma variável de ambiente da stack, não um `docker secret`.
+O template está em
+[`apps/docker/pw2c/stack.env.example`](../../apps/docker/pw2c/stack.env.example).
 
-```bash
-printf 'senha-real-aqui' | docker secret create postgres_password -
-printf '' | docker secret create nvidia_api_key -
+No stack, ela é exigida com `:?`:
+
+```yaml
+POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .Env da stack}
 ```
 
-O `nvidia_api_key` pode ficar vazio enquanto o `AI_PROVIDER=echo`. Para ativar a
-Nvidia, crie de novo com o valor real.
-
-Confirmar:
-
-```bash
-docker secret ls
-```
+O `:?` faz o Swarm **recusar a stack** com mensagem explícita, em vez de subir um
+banco com senha vazia. É a diferença entre um erro na hora do deploy e um banco
+que aceita uma senha que ninguém sabe.
 
 ## 3. A stack no Portainer
 
@@ -83,32 +79,29 @@ As variáveis de ambiente da stack são editáveis em **Stacks → omnia → Env
 variables**. Não são o mesmo arquivo que o compose: é onde o Portainer guarda os
 valores, e é de lá que o deploy lê.
 
-| Variável           | Valor                  | Por quê                          |
-| ------------------ | ---------------------- | -------------------------------- |
-| `OMNIA_CORE_IMAGE` | `.../chat-core:latest` | **o deploy reescreve com a tag** |
-| `OMNIA_WEB_IMAGE`  | `.../chat-web:latest`  | idem                             |
-| `OMNIA_WEB_PORT`   | `8080`                 | porta de entrada                 |
-| `POSTGRES_DB`      | `omnia`                | nome do banco                    |
-| `POSTGRES_USER`    | `omnia_user`           | idem                             |
-| `AI_PROVIDER`      | `echo`                 | texto fixo, sem gastar cota      |
-| `NVIDIA_*`         | —                      | só ao ativar `nvidia`            |
+| Variável            | Valor                  | Por quê                              |
+| ------------------- | ---------------------- | ------------------------------------ |
+| `OMNIA_CORE_IMAGE`  | `.../chat-core:latest` | **o deploy reescreve com a tag**     |
+| `OMNIA_WEB_IMAGE`   | `.../chat-web:latest`  | idem                                 |
+| `OMNIA_WEB_PORT`    | `8080`                 | porta de entrada                     |
+| `POSTGRES_DB`       | `omnia`                | nome do banco                        |
+| `POSTGRES_USER`     | `omnia_user`           | idem                                 |
+| `POSTGRES_PASSWORD` | a senha do banco       | **tem que ser a que o banco aceita** |
+| `AI_PROVIDER`       | `echo`                 | texto fixo, sem gastar cota          |
+| `NVIDIA_API_KEY`    | vazio                  | só ao ativar `nvidia`                |
+| `NVIDIA_*`          | —                      | demais da chave                      |
 
 **`OMNIA_CORE_IMAGE` e `OMNIA_WEB_IMAGE` precisam existir.** O deploy só troca o
 valor delas; se não existirem, a stack sobe com o `latest` do compose e todo
 deploy publica imagem sem aplicar.
 
-### A senha na URL
-
-O Core se conecta por URL, e a URL precisa da senha embutida:
+O Core se conecta por URL, e a URL monta a senha a partir do `.Env`:
 
 ```
-postgresql://omnia_user:SENHA@postgres:5432/omnia
+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
 ```
 
-O `entrypoint.sh` troca esse trecho pelo conteúdo do secret no boot. Mas o valor
-no `docker-stack.yml` **precisa ser a senha real** — é ele que o Postgres usa
-para criar a role na primeira subida. Com uma senha que ninguém sabe, o banco
-aceita a si mesmo e o Core não consegue entrar.
+Nada é escrito à mão no stack — é interpolação do Swarm.
 
 ## 5. Token da API do Portainer
 

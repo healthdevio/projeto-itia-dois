@@ -8,8 +8,6 @@ on:
 permissions:
   contents: read
 
-# Um deploy so por vez: duas chamadas a API no mesmo instante fazem o Swarm
-# aplicar a mesma stack duas vezes, e o rollback de uma derruba a imagem da outra.
 concurrency:
   group: deploy-pw2c-${{ github.ref_name }}
   cancel-in-progress: false
@@ -32,13 +30,6 @@ jobs:
           username: ${{ secrets.PW2C_REGISTRY_USERNAME }}
           password: ${{ secrets.PW2C_REGISTRY_PASSWORD }}
 
-      # Tags explicitas por build. Um gerador unico de tags seria compartilhado
-      # pelos dois builds, e cada um publicaria nas duas imagens: o `chat-core`
-      # acabaria contendo a imagem do nginx, com `node: not found` no boot.
-      #
-      # A tag de branch existe porque a stack e redesenhada a cada deploy. A tag
-      # de commit continua sendo a via de reverte: apontar OMNIA_CORE_IMAGE e
-      # OMNIA_WEB_IMAGE no Portainer para o sha de um deploy anterior.
       - name: Build and Push Core
         uses: docker/build-push-action@v6
         with:
@@ -71,19 +62,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # ## Por que API e nao webhook
-      #
-      # Webhook de stack e Business Edition. Em Community Edition o botao de
-      # webhook nao aparece na tela da stack -- e `POST /api/stacks/webhooks/{id}`
-      # devolve 404, porque o endpoint nao existe na CE.
-      #
-      # A alternativa e a API com token de acesso, que existe nas duas edicoes.
-      # Custo: precisa de PORTAINER_URL, PORTAINER_API_KEY, PORTAINER_STACK_ID e
-      # PORTAINER_ENDPOINT_ID -- quatro secrets em vez de um.
-      #
-      # A chamada reenvia o conteudo atual da stack junto com as variaveis de
-      # ambiente. E por isso que o shell tem `mode: json` no GITHUB_OUTPUT: sem
-      # isso o jq quebra o JSON no meio das aspas.
       - name: Buscar o estado atual da stack
         id: stack
         env:
@@ -113,8 +91,6 @@ jobs:
           jq -r '.StackFileContent' stack-antes.json > stack.yml
           jq -c '.Env // []' stack-antes.json > env-antes.json
 
-          # Confere que o arquivo veio com conteudo. Um corpo vazio aqui viraria
-          # um PUT com StackFileContent vazio, e o Swarm removeria os servicos.
           if [ ! -s stack.yml ]; then
             echo "::error::StackFileContent veio vazio" >&2
             exit 1
@@ -122,12 +98,6 @@ jobs:
 
           echo "linhas do compose: $(wc -l < stack.yml)"
 
-      # As variaveis de ambiente da stack. O `.Env` do GET traz as que ja existem;
-      # o filtro troca a tag das duas imagens e preserva o resto -- inclusive a
-      # senha do Postgres e as credenciais de AI, que vivem la.
-      #
-      # Enviar o `.Env` inteiro e obrigatorio: se o PUT mandasse so as duas
-      # tags, o Postgres subiria sem POSTGRES_PASSWORD.
       - name: Montar o payload
         id: payload
         env:
@@ -190,15 +160,7 @@ jobs:
               ;;
           esac
 
-      # A API responde assim que o Swarm aceita a atualizacao -- as tasks ainda
-      # estao subindo. Sem esta espera, o passo seguinte health-checkaria um
-      # Core da versao anterior e dariia verde com o deploy pela metade.
-      - name: Esperar as tasks subirem
-        run: sleep 45
-
-      # Confere pelo service, nao pela URL publica: em `mode: host` o Swarm
-      # publica no node que roda a task, e a rota de entrada depende do balance.
-      - name: Conferir o service no Swarm
+      - name: Conferir a stack
         env:
           PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
           PORTAINER_API_KEY: ${{ secrets.PORTAINER_API_KEY }}
@@ -214,17 +176,9 @@ jobs:
             "${BASE}/api/stacks/${PORTAINER_STACK_ID}?endpointId=${PORTAINER_ENDPOINT_ID}" \
             > stack-depois.json
 
-          # Todo servico com mais de zero replicas tem que ter ao menos uma task
-          # em execucao. Um servico preso em `Pending` explica por si so um
-          # deploy que "rodou" e nao subiu nada.
           echo "--- servicos ---"
           jq -r '.Services[]? | "  \(.Spec.Name): \(.Spec.Mode.Replicated.Replicas // 0) replica(s)"' \
             stack-depois.json
-
-          PENDING=$(jq '[.Services[]?.Spec.Mode.Replicated.Replicas // 0] | length' \
-            stack-depois.json)
-
-          echo "servicos declarados: ${PENDING}"
 
           echo
           echo "a API responde antes das tasks subirem. Para o estado real:"
