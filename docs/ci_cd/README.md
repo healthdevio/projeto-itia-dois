@@ -3,15 +3,16 @@
 Como o projeto chega do `git push` até a aplicação rodando no cluster Docker
 Swarm da PW2C, e o que precisa estar pronto para isso acontecer.
 
-| Documento                              | Assunto                                                    |
-| -------------------------------------- | ---------------------------------------------------------- |
-| [visao-geral.md](visao-geral.md)       | As três etapas e o diagrama do caminho completo            |
-| [decisoes.md](decisoes.md)             | **Por que cada chose assim.** Sem comentários nos arquivos |
-| [pre-requisitos.md](pre-requisitos.md) | O que precisa existir antes do primeiro deploy             |
-| [publicacao.md](publicacao.md)         | Construção e publicação das imagens                        |
-| [deploy.md](deploy.md)                 | O que acontece no cluster, serviço por serviço             |
-| [operacao.md](operacao.md)             | Verificar, diagnosticar e reverter                         |
-| [problemas/](problemas/README.md)      | **Diagnóstico.** Por sintoma, causa e resolução            |
+| Documento                                         | Assunto                                                    |
+| ------------------------------------------------- | ---------------------------------------------------------- |
+| [visao-geral.md](visao-geral.md)                  | As três etapas e o diagrama do caminho completo            |
+| [decisoes.md](decisoes.md)                        | **Por que cada chose assim.** Sem comentários nos arquivos |
+| [troca-de-servidor/](troca-de-servidor/README.md) | Como o deploy saiu da Oracle e veio para o cluster         |
+| [pre-requisitos.md](pre-requisitos.md)            | O que precisa existir antes do primeiro deploy             |
+| [publicacao.md](publicacao.md)                    | Construção e publicação das imagens                        |
+| [deploy.md](deploy.md)                            | O que acontece no cluster, serviço por serviço             |
+| [operacao.md](operacao.md)                        | Verificar, diagnosticar e reverter                         |
+| [problemas/](problemas/README.md)                 | **Diagnóstico.** Por sintoma, causa e resolução            |
 
 ## As três etapas
 
