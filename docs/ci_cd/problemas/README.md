@@ -8,21 +8,21 @@ Este documento é o **diagnóstico**. O processo que evita cada um deles está e
 
 ## Por sintoma
 
-| O que aparece                                | Problema                        | Seção                                             |
-| -------------------------------------------- | ------------------------------- | ------------------------------------------------- |
-| `deploy-pw2c.yml` não aparece na aba Actions | workflow fora da branch padrão  | [1](#1-o-deploy-pw2cyml-não-aparece)              |
-| `manifest unknown`                           | imagem não publicada            | [2](#2-manifest-unknown)                          |
-| `unauthorized`                               | credencial do registry          | [3](#3-unauthorized)                              |
-| `no matching manifest for linux/amd64`       | arquitetura errada              | [4](#4-no-matching-manifest-for-linuxamd64)       |
-| `web` responde 502                           | o Core não está no ar           | [5](#5-web-responde-502)                          |
-| `constraint requirements not satisfied`      | nenhum nó chamado `compute01`   | [6](#6-constraint-requirements-not-satisfied)     |
-| `relation "conversations" does not exist`    | banco vazio, em outro nó        | [7](#7-relation-conversations-does-not-exist)     |
-| `core` reiniciando em loop                   | banco fora ou senha errada      | [8](#8-core-reiniciando-em-loop)                  |
-| `postgres nao respondeu apos 30 tentativas`  | o Core não acha o banco         | [9](#9-postgres-nao-respondeu-apos-30-tentativas) |
-| migration falha sem motivo claro             | log incompleto                  | [10](#10-migration-falha-sem-causa)               |
-| migration pula a primeira                    | carimbo de outro pacote         | [11](#11-migration-pula-a-primeira)               |
-| workflow verde e a aplicação não mudou       | o `PUT` não redesenhou as tasks | [12](#12-workflow-verde-e-a-aplicação-não-mudou)  |
-| serviços removidos depois do deploy          | `StackFileContent` vazio        | [13](#13-serviços-removidos-depois-do-deploy)     |
+| O que aparece                               | Problema                        | Seção                                             |
+| ------------------------------------------- | ------------------------------- | ------------------------------------------------- |
+| `cd.yml` não aparece na aba Actions         | workflow fora da branch padrão  | [1](#1-o-cdyml-não-aparece)                       |
+| `manifest unknown`                          | imagem não publicada            | [2](#2-manifest-unknown)                          |
+| `unauthorized`                              | credencial do registry          | [3](#3-unauthorized)                              |
+| `no matching manifest for linux/amd64`      | arquitetura errada              | [4](#4-no-matching-manifest-for-linuxamd64)       |
+| `web` responde 502                          | o Core não está no ar           | [5](#5-web-responde-502)                          |
+| `constraint requirements not satisfied`     | nenhum nó chamado `compute01`   | [6](#6-constraint-requirements-not-satisfied)     |
+| `relation "conversations" does not exist`   | banco vazio, em outro nó        | [7](#7-relation-conversations-does-not-exist)     |
+| `core` reiniciando em loop                  | banco fora ou senha errada      | [8](#8-core-reiniciando-em-loop)                  |
+| `postgres nao respondeu apos 30 tentativas` | o Core não acha o banco         | [9](#9-postgres-nao-respondeu-apos-30-tentativas) |
+| migration falha sem motivo claro            | log incompleto                  | [10](#10-migration-falha-sem-causa)               |
+| migration pula a primeira                   | carimbo de outro pacote         | [11](#11-migration-pula-a-primeira)               |
+| workflow verde e a aplicação não mudou      | o `PUT` não redesenhou as tasks | [12](#12-workflow-verde-e-a-aplicação-não-mudou)  |
+| serviços removidos depois do deploy         | `StackFileContent` vazio        | [13](#13-serviços-removidos-depois-do-deploy)     |
 
 ## Por causa
 
@@ -30,9 +30,9 @@ Quando o sintoma não estiver na tabela, o problema real costuma ser um destes.
 
 ---
 
-## 1. O `deploy-pw2c.yml` não aparece
+## 1. O `cd.yml` não aparece
 
-**Sintoma.** A aba Actions não lista `Deploy Chat Omnia (PW2C / Swarm)`.
+**Sintoma.** A aba Actions não lista `CD (Continuous Delivery)`.
 
 **Causa.** `on: push` enxerga o workflow da branch de destino do push. Se o
 arquivo não existir naquela branch, ele não aparece.
@@ -43,7 +43,7 @@ arquivo não existir naquela branch, ele não aparece.
 git ls-tree -r --name-only main -- .github/workflows
 ```
 
-Tem que listar `ci.yml` e `deploy-pw2c.yml`.
+Tem que listar `ci.yml` e `cd.yml`.
 
 **Como resolver.** Promover pelo fluxo normal de PR.
 

@@ -94,13 +94,15 @@ ele cobre o repositório inteiro com um conjunto só de regras.
 ## Deploy
 
 A interface vira a imagem `chat-web`, construída pelo `Dockerfile.web` e
-publicada no `ghcr.io` pelo CD. O nginx que ela serve está em
-`apps/docker/nginx.conf`.
+publicada no registry da PW2C pelo `cd.yml`. O nginx que ela serve está em
+`apps/docker/nginx.conf`, e faz proxy de `/api` para o Core na rede overlay do
+Swarm.
 
-| | |
-| --- | --- |
-| Homologação | <http://167.126.20.64:8080> |
-| Produção | <http://167.126.20.64> |
+A porta de entrada vem de `OMNIA_WEB_PORT` no `Environment variables` da stack,
+com padrão `8080`.
+
+A interface é o **único** serviço com porta publicada. O Core e o Postgres ficam
+dentro da rede overlay, sem porta.
 
 Detalhamento em [`docs/ci_cd/deploy.md`](../../docs/ci_cd/deploy.md).
 

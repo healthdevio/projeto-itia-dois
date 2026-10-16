@@ -13,7 +13,7 @@ O `ghcr.io` herdava a visibilidade do repositório e usava o `GITHUB_TOKEN`
 automático. Um registry externo exige credencial criada à mão: `PW2C_REGISTRY_USERNAME`
 e `PW2C_REGISTRY_PASSWORD`.
 
-O `deploy-pw2c.yml` também perdeu o `permissions: packages: write` — só é
+O `cd.yml` também perdeu o `permissions: packages: write` — só é
 necessário para o GitHub Packages.
 
 ## 2. A entrada do deploy

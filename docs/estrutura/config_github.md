@@ -41,7 +41,7 @@ reexibir depois, e é preciso gerar outro se perder.
 
 ## Por que o token e não uma senha
 
-O `deploy-pw2c.yml` não usa `username`/`password` do Portainer. Usa token, porque
+O `cd.yml` não usa `username`/`password` do Portainer. Usa token, porque
 é revogável sem trocar senha, e o escopo é explícito: o token faz o que o
 deploy precisa e nada mais.
 
@@ -60,7 +60,7 @@ Isso muda duas coisas em relação ao `ghcr.io`:
 | Credencial no workflow | `GITHUB_TOKEN`, automático | `PW2C_REGISTRY_PASSWORD`, criado à mão |
 | Visibilidade           | herda do repositório       | a que a empresa definir                |
 
-O repositório continua privado. O `deploy-pw2c.yml` não precisa de
+O repositório continua privado. O `cd.yml` não precisa de
 `packages: write` — as permissões padrão bastam, porque não é o GitHub Packages.
 
 ## Autenticação no cluster
@@ -93,7 +93,7 @@ workflow inteiro verde.
 
 ## Ambientes
 
-O `deploy-pw2c.yml` **não usa GitHub Environments**. A proteção de produção
+O `cd.yml` **não usa GitHub Environments**. A proteção de produção
 acontece pelo merge do PR, não por approval na tela do workflow.
 
 Se a empresa quiser aprovação explícita antes de atualizar a stack, dá para
