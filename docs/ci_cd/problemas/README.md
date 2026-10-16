@@ -1,29 +1,28 @@
 # Problemas
 
-Catálogo dos problemas que já ocorreram na pipeline, e o que fazer quando um deles
-aparecer de novo.
+Catálogo dos problemas que podem ocorrer na pipeline, e o que fazer quando um
+deles aparecer de novo.
 
 Este documento é o **diagnóstico**. O processo que evita cada um deles está em
 [`../ci_cd/`](../README.md).
 
 ## Por sintoma
 
-O caminho mais rápido: achei a mensagem no log e pule para a seção.
-
-| O que aparece                       | Problema                       | Seção                                        |
-| ----------------------------------- | ------------------------------ | -------------------------------------------- |
-| `cd.yml` não aparece na aba Actions | workflow fora da branch padrão | [1](#1-o-cdyml-não-aparece)                  |
-| `manifest unknown`                  | imagem não publicada           | [2](#2-manifest-unknown)                     |
-| `unauthorized`                      | credencial do registry         | [3](#3-unauthorized)                         |
-| `node: not found`                   | imagem trocada no registry     | [4](#4-node-not-found)                       |
-| `tar: empty archive`                | scp não achou os arquivos      | [5](#5-tar-empty-archive)                    |
-| `IMAGE_CORE missing`                | variável não chegou ao script  | [6](#6-required-variable-image_core-missing) |
-| `getaddrinfo ENOTFOUND postgres`    | banco fora da rede             | [7](#7-getaddrinfo-enotfound-postgres)       |
-| healthcheck travado em `Waiting`    | DNS ou alias                   | [8](#8-healthcheck-travado-em-waiting)       |
-| migration falha sem motivo claro    | log incompleto                 | [9](#9-migration-falha-sem-causa)            |
-| migration pula a primeira           | carimbo de outro pacote        | [10](#10-migration-pula-a-primeira)          |
-| `database: "down"`                  | senha do banco                 | [11](#11-database-down)                      |
-| `core` reiniciando em loop          | `DATABASE_URL` ou migration    | [12](#12-core-reiniciando-em-loop)           |
+| O que aparece                                | Problema                        | Seção                                             |
+| -------------------------------------------- | ------------------------------- | ------------------------------------------------- |
+| `deploy-pw2c.yml` não aparece na aba Actions | workflow fora da branch padrão  | [1](#1-o-deploy-pw2cyml-não-aparece)              |
+| `manifest unknown`                           | imagem não publicada            | [2](#2-manifest-unknown)                          |
+| `unauthorized`                               | credencial do registry          | [3](#3-unauthorized)                              |
+| `no matching manifest for linux/amd64`       | arquitetura errada              | [4](#4-no-matching-manifest-for-linuxamd64)       |
+| `web` responde 502                           | o Core não está no ar           | [5](#5-web-responde-502)                          |
+| `constraint requirements not satisfied`      | nenhum nó chamado `compute01`   | [6](#6-constraint-requirements-not-satisfied)     |
+| `relation "conversations" does not exist`    | banco vazio, em outro nó        | [7](#7-relation-conversations-does-not-exist)     |
+| `core` reiniciando em loop                   | banco fora ou senha errada      | [8](#8-core-reiniciando-em-loop)                  |
+| `postgres nao respondeu apos 30 tentativas`  | o Core não acha o banco         | [9](#9-postgres-nao-respondeu-apos-30-tentativas) |
+| migration falha sem motivo claro             | log incompleto                  | [10](#10-migration-falha-sem-causa)               |
+| migration pula a primeira                    | carimbo de outro pacote         | [11](#11-migration-pula-a-primeira)               |
+| workflow verde e a aplicação não mudou       | o `PUT` não redesenhou as tasks | [12](#12-workflow-verde-e-a-aplicação-não-mudou)  |
+| serviços removidos depois do deploy          | `StackFileContent` vazio        | [13](#13-serviços-removidos-depois-do-deploy)     |
 
 ## Por causa
 
@@ -31,15 +30,12 @@ Quando o sintoma não estiver na tabela, o problema real costuma ser um destes.
 
 ---
 
-## 1. O `cd.yml` não aparece na aba Actions
+## 1. O `deploy-pw2c.yml` não aparece
 
-**Sintoma.** A aba Actions não lista `CD (Continuous Delivery)`, ou o botão
-`Run workflow` não existe.
+**Sintoma.** A aba Actions não lista `Deploy Chat Omnia (PW2C / Swarm)`.
 
-**Causa.** `workflow_run` e `workflow_dispatch` só enxergam workflows presentes na
-**branch padrão** do repositório, que é a `main`. Se o `cd.yml` estiver apenas na
-`develop`, o workflow fica inerte — e a falha é **silenciosa**: sem erro, sem
-aviso, nada acontece.
+**Causa.** `on: push` enxerga o workflow da branch de destino do push. Se o
+arquivo não existir naquela branch, ele não aparece.
 
 **Como confirmar.**
 
@@ -47,11 +43,9 @@ aviso, nada acontece.
 git ls-tree -r --name-only main -- .github/workflows
 ```
 
-Tem que listar `ci.yml` e `cd.yml`.
+Tem que listar `ci.yml` e `deploy-pw2c.yml`.
 
-**Como resolver.** Promover o `cd.yml` para a `main`, pelo fluxo normal de PR.
-
-**Prevenção.** Promover para a `main` junto com a primeira correção do `cd.yml`.
+**Como resolver.** Promover pelo fluxo normal de PR.
 
 ---
 
@@ -63,16 +57,13 @@ Tem que listar `ci.yml` e `cd.yml`.
 manifest unknown: manifest tagged by "89d7ca2" does not exist
 ```
 
-**Causa.** O login no registry está bom — é isso que distingue do problema 3.
-A imagem simplesmente não foi publicada, porque o build não rodou ou falhou.
+**Causa.** O login no registry está bom — é isso que distingue do problema 3. A
+imagem simplesmente não foi publicada.
 
 **Como resolver.**
 
-1. Abrir a aba **Actions**, achar o run do CD e ver o job `build`
-2. Se o job não existe, o CD nem disparou — voltar ao problema 1
-3. Se o job falhou, ler o log: quase sempre é autenticação ou quota
-
-**Prevenção.** Conferir o passo **O que foi publicado** ao final do job `build`.
+1. Abrir a aba **Actions** e ver se o job de build rodou
+2. Se falhou, ler o log — quase sempre é autenticação ou quota
 
 ---
 
@@ -84,211 +75,184 @@ A imagem simplesmente não foi publicada, porque o build não rodou ou falhou.
 unauthorized: incorrect username or password
 ```
 
-**Causa.** Uma de três:
+**Causa.** Uma de duas:
 
-| Situação                      | Como reconhecer                                                   |
-| ----------------------------- | ----------------------------------------------------------------- |
-| Nunca fez login na VM         | `cat ~/.docker/config.json` não tem `ghcr.io`                     |
-| Fez login com `sudo`          | o arquivo está em `/root/.docker/`, e o deploy roda como `ubuntu` |
-| Token expirou ou foi revogado | o login funcionou antes e parou                                   |
-
-**Como resolver.**
-
-```bash
-nano /tmp/tok
-# cola um token novo com escopo read:packages, Ctrl+O, Enter, Ctrl+X
-
-docker login ghcr.io -u USUARIO --password-stdin < /tmp/tok
-rm /tmp/tok
-```
-
-**Prevenção.** Nunca usar `sudo` no login. O `ubuntu` já está no grupo `docker`, e
-o `deploy.sh` chama `docker` sem privilégio.
-
-Token de PAT expira em 90 dias por padrão. Renovar antes.
-
----
-
-## 4. `node: not found`
-
-**Sintoma.** Um serviço que deveria rodar Node falha com:
-
-```
-/docker-entrypoint.sh: exec: line 47: node: not found
-```
-
-**Causa.** A imagem baixada **não é a que se esperava**. Duas possibilidades:
-
-| Mensagem                    | Causa                                              |
-| --------------------------- | -------------------------------------------------- |
-| `node: not found`           | a imagem é de outra aplicação (nginx não tem Node) |
-| `executable file not found` | o comando está errado no compose                   |
-
-**Como confirmar.** Na VM:
-
-```bash
-docker run --rm --entrypoint sh ghcr.io/healthdevio/chat-core:<tag> \
-  -c "which node; ls dist/"
-```
-
-Sem `node` e sem `dist`, a imagem está trocada.
-
-**Como resolver.** Republicar a imagem correta e rodar o deploy de novo.
-
-**Prevenção.** Cada `build-push-action` precisa receber **tags explícitas**, uma
-linha por imagem. Se um gerador único de tags estiver configurado para as duas
-imagens, cada build publica nas duas — e o último sobrescreve o outro, deixando
-`chat-core` com o conteúdo da interface.
-
-Conferir no registry: as duas tags de um mesmo build precisam ter **IDs de imagem
-diferentes**.
-
----
-
-## 5. `tar: empty archive`
-
-**Sintoma.**
-
-```
-tar: empty archive
-exit status 1
-```
-
-**Causa.** O `scp-action` monta um tar com os caminhos de `source` e nenhum
-resolveu para arquivo.
-
-Duas causas possíveis:
-
-| `source`                        | Problema                                   |
-| ------------------------------- | ------------------------------------------ |
-| Bloco `\|` com quebras de linha | o item final vazio quebra o glob           |
-| Caminho escrito errado          | o arquivo não está onde a configuração diz |
-
-**Como resolver.**
-
-```yaml
-source: apps/docker/docker-compose.deploy.yml,apps/docker/deploy.sh
-```
-
-Uma linha, separada por vírgula, sem espaço.
-
-**Prevenção.** Manter um passo de verificação antes do scp:
-
-```yaml
-- name: Conferir os arquivos que serão enviados
-  run: ls -la apps/docker/docker-compose.deploy.yml apps/docker/deploy.sh
-```
-
-Com ele, o erro deixa de ser opaco.
-
-### Os arquivos chegam no lugar errado
-
-**Sintoma.** O scp passa, mas o `deploy.sh` executado é uma versão antiga.
-
-**Causa.** O scp preserva a árvore do tar no destino:
-
-```
-source: apps/docker/deploy.sh
-        ↓
-/srv/omnia/homolog/apps/docker/deploy.sh    ← caiu aqui
-/srv/omnia/homolog/deploy.sh                 ← a cópia antiga, que é executada
-```
-
-**Como resolver.**
-
-```yaml
-strip_components: 2
-```
-
-Remove os dois primeiros níveis e deixa o arquivo na raiz.
-
----
-
-## 6. `required variable IMAGE_CORE missing`
-
-**Sintoma.**
-
-```
-./deploy.sh: line 61: IMAGE_CORE: informe IMAGE_CORE
-```
-
-**Causa.** O `deploy.sh` exige `IMAGE_CORE` e `IMAGE_WEB` por variável de
-ambiente, e o workflow não está repassando.
-
-No `appleboy/ssh-action` são **duas peças**, em lugares diferentes:
-
-```yaml
-env: # define no runner
-  IMAGE_CORE: ${{ needs.build.outputs.image-core }}
-  IMAGE_WEB: ${{ needs.build.outputs.image-web }}
-with:
-  envs: 'IMAGE_CORE,IMAGE_WEB' # input: o que atravessa o SSH
-```
-
-`envs:` dentro de `with:`, porque é um input da action. `environment:` **não
-existe** naquele schema — a action ignora, e as variáveis chegam vazias.
-
-**Prevenção.** Ler as duas peças na mesma tela, e lembrar que `steps.*.outputs`
-não atravessa jobs: quem produz precisa declarar em `outputs:` no nível do job.
-
----
-
-## 7. `getaddrinfo ENOTFOUND postgres`
-
-**Sintoma.** O Core não sobe, e o erro cita `postgres`.
-
-**Causa.** O Core resolve o host pelo nome do serviço no compose, `postgres`. Essa
-resolução só existe na rede externa `omnia-db`.
+| Situação                         | Como reconhecer                               |
+| -------------------------------- | --------------------------------------------- |
+| Credencial não criada no cluster | `docker service ls` mostra a task reiniciando |
+| Token revogado ou expirado       | o login funcionou antes e parou               |
 
 **Como resolver.**
 
 ```bash
-sudo docker network connect --alias postgres omnia-db omnia-postgres
-docker network inspect omnia-db --format '{{range .Containers}}{{.Name}} {{end}}'
+printf 'usuario' | docker login registry.cloud.grupopw2c.com.br --password-stdin
 ```
 
-Precisa listar `omnia-postgres`.
-
-**Prevenção.** O banco é gerenciado por fora do compose, então essa conexão é
-manual e precisa ser refeita quando o Portainer recria o container. Ver
-[pre-requisitos](../pre-requisitos.md).
+**Prevenção.** O mesmo segredo é usado no GitHub e no cluster. Divergência entre
+os dois é a causa mais comum — trocar no GitHub e esquecer o cluster.
 
 ---
 
-## 8. Healthcheck travado em `Waiting`
+## 4. `no matching manifest for linux/amd64`
 
-**Sintoma.** O serviço `db` fica em `Waiting` e o deploy não termina. O
-`migrate-core` nunca começa.
+**Sintoma.** A task do Swarm não sobe e o log cita a arquitetura.
 
-**Causa.** Quase sempre DNS. O healthcheck roda `pg_isready` em loop até o banco
-responder, e sem resolução de nome ele repete para sempre — nunca sai, nunca
-falha.
+**Causa.** A imagem foi construída para outra arquitetura. A Actions roda em
+`ubuntu-latest`, que é amd64, mas o build precisa declarar isso explicitamente se
+o cluster exigir:
+
+```yaml
+platforms: linux/amd64
+```
+
+**Como resolver.** Republicar com `platforms: linux/amd64` e atualizar a stack.
+
+---
+
+## 5. `web` responde 502
+
+**Sintoma.** A interface abre, mas `/api/*` devolve 502.
+
+**Causa.** O nginx responde e o Core não. Quase sempre é o Core subindo devagar: a
+migration roda antes do servidor HTTP, e isso leva alguns segundos.
 
 **Como diagnosticar.**
 
 ```bash
-docker logs omnia-db-1
-docker exec omnia-db-1 getent hosts postgres
+docker service ls --filter name=omnia_core    # deve mostrar 1/1
+docker service logs omnia_core --tail 50
 ```
 
-`no response` repetindo, ou saída vazia do `getent`, é DNS.
-
-**Como resolver.** Reconectar o banco com o alias (problema 7) e derrubar o
-container velho:
-
-```bash
-docker rm -f omnia-db-1
-```
-
-O `up` do próximo deploy recria limpo.
-
-**Prevenção.** Vale notar que `Waiting` é um estado de espera, não de falha: o
-workflow fica pendurado sem timeout. Ao ver `Waiting`, o passo seguinte é olhar o
-`docker logs` do serviço, não esperar.
+**Se o Core estiver em `0/1`**, o problema é de subida — vá ao problema 8.
 
 ---
 
-## 9. Migration falha sem causa clara
+## 6. `constraint requirements not satisfied`
+
+**Sintoma.** O Postgres fica em `Pending`, e o Core em `0/1`.
+
+**Causa.** A constraint exige um nó chamado `compute01`:
+
+```yaml
+placement:
+  constraints:
+    - node.hostname == compute01
+```
+
+Nenhum nó do cluster tem esse nome.
+
+**Como confirmar.**
+
+```bash
+docker node ls
+```
+
+**Como resolver.** Ajustar a constraint para o nome real que aparecer na coluna
+`HOSTNAME`, e atualizar a stack.
+
+**Prevenção.** Conferir o nome do nó **antes** do primeiro deploy. É o
+pré-requisito que mais trava.
+
+---
+
+## 7. `relation "conversations" does not exist`
+
+**Sintoma.** O Core conecta no banco e a API falha ao consultar.
+
+**Causa.** O Postgres **não está no `compute01`**. O volume é local, e um banco
+em outro nó sobe vazio — e a migration, longe de falhar, cria o schema no lugar
+errado.
+
+Este é o sintoma mais enganoso do catálogo: o log do Core mostra a migration
+como aplicada com sucesso, e o banco realmente recebeu as tabelas. Só que em um
+outro banco.
+
+**Como confirmar.**
+
+```bash
+docker service ps omnia_postgres --no-trunc
+```
+
+`CURRENT NODE` precisa ser `compute01`. E o log do Core precisa mostrar a conexão
+no banco certo:
+
+```bash
+docker service logs omnia_core --tail 50 | grep -i postgres
+```
+
+**Como resolver.**
+
+```bash
+docker service rm omnia_postgres
+```
+
+E subir de novo com a constraint corrigida. **Atenção**: o volume antigo fica
+órfão no nó anterior, com os dados. Se havia algo a preservar:
+
+```bash
+docker volume ls | grep omnia_postgres
+```
+
+**Prevenção.** A constraint existe para isso. Ver
+[deploy.md](../deploy.md).
+
+---
+
+## 8. `core` reiniciando em loop
+
+**Sintoma.** O Core sobe e cai. `0/1` ou `1/1` oscilando.
+
+**Causa.** Uma de duas:
+
+| Situação              | Como reconhecer                             |
+| --------------------- | ------------------------------------------- |
+| Banco fora do alcance | `postgres nao respondeu apos 30 tentativas` |
+| Senha errada          | `password authentication failed`            |
+
+**Como diagnosticar.**
+
+```bash
+docker service logs omnia_core --tail 50
+```
+
+**Como resolver.** Ver o problema 9 e o de senha abaixo.
+
+### Senha errada
+
+O Core lê a senha do secret, mas o Postgres foi criado com a senha que estava em
+`DATABASE_URL` no `docker-stack.yml`. Se as duas divergirem, o banco sobe e o
+Core não entra.
+
+```bash
+docker exec <id-postgres> env | grep POSTGRES
+```
+
+**Prevenção.** O valor em `DATABASE_URL` precisa ser a senha real. Ver
+[pre-requisitos.md](../pre-requisitos.md).
+
+---
+
+## 9. `postgres nao respondeu apos 30 tentativas`
+
+**Sintoma.** O `entrypoint.sh` desiste de esperar.
+
+**Causa.** O Core não resolve o nome `postgres`, ou o banco não está no ar.
+
+**Como diagnosticar.**
+
+```bash
+docker service ls --filter name=omnia_postgres
+docker service inspect omnia_core --format '{{json .Spec.TaskTemplate.Networks}}'
+```
+
+Os dois precisam listar `omnia_net`.
+
+**Como resolver.** Se o Postgres estiver `1/1` e o Core não acha o nome, os dois
+serviços estão em redes diferentes — confira `docker stack ls` e recrie a stack.
+
+---
+
+## 10. Migration falha sem causa
 
 **Sintoma.**
 
@@ -312,48 +276,19 @@ if (error instanceof Error && error.cause) {
 }
 ```
 
-**Prevenção.** Sem essa segunda linha, toda falha futura de migration mostra só
-o SQL — e o diagnóstico depende de adivinhar.
+**Prevenção.** Sem essa segunda linha, toda falha futura mostra só o SQL.
 
 ---
 
-## 10. Migration pula a primeira
+## 11. Migration pula a primeira
 
-**Sintoma.** A primeira migration de um pacote nunca é aplicada; a seguinte falha
-porque falta a tabela que ela criaria.
+**Sintoma.** A primeira migration de um pacote nunca é aplicada.
 
 **Causa.** Dois pacotes do Drizzle no **mesmo banco**, com a tabela de controle
-compartilhada:
+compartilhada. O migrator decide o que já rodou comparando timestamps, e o Core lê
+o carimbo do `knowledge` — que é mais novo que a primeira migration do Core.
 
-```
-drizzle.__drizzle_migrations
-```
-
-O migrator decide o que já rodou comparando o timestamp de cada migration com o
-último carimbo registrado. Se o carimbo vem de outro pacote:
-
-```
-knowledge  0000 a 0006   2026-09-25 a 2026-09-30
-chat-core  0000          2026-09-28   ← mais antiga que o carimbo, então pula
-           0001 a 0003   2026-10-01 a 2026-10-06
-```
-
-O Core lê `2026-09-30`, conclui que a própria `0000` já foi aplicada, e pula.
-
-**Como confirmar.**
-
-```bash
-docker exec omnia-postgres psql -U omnia_user -d omnia \
-  -c "select created_at from drizzle.__drizzle_migrations order by created_at;"
-```
-
-E comparar com os timestamps dos journals:
-
-```bash
-node -e "console.log(require('./drizzle/meta/_journal.json').entries)"
-```
-
-**Como resolver.** Dar um schema próprio para as migrations do pacote:
+**Como resolver.** Dar um schema próprio ao pacote:
 
 ```ts
 await migrate(drizzle(pool, { schema }), {
@@ -362,92 +297,71 @@ await migrate(drizzle(pool, { schema }), {
 });
 ```
 
-E o mesmo no `drizzle.config.ts` do pacote, para o `db:migrate` de
-desenvolvimento gravar no mesmo lugar:
-
-```ts
-migrations: {
-  schema: 'drizzle_core',
-  table: '__drizzle_migrations',
-},
-```
+E o mesmo no `drizzle.config.ts`, para o `db:migrate` de desenvolvimento gravar no
+mesmo lugar.
 
 **Prevenção.** Sempre que um segundo pacote Drizzle entra no mesmo banco, os dois
-precisam de schema de migrations distintos. E vale lembrar: dois `migrate()` com
-schemas diferentes podem **rodar em paralelo** com o mesmo nome de tabela,
-porque `search_path` é resolvido por pool. Se os dois subirem juntos, definir o
-schema por **variável de ambiente** e passar na URL, não apenas no parâmetro.
+precisam de schema de migrations distintos.
 
 ---
 
-## 11. `database: "down"`
+## 12. Workflow verde e a aplicação não mudou
 
-**Sintoma.** O health check responde:
+**Sintoma.** O deploy rodou sem erro, mas a interface continua igual.
 
-```json
-{ "status": "degraded", "database": "down" }
-```
+**Causa.** Uma de três:
 
-E a interface **continua respondendo 200**, porque o nginx serve o bundle antes do
-Core estar pronto.
+| Situação                                | Como reconhecer                                      |
+| --------------------------------------- | ---------------------------------------------------- |
+| `OMNIA_CORE_IMAGE` não existe no `.Env` | o `jq` não encontrou, e avisou com `::warning::`     |
+| O Swarm não recebeu a atualização       | o `PUT` respondeu 200 mas a task não foi redesenhada |
+| A tag aplicada é a mesma                | o `.Env` aponta para `latest` e o build não rodou    |
 
-**Causa.** `POSTGRES_PASSWORD` do `.env` não é a senha que o banco aceita.
-
-**Como resolver.**
-
-```bash
-docker exec omnia-postgres printenv | grep POSTGRES_PASSWORD
-```
-
-Conferir contra o `.env` do ambiente.
-
-Para conferir se o Core alcança o banco, com a senha do `.env`:
+**Como diagnosticar.**
 
 ```bash
-docker exec omnia-core-1 sh -c \
-  'PGPASSWORD="$POSTGRES_PASSWORD" psql -h postgres -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select 1;"'
+docker service inspect omnia_core --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}'
 ```
 
-**Prevenção.** O `.env` nunca é regenerado pelo deploy — só as linhas `IMAGE_*` são
-reescritas. A senha que estiver lá é a que o banco precisa.
+Se tiver `:latest` em vez de `:develop` ou `:main`, o problema é o `.Env`.
+
+**Como resolver.** Adicionar `OMNIA_CORE_IMAGE` e `OMNIA_WEB_IMAGE` no `.Env` da
+stack, com o nome exato que o `jq` procura.
 
 ---
 
-## 12. `core` reiniciando em loop
+## 13. Serviços removidos depois do deploy
 
-**Sintoma.** O container do Core sobe e cai, repetidamente, e o `web` responde 502.
+**Sintoma.** A stack fica sem serviços depois de um `PUT`.
 
-**Causa.** Uma de duas:
+**Causa.** O `PUT` **substitui**. Se o corpo não tiver `StackFileContent`, o Swarm
+entende que a stack ficou vazia e remove tudo.
 
-| Situação               | Como reconhecer                            |
-| ---------------------- | ------------------------------------------ |
-| `DATABASE_URL` errada  | o health check responde `database: "down"` |
-| Migration não aplicada | a tabela não existe no banco               |
-
-**Como resolver.**
+**Como resolver.** O workflow já valida isso antes de enviar:
 
 ```bash
-docker logs omnia-core-1 --tail 50
-docker exec omnia-postgres psql -U omnia_user -d omnia -c "\dt"
+if [ ! -s stack.yml ]; then
+  echo "::error::StackFileContent veio vazio" >&2
+  exit 1
+fi
 ```
 
-Faltando as tabelas do Core, o problema 10 se aplica.
+Se aconteceu, o `GET` anterior falhou silenciosamente. Subir a stack de novo pelo
+Portainer com o `docker-stack.yml`.
 
-**Prevenção.** A ordem de subida já garante que o Core só sobe depois das
-migrations, por `service_completed_successfully`. Se as tabelas não existem mesmo
-assim, a migration rodou em outro schema.
+**Prevenção.** Nunca enviar `PUT` com o compose montado à mão. O fluxo
+`GET` → modifica → `PUT` existe por isso.
 
 ---
 
-## Problemas que não são do pipeline
+## Problemas que não são da pipeline
 
-| Sintoma                                                        | Onde é                                                       |
-| -------------------------------------------------------------- | ------------------------------------------------------------ |
-| `curl: (3) URL rejected: Port number was not a decimal number` | aspas no PowerShell: o corpo tem que ir num arquivo, com `@` |
-| `JSON inválido no corpo da requisição`                         | consequência do anterior; o `400` está correto               |
-| `toomanyrequests` no pull                                      | limite anônimo do Docker Hub: `docker login` no Docker Hub   |
-| `Not secure` no navegador                                      | HTTP sem TLS; esperado em homologação                        |
-| `relation "conversations" does not exist`                      | o schema das migrations está em outro lugar — problema 10    |
+| Sintoma                        | Onde é                                                       |
+| ------------------------------ | ------------------------------------------------------------ |
+| `curl: (3) URL rejected`       | aspas no PowerShell: o corpo tem que ir num arquivo, com `@` |
+| `toomanyrequests` no pull      | limite anônimo do Docker Hub                                 |
+| `Not secure` no navegador      | HTTP sem TLS                                                 |
+| task em `Pending` sem mensagem | falta o nó da constraint — problema 6                        |
 
 ## Documentos relacionados
 

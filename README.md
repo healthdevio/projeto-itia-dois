@@ -1,8 +1,8 @@
 # Chat Omnia
 
 Chat com IA, monorepo com interface React, API Hono, base de conhecimento com
-pgvector e entrega contínua até a VM. A `develop` vira homologação, a `main`
-vira produção, e o mesmo pushmove o código.
+pgvector e entrega contínua no cluster Docker Swarm da PW2C. A `develop` publica
+as imagens, a `main` atualiza a stack.
 
 ## Início rápido
 
@@ -161,27 +161,24 @@ O `format` da raiz vale para o repositório inteiro — é por isso que existe
 ## Entrega contínua
 
 ```
-push ──> CI ──> CD ──> ghcr.io ──> deploy na VM
+push ──> CI ──> CD ──> registry PW2C ──> cluster Swarm
 ```
 
 A CI valida quatro coisas em paralelo — frontend, Core, formatação e build das
-imagens Docker. Passando, o CD constrói as imagens, publica no `ghcr.io` e
-entra por SSH na VM para subir o compose.
+imagens Docker. O `deploy-pw2c.yml` constrói as duas imagens, publica no registry
+da empresa e atualiza a stack pela API do Portainer.
 
-Quem usa o sistema entra por aqui — não pela tabela de cima:
+| Branch    | O que acontece                                    |
+| --------- | ------------------------------------------------- |
+| `develop` | constrói e publica as imagens com a tag `develop` |
+| `main`    | publica e atualiza a stack                        |
 
-| Branch    | Ambiente    | `.env`     | Endereço                    | Porta  |
-| --------- | ----------- | ---------- | --------------------------- | ------ |
-| `develop` | homologação | `homolog/` | <http://167.126.20.64:8080> | `8080` |
-| `main`    | produção    | `prod/`    | <http://167.126.20.64>      | `80`   |
+A stack tem três serviços — Postgres, Core e web — na rede overlay `omnia_net`.
+Quem fala com o navegador é o nginx, e ele encaminha `/api` para o Core. **Nem o
+Core nem o Postgres têm porta publicada.**
 
-O compose é o mesmo nos dois ambientes. O que os separa é o `.env` — a porta que
-o nginx escuta, a imagem e as variáveis de AI.
-
-**Só o nginx tem porta.** Quem fala com o navegador é ele; o Core e o Postgres
-não são publicados. O Core existe apenas dentro da rede `omnia-db`, e o Postgres
-vive fora dela, gerenciado pelo Portainer. Ver
-[pré-requisitos](docs/ci_cd/pre-requisitos.md).
+O Postgres fica preso ao nó `compute01`: o volume é local, e um banco que muda de
+servidor sobe vazio. Ver [pré-requisitos](docs/ci_cd/pre-requisitos.md).
 
 O processo inteiro está em [`docs/ci_cd/`](docs/ci_cd/README.md).
 
@@ -198,23 +195,25 @@ compartilhada pulam migrations. O sintoma e a causa estão em
 
 ## Estado
 
-Homologação no ar desde 8 de outubro de 2026 em
-<http://167.126.20.64:8080>, alimentada por `git push`.
+O cluster da PW2C ainda não foi provisionado. O deploy está escrito, mas nunca
+rodou.
 
-|             |                                           |
-| ----------- | ----------------------------------------- |
-| API e banco | no ar, com migrations aplicadas           |
-| AI          | `AI_PROVIDER=echo` — texto fixo, sem cota |
-| Interface   | **estado local, não chama a API**         |
-| Produção    | não promovida; `deploy-prod` nunca rodou  |
+|             |                                                  |
+| ----------- | ------------------------------------------------ |
+| Infra       | stack, workflow e secrets descritos, não subidos |
+| API e banco | validados na VM anterior, não no cluster         |
+| AI          | `AI_PROVIDER=echo` — texto fixo, sem cota        |
+| Interface   | **estado local, não chama a API**                |
 
 `apps/chat-omnia/src/transport/rest` e `transport/sse` estão vazios, e a tela
-usa estado mockado em `App.tsx`. O caminho nginx → Core → Postgres está validado
-por `curl`; o que falta é a interface deixar de mocker e passar a chamar.
+usa estado mockado em `App.tsx`. O caminho nginx → Core → Postgres foi validado
+na VM antiga; no cluster ainda não.
 
-A porta do Postgres, a do Portainer e a do CloudBeaver estão expostas na VM, e
-há uma senha de banco no histórico do git. Ver
-[operação](docs/ci_cd/operacao.md).
+O que falta para subir está em
+[pré-requisitos](docs/ci_cd/pre-requisitos.md).
+
+Há uma senha de banco no histórico do git, de um `.env` que foi removido da
+branch mas não do histórico. Ver [operação](docs/ci_cd/operacao.md).
 
 ## Convenções
 
@@ -230,9 +229,9 @@ há uma senha de banco no histórico do git. Ver
 | Documento                                                    | Assunto                                      |
 | ------------------------------------------------------------ | -------------------------------------------- |
 | [docs/README.md](docs/README.md)                             | Índice geral                                 |
-| [docs/ci_cd/](docs/ci_cd/README.md)                          | Pipeline completa, do push à VM              |
+| [docs/ci_cd/](docs/ci_cd/README.md)                          | Pipeline completa, do push ao cluster        |
 | [docs/ci_cd/pre-requisitos.md](docs/ci_cd/pre-requisitos.md) | O que precisa existir antes do deploy        |
-| [docs/ci_cd/deploy.md](docs/ci_cd/deploy.md)                 | O que acontece na VM, serviço por serviço    |
+| [docs/ci_cd/deploy.md](docs/ci_cd/deploy.md)                 | O que acontece no cluster, serviço a serviço |
 | [docs/ci_cd/operacao.md](docs/ci_cd/operacao.md)             | Verificar, diagnosticar e reverter           |
 | [docs/ci_cd/problemas/](docs/ci_cd/problemas/README.md)      | Diagnóstico por sintoma                      |
 | [docs/core/](docs/core/README.md)                            | Contrato da API                              |

@@ -1,183 +1,155 @@
 # Pré-requisitos
 
-O que precisa existir antes do primeiro deploy. Uma vez só, por máquina.
+O que precisa existir antes do primeiro deploy no cluster. Uma vez só, por
+cluster.
 
 ## Checklist
 
 ```
-[ ] Docker instalado no servidor
-[ ] Postgres rodando (container omnia-postgres)
-[ ] Rede externa omnia-db criada e com o Postgres conectado
-[ ] /srv/omnia/homolog e /srv/omnia/prod com .env
-[ ] compose e deploy.sh no diretório de cada ambiente
-[ ] docker login no ghcr.io feito na VM
-[ ] secrets no repositório GitHub
-[ ] ambientes homolog e production criados
-[ ] cd.yml presente na branch padrão
+[ ] O no compute01 confirmado no Swarm
+[ ] Stack "omnia" criada no Portainer com o docker-stack.yml
+[ ] .Env da stack preenchido no Portainer
+[ ] OMNIA_CORE_IMAGE e OMNIA_WEB_IMAGE presentes no .Env
+[ ] Token da API do Portainer criado
+[ ] Secrets do GitHub configurados
 ```
 
-## 1. O banco
+## 1. O nó do banco
 
-O banco **não é criado pelo deploy**. Ele já existe na VM e é gerenciado pelo
-Portainer. O compose só se conecta a ele.
+O Postgres usa um volume **local**, que não viaja entre servidores do Swarm. Se o
+container mudar de nó, sobe lá um banco vazio, e o Core passa a conectar num
+banco sem as tabelas.
+
+A stack trava o Postgres no `compute01`:
+
+```yaml
+placement:
+  constraints:
+    - node.hostname == compute01
+```
+
+Confira se o nome confere:
+
+```bash
+docker node ls
+```
+
+Se a coluna `HOSTNAME` mostrar outro nome, ajuste a constraint **antes** de subir
+a stack. Sem um nó que satisfaça a condição, o Postgres fica em `Pending` e os
+outros serviços esperam por ele.
 
 ```mermaid
-flowchart LR
-    subgraph REDE [rede externa omnia-db]
-        DB[(omnia-postgres)]
+flowchart TB
+    subgraph CLUSTER [cluster Swarm]
+        N1[compute01<br/>Postgres + volume]
+        N2[compute02<br/>Core]
+        N3[compute03<br/>web]
     end
-    C[core] --> DB
-    M[migrate-core] --> DB
+    C[core] --> P[(postgres<br/>no compute01)]
+    W[web] --> C
 ```
 
-Consequência prática: **o compose do deploy não tem serviço `postgres`**. Se
-tivesse, subiria um banco novo e vazio, com volume separado, e o Core passaria a
-falar com ele em vez do real.
+## 2. A senha no `.Env`
 
-### Conectar à rede externa
+A senha do Postgres é uma variável de ambiente da stack, não um `docker secret`.
+O template está em
+[`apps/docker/pw2c/stack.env.example`](../../apps/docker/pw2c/stack.env.example).
 
-```bash
-sudo docker network create omnia-db
-sudo docker network connect --alias postgres omnia-db omnia-postgres
+No stack, ela é exigida com `:?`:
+
+```yaml
+POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .Env da stack}
 ```
 
-O `--alias postgres` é obrigatório. Sem ele, o Core resolve o host pelo nome de
-container, que nem sempre é o nome do serviço no compose.
+O `:?` faz o Swarm **recusar a stack** com mensagem explícita, em vez de subir um
+banco com senha vazia. É a diferença entre um erro na hora do deploy e um banco
+que aceita uma senha que ninguém sabe.
 
-```bash
-docker inspect omnia-postgres \
-  --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} -> {{json $v.Aliases}}{{println}}{{end}}'
+## 3. A stack no Portainer
+
+Em **Stacks → Add stack → Web editor**, cole o conteúdo de
+`apps/docker/pw2c/docker-stack.yml` e **deploy**.
+
+O template das variáveis está em
+[`apps/docker/pw2c/stack.env.example`](../../apps/docker/pw2c/stack.env.example).
+
+## 4. O `.Env` da stack
+
+As variáveis de ambiente da stack são editáveis em **Stacks → omnia → Environment
+variables**. Não são o mesmo arquivo que o compose: é onde o Portainer guarda os
+valores, e é de lá que o deploy lê.
+
+| Variável            | Valor                  | Por quê                              |
+| ------------------- | ---------------------- | ------------------------------------ |
+| `OMNIA_CORE_IMAGE`  | `.../chat-core:latest` | **o deploy reescreve com a tag**     |
+| `OMNIA_WEB_IMAGE`   | `.../chat-web:latest`  | idem                                 |
+| `OMNIA_WEB_PORT`    | `8080`                 | porta de entrada                     |
+| `POSTGRES_DB`       | `omnia`                | nome do banco                        |
+| `POSTGRES_USER`     | `omnia_user`           | idem                                 |
+| `POSTGRES_PASSWORD` | a senha do banco       | **tem que ser a que o banco aceita** |
+| `AI_PROVIDER`       | `echo`                 | texto fixo, sem gastar cota          |
+| `NVIDIA_API_KEY`    | vazio                  | só ao ativar `nvidia`                |
+| `NVIDIA_*`          | —                      | demais da chave                      |
+
+**`OMNIA_CORE_IMAGE` e `OMNIA_WEB_IMAGE` precisam existir.** O deploy só troca o
+valor delas; se não existirem, a stack sobe com o `latest` do compose e todo
+deploy publica imagem sem aplicar.
+
+O Core se conecta por URL, e a URL monta a senha a partir do `.Env`:
+
+```
+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
 ```
 
-Esperado:
+Nada é escrito à mão no stack — é interpolação do Swarm.
 
-```
-omnia-db -> ["postgres"]
-```
+## 5. Token da API do Portainer
 
-### Recriar o Postgres exige reconectar
+O Portainer é **Community Edition**, e webhook de stack é Business Edition. O
+deploy usa a API, que existe nas duas edições.
 
-Se o container do banco for recriado pelo Portainer, ele sai da rede externa:
+Em **Account settings → Access tokens → Add access token**.
 
-```bash
-sudo docker network connect --alias postgres omnia-db omnia-postgres
-```
+O token precisa de escopo de escrita em stacks. Cópie uma vez: não dá para
+reexibir depois.
 
-## 2. Os diretórios de ambiente
-
-```bash
-sudo mkdir -p /srv/omnia/homolog /srv/omnia/prod
-sudo chown -R $USER:$USER /srv/omnia
-```
-
-O `chown` importa: `sudo mkdir` cria a pasta com o grupo do pai, e sem isso o
-`scp` conecta mas não consegue escrever.
-
-## 3. O `.env` de cada ambiente
-
-Um arquivo por ambiente, **fora do git**.
-
-Variáveis, e de onde vem cada uma:
-
-| Variável            | Valor                                 | Por quê                                 |
-| ------------------- | ------------------------------------- | --------------------------------------- |
-| `IMAGE_CORE`        | `ghcr.io/healthdevio/chat-core:main`  | reescrita pelo `deploy.sh`              |
-| `IMAGE_WEB`         | `ghcr.io/healthdevio/chat-omnia:main` | idem                                    |
-| `OMNIA_DB_NETWORK`  | `omnia-db`                            | rede externa compartilhada              |
-| `WEB_PORT`          | `8080` homolog · `80` prod            | as stacks convivem na mesma VM          |
-| `POSTGRES_DB`       | `omnia`                               | o banco existente                       |
-| `POSTGRES_USER`     | `omnia_user`                          | idem                                    |
-| `POSTGRES_PASSWORD` | a senha do banco                      | **tem que ser a que o Postgres aceita** |
-| `AI_PROVIDER`       | `echo`                                | texto fixo, sem gastar cota             |
-| `NVIDIA_*`          | —                                     | só ao ativar `nvidia`                   |
-
-A senha errada deixa o Core com `database: "down"` no health check, **enquanto o
-nginx responde 200**. A interface parece funcionar e o problema só aparece no
-health check.
-
-Confirmar que o compose entendeu tudo:
-
-```bash
-docker compose --env-file .env -f docker-compose.deploy.yml config
-```
-
-Sai com código 0 e sem senha vazia.
-
-## 4. Login no registry
-
-As imagens são privadas (o repositório é privado). Estar na rede não basta.
-
-```bash
-nano /tmp/tok
-# cola o token, Ctrl+O, Enter, Ctrl+X
-
-docker login ghcr.io -u USUARIO --password-stdin < /tmp/tok
-rm /tmp/tok
-```
-
-**Sem `sudo`**: o `deploy.sh` roda como `ubuntu`, que já está no grupo `docker`.
-Com `sudo`, a credencial vai para `/root/.docker/` e o deploy não a encontra.
-
-O token precisa do escopo `read:packages`, em **Settings → Developer settings →
-Personal access tokens (classic)**.
-
-## 5. Secrets no GitHub
+## 6. Secrets no GitHub
 
 Em **Settings → Secrets and variables → Actions**.
 
-| Secret           | Valor                         |
-| ---------------- | ----------------------------- |
-| `DEPLOY_SSH_KEY` | a chave privada que abre a VM |
-| `DEPLOY_HOST`    | `167.126.20.64`               |
-| `DEPLOY_USER`    | `ubuntu`                      |
+| Secret                   | Valor                                  |
+| ------------------------ | -------------------------------------- |
+| `PW2C_REGISTRY_USERNAME` | usuário do registry da empresa         |
+| `PW2C_REGISTRY_PASSWORD` | senha ou token do registry             |
+| `PORTAINER_URL`          | `https://portainer.da.empresa.com.br`  |
+| `PORTAINER_API_KEY`      | o token da seção 5                     |
+| `PORTAINER_STACK_ID`     | id da stack "omnia"                    |
+| `PORTAINER_ENDPOINT_ID`  | id do ambiente Swarm, quase sempre `1` |
 
-A chave privada precisa manter o formato PEM:
+Os dois últimos não são adivinháveis. O `STACK_ID` aparece na URL da tela da
+stack (`#!/ stacks/1/...`), e o `ENDPOINT_ID` em **Home**.
 
-```
------BEGIN RSA PRIVATE KEY-----
-...
------END RSA PRIVATE KEY-----
-```
-
-## 6. Ambientes
-
-Em **Settings → Environments**.
-
-| Ambiente     | Proteção                              |
-| ------------ | ------------------------------------- |
-| `homolog`    | nenhuma                               |
-| `production` | `Selected branches and tags` → `main` |
-
-## 7. O `cd.yml` na branch padrão
-
-O passo mais fácil de esquecer. `workflow_run` e `workflow_dispatch` só
-enxergam workflows presentes na branch padrão do repositório, que é a `main`.
-
-Se o `cd.yml` ficar preso na `develop`, o CD não dispara **e não dá erro**.
-Conferir:
+## O primeiro deploy
 
 ```bash
-git ls-tree -r --name-only main -- .github/workflows
+git push origin main
 ```
 
-Tem que listar `ci.yml` e `cd.yml`.
+Acompanhe em **Actions → Deploy Chat Omnia (PW2C / Swarm)**.
 
-## Antes de produção
+Confirme o resultado no cluster:
 
-O que ainda não está resolvido, em ordem de urgência:
+```bash
+docker service ls --filter name=omnia_
+```
 
-| Pendência                   | Por quê                                                 |
-| --------------------------- | ------------------------------------------------------- |
-| Rotacionar o token do ghcr  | credencial usada em ambiente compartilhado              |
-| Fechar as portas expostas   | banco, CloudBeaver e Portainer estão na internet aberta |
-| Remover o `.env` versionado | senha no histórico do git                               |
-| HTTPS                       | hoje é HTTP puro                                        |
-| Conectar o frontend à API   | a tela ainda usa estado local, não chama o Core         |
+Os três serviços precisam mostrar `1/1`. Um serviço em `0/1` ou `Pending`
+aponta para constraint não satisfeita ou erro de configuração.
 
 ## Documentos relacionados
 
-| Documento                      | Assunto              |
-| ------------------------------ | -------------------- |
-| [publicacao.md](publicacao.md) | build e publicação   |
-| [deploy.md](deploy.md)         | o que acontece na VM |
-| [operacao.md](operacao.md)     | verificar e reverter |
+| Documento                      | Assunto                   |
+| ------------------------------ | ------------------------- |
+| [publicacao.md](publicacao.md) | build e publicação        |
+| [deploy.md](deploy.md)         | o que acontece no cluster |
+| [operacao.md](operacao.md)     | verificar e reverter      |

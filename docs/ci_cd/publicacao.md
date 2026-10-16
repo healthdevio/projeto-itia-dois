@@ -1,6 +1,6 @@
 # Publicação
 
-Como o código vira imagem no `ghcr.io`.
+Como o código vira imagem no registry da PW2C.
 
 ## As imagens
 
@@ -20,14 +20,12 @@ flowchart LR
     B[build<br/>tsc] --> D[deps<br/>npm ci --omit=dev] --> R[runtime<br/>node_modules + dist + drizzle]
 ```
 
-Roda como usuário `node` (não-root), expõe 3001, e tem healthcheck em `/`.
+Roda como usuário `node` (não-root), expõe 3001, e tem `entrypoint.sh` como
+entrada.
 
-A pasta `drizzle/` vai para a imagem porque o deploy aplica as migrations num
-container separado, antes do Core subir.
-
-O healthcheck confere o **código HTTP**, não o corpo. `/` responde `200` com
-`"degraded"` quando o Postgres está fora do ar — derrubar o Core por causa do
-banco trocaria uma degradação visível por indisponibilidade total.
+A pasta `drizzle/` vai para a imagem porque o `entrypoint.sh` aplica as
+migrations no boot, antes do servidor HTTP subir. Ver
+[deploy.md](deploy.md).
 
 ### Dockerfile.web
 
@@ -39,65 +37,82 @@ embute o valor no bundle durante a compilação.
 
 ## O registry
 
-`ghcr.io`, o registry do GitHub. Herda a visibilidade do repositório — e como o
-repositório é privado, **as imagens são privadas**.
+`registry.cloud.grupopw2c.com.br`, o registry privado da empresa. As imagens são
+privadas: estar na rede não basta, é preciso credencial.
 
 ### Autenticação no workflow
 
-```yaml
-permissions:
-  packages: write
-```
+O token vem do GitHub, nos secrets `PW2C_REGISTRY_USERNAME` e
+`PW2C_REGISTRY_PASSWORD`. Diferente do `ghcr.io`, onde o `GITHUB_TOKEN` bastava —
+um registry externo exige credencial que alguém precise criar.
 
-O `GITHUB_TOKEN` é automático: não se cria nada, ele já existe no runner.
+### Autenticação no cluster
 
-### Autenticação na VM
-
-A VM precisa de credencial própria para o `pull`. Ver
+O cluster precisa da mesma credencial para o `pull`. Ver
 [pre-requisitos.md](pre-requisitos.md).
 
 ## As tags
 
 ```mermaid
 flowchart TD
-    C[commit 89d7ca2] --> T1[chat-core:89d7ca2]
-    C --> T2[chat-core:develop]
-    C --> T3[chat-web:89d7ca2]
-    C --> T4[chat-web:develop]
+    C[commit 89d7ca2] --> T1[chat-core:latest]
+    C --> T2[chat-core:89d7ca2]
+    C --> T3[chat-core:develop]
+    C --> T4[chat-web:latest]
+    C --> T5[chat-web:89d7ca2]
+    C --> T6[chat-web:develop]
 ```
 
-A tag do commit é o que o deploy usa. A tag do branch serve para inspeção:
-mostra "o que está em develop" sem precisar saber o hash.
+Cada build publica três tags: `latest`, o sha completo, e o nome da branch.
 
-**Nunca `latest`.** É um ponteiro que se move: se um deploy der errado não há como
-voltar, porque ele já aponta para outra imagem.
+**A tag de branch é a que o deploy aplica.** O `deploy-pw2c.yml` escreve
+`OMNIA_CORE_IMAGE` e `OMNIA_WEB_IMAGE` no `.Env` da stack com
+`chat-core:<branch>`, e o `RepullImageAndRedeploy` faz o Swarm buscar essa tag de
+novo no registry.
+
+**A tag de commit é a via de reverter.** Apontar as duas variáveis no `.Env` para o
+sha de um deploy anterior, e atualizar a stack.
+
+`latest` existe para inspeção, mas **não é o que o deploy aplica** — um ponteiro
+que se move não permite voltar.
 
 ### Cada imagem publica só no seu repositório
 
 Cada `build-push-action` recebe **tags explícitas**, uma linha por imagem:
 
 ```yaml
-- name: Publicar a imagem do Core
+- name: Build and Push Core
   with:
     file: apps/docker/Dockerfile.core
     tags: |
-      ghcr.io/.../chat-core:<short>
-      ghcr.io/.../chat-core:<branch>
+      registry.cloud.grupopw2c.com.br/chat-core:latest
+      registry.cloud.grupopw2c.com.br/chat-core:${{ github.sha }}
+      registry.cloud.grupopw2c.com.br/chat-core:${{ github.ref_name }}
 
-- name: Publicar a imagem da interface
+- name: Build and Push Web
   with:
     file: apps/docker/Dockerfile.web
     tags: |
-      ghcr.io/.../chat-web:<short>
-      ghcr.io/.../chat-web:<branch>
+      registry.cloud.grupopw2c.com.br/chat-web:latest
+      registry.cloud.grupopw2c.com.br/chat-web:${{ github.sha }}
+      registry.cloud.grupopw2c.com.br/chat-web:${{ github.ref_name }}
 ```
 
 Se as duas imagens fossem configuradas num único gerador de tags, essa lista
 serviria para os dois builds — e cada um publicaria nas duas. O último push
 sobrescreve o outro, e `chat-core` passaria a conter a imagem da interface.
 
-Como conferir, no Portainer ou em `github.com/healthdevio?tab=packages`: as duas
-tags de um mesmo build precisam ter **IDs de imagem diferentes**.
+Como conferir: as duas tags de um mesmo build precisam ter **IDs de imagem
+diferentes**.
+
+## `platforms: linux/amd64`
+
+O cluster é amd64. Fixar a plataforma evita que o build produza uma imagem que o
+cluster não roda — o erro apareceria só no deploy, como
+`no matching manifest for linux/amd64`.
+
+`provenance: false` e `sbom: false` reduzem o que vai junto no registry. Se a
+empresa quiser attestation e SBOM, é só remover as duas linhas.
 
 ## O cache
 
@@ -112,18 +127,9 @@ reinstala todas as dependências.
 
 ## Verificar o que foi publicado
 
-Na aba **Actions**, o passo **O que foi publicado** mostra:
-
-```
-branch: develop
-commit: 89d7ca2...
-
-ghcr.io/healthdevio/chat-core:89d7ca2
-ghcr.io/healthdevio/chat-web:89d7ca2
-```
-
-E em `github.com/healthdevio?tab=packages`, as duas imagens com os tamanhos
-diferentes — o Core bem maior, por causa do Node e do Drizzle.
+Na aba **Actions**, o passo **Resumo** mostra a branch e o commit. E no registry
+da empresa, as duas imagens com tamanhos diferentes — o Core bem maior, por causa
+do Node e do Drizzle.
 
 ## Documentos relacionados
 

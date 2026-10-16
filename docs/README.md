@@ -25,8 +25,8 @@ o pacote de conhecimento (`apps/packages/knowledge`) e a infraestrutura
 
 ## Estado
 
-Homologação no ar desde 8 de outubro de 2026, com banco, API e interface
-funcionando, alimentada por `git push`.
+O cluster da PW2C ainda não foi provisionado. O deploy está escrito, mas nunca
+rodou.
 
 O frontend ainda usa estado local e não chama a API — os `transport/` estão
 vazios. A AI está em `AI_PROVIDER=echo`, que responde texto fixo sem gastar cota.
@@ -39,4 +39,4 @@ vazios. A AI está em `AI_PROVIDER=echo`, que responde texto fixo sem gastar cot
 | API       | Hono, Node 22, TypeScript                                                   |
 | Banco     | PostgreSQL 16 + pgvector, Drizzle ORM                                       |
 | AI        | NVIDIA NIM (compatível com a API da OpenAI), com provider `echo` para teste |
-| Infra     | Docker, docker compose, GitHub Actions, ghcr.io                             |
+| Infra     | Docker Swarm, registry da PW2C, Portainer CE, GitHub Actions                |

@@ -1,123 +1,124 @@
 # Deploy
 
-O que acontece na VM depois que a imagem está publicada.
+O que acontece no cluster depois que a imagem está publicada.
 
-## Entrada pela VM
-
-O job de deploy faz duas operações, em ordem:
+## Entrada pela API do Portainer
 
 ```mermaid
 flowchart TD
-    SSH[SSH na VM] --> SCP[scp<br/>compose + deploy.sh]
-    SCP --> CHMOD[chmod +x]
-    CHMOD --> RUN[./deploy.sh /srv/omnia/&lt;ambiente&gt;]
+    A[API do Portainer] --> G[GET /api/stacks/id/file]
+    G --> E[guarda o compose e o Env]
+    E --> T[substitui só as tags das imagens]
+    T --> U[PUT /api/stacks/id]
+    U --> S[Swarm redesenha as tasks]
 ```
 
-Enviar os arquivos a cada deploy, em vez de copiar uma vez e deixar na máquina,
-faz o repositório ser a fonte da verdade: uma cópia parada na VM é um compose
-diferente do código, e o primeiro sintoma é um deploy que executa a configuração
-antiga.
+O Portainer **Community Edition** não tem webhook de stack — é Business Edition.
+Por isso o deploy usa a API, que existe nas duas edições.
 
-O `scp` precisa de dois ajustes:
+### Por que o `PUT` reenvia o compose inteiro
 
-```yaml
-source: apps/docker/docker-compose.deploy.yml,apps/docker/deploy.sh
-strip_components: 2
+O `PUT` **substitui**, não faz merge. Se o corpo vier sem `StackFileContent`, o
+Swarm entende que a stack não tem serviços e **remove tudo** — sem erro.
+
+Por isso o deploy primeiro lê o estado atual, mexe só nas duas tags, e devolve
+tudo:
+
+```
+GET  →  compose atual + Env atual
+          ↓ troca OMNIA_CORE_IMAGE e OMNIA_WEB_IMAGE
+PUT  →  compose inteiro + Env inteiro
 ```
 
-`source` em uma linha, separada por vírgula. Em bloco com quebra de linha, o
-item final vazio faz o `tar` sair sem arquivo.
+O workflow valida que o `StackFileContent` não veio vazio antes de mandar. Um
+compose vazio nesse `PUT` passaria o deploy como verde e apagaria a stack.
 
-`strip_components: 2` remove os dois primeiros níveis do caminho, para o arquivo
-cair na raiz do diretório do ambiente em vez de `apps/docker/`. Sem isso, o
-`deploy.sh` executado continua sendo a cópia antiga.
+### Por que o `Env` inteiro vai junto
 
-## O que o deploy.sh faz
+O `.Env` da stack guarda o que o compose **não** guarda: a senha do Postgres, a
+chave da Nvidia, a porta. Os valores vivem lá, não no arquivo.
 
-```mermaid
-flowchart TD
-    S[./deploy.sh] --> R{rede omnia-db<br/>existe?}
-    R -->|não| C1[cria]
-    R -->|sim| P[grava IMAGE_*<br/>no .env]
-    C1 --> P
-    P --> PU[docker compose pull]
-    PU --> UP[docker compose up -d]
-    UP --> PS[docker compose ps]
-```
-
-### A tag vai para dentro do `.env`
-
-O script reescreve só as linhas `IMAGE_*`. O resto — senha, porta, provider —
-fica intacto.
-
-Isso porque `docker compose up -d` sem `--pull` **reusa a imagem que já está na
-máquina**. Passar a tag por variável resolveria o `pull`, mas deixaria o `.env`
-descrevendo uma versão que não é a que está rodando, e o próximo `up` manual
-voltaria para a tag antiga sem ninguém perceber.
-
-### `pull` antes de `up`
-
-Sem o `pull`, o compose reusa a imagem local e o código novo nunca chega.
+Se o `PUT` mandasse só as duas tags, o Postgres subiria **sem senha** — e o
+sintoma seria confuso: banco criado, Core conecta, migration roda, e nenhuma
+requisição passa.
 
 ## Os serviços
 
 ```mermaid
 flowchart LR
-    subgraph REDE [rede externa omnia-db]
-        direction TB
-        DB[(omnia-postgres<br/>Portainer)]
-        D[db<br/>healthcheck]
-        M[migrate-core<br/>restart: no]
+    subgraph SWARM [cluster Swarm · rede overlay omnia_net]
+        DB[(postgres<br/>compute01)]
         C[core<br/>porta 3001]
         W[web nginx<br/>porta pública]
     end
 
-    D -.->|espera pg_isready| DB
-    M -->|aplica migrations| DB
     C -->|conversa| DB
     W -->|proxy /api| C
 ```
 
-| Serviço        | Função                               | Porta         |
-| -------------- | ------------------------------------ | ------------- |
-| `db`           | espera o Postgres responder e sai    | —             |
-| `migrate-core` | aplica as migrations e sai           | —             |
-| `core`         | a API                                | interna       |
-| `web`          | nginx, serve a interface e faz proxy | `${WEB_PORT}` |
+| Serviço    | Função                               | Onde roda   |
+| ---------- | ------------------------------------ | ----------- |
+| `postgres` | o banco, com pgvector                | compute01   |
+| `core`     | a API, a migration e o servidor HTTP | qualquer nó |
+| `web`      | nginx, serve a interface e faz proxy | qualquer nó |
 
-O Postgres **não** é deste compose. Já existe na VM e é gerenciado pelo
-Portainer.
+### O Postgres está na stack
+
+No modelo anterior, o compose não tinha serviço `postgres`: o banco vivia fora,
+gerenciado pelo Portainer numa rede externa. Aqui a stack é dona do banco.
+
+Isso elimina a necessidade de criar a rede `omnia-db` e conectar o Postgres
+com `--alias` à mão. O Swarm resolve `postgres` pelo DNS da rede overlay.
 
 ### A ordem de subida
 
 ```mermaid
 flowchart LR
-    D[db] --> M[migrate-core] --> C[core] --> W[web]
+    P[postgres] --> C[core: espera, migra, serve] --> W[web]
 ```
 
-Garantida por `service_completed_successfully`. `db` e `migrate-core` têm
-`restart: 'no'` porque **terminam** — e um container que termina nunca fica
-`healthy`, então esperar por `service_healthy` seria uma espera que nunca
-satisfaz.
+**O Swarm não implementa `depends_on`.** Quem espera é o `entrypoint.sh` do Core,
+que faz três coisas em ordem:
 
-### O serviço `db`
+```
+1. lê a senha do secret e monta a URL
+2. espera o Postgres responder (pg_isready)
+3. roda node dist/db/migrate.js
+4. exec node dist/index.js
+```
 
-Só um healthcheck: espera o `pg_isready` passar e sai com código 0. Não gerencia
-o container do banco, que é de outro stack.
+Se o Postgres não responder em 60 segundos, o container sai com erro e o
+`restart_policy` faz o Swarm tentar de novo.
 
-## O banco e as migrations
+### Por que a migration é dentro do Core
 
-As migrations do Core ficam em `drizzle_core.__drizzle_migrations`, separadas do
-padrão `drizzle` que o pacote `knowledge` usa.
+No compose, `migrate-core` era um serviço à parte com `restart: 'no'`: rodava,
+aplicava, terminava, e o Core subia depois.
 
-Os dois pacotes apontam para o mesmo banco. Se compartilhassem a tabela de
-controle, o migrator do Core leria o carimbo do `knowledge` e concluiria que uma
-migration própria — mais antiga que aquele carimbo — já tinha sido aplicada, e a
-pularia. A migration seguinte rodaria em cima de um banco sem as tabelas que ela
-precisa.
+**No Swarm todo serviço é perpétuo.** Não existe container que termina. Um serviço
+de migration sairia com o Swarm recriando em laço, e o Core esperaria um
+`service_completed_successfully` que nunca aconteceria.
 
-O mesmo schema precisa estar no `drizzle.config.ts`, para o
-`npm run db:migrate` do desenvolvimento gravar onde o container grava.
+Por isso `replicas: 1` no Core é obrigatório: duas tasks subindo juntas
+rodariam a migration ao mesmo tempo.
+
+### Por que o Postgres fica preso a um nó
+
+O volume `omnia_postgres_data` é local — não viaja entre servidores. Se o
+container mudar de nó, sobe lá um banco vazio, e o Core conecta num banco sem as
+tabas.
+
+O sintoma é o mesmo de migration não aplicada: `relation "conversations" does
+not exist`. A diferença é que a migration **roda e reporta sucesso** — ela cria
+o schema no banco errado.
+
+A constraint resolve:
+
+```yaml
+placement:
+  constraints:
+    - node.hostname == compute01
+```
 
 ## O nginx
 
@@ -143,20 +144,33 @@ Cacheado, a interface continua servindo a versão anterior depois de um deploy.
 ### Por que a API não é publicada
 
 O Core confia no header cru `X-User-Id`: qualquer cliente pode enviar o que
-quiser e impersonar outro usuário. Por isso o compose publica **só** a interface.
+quiser e impersonar outro usuário. Por isso a stack publica **só** a interface.
 
 Num ambiente com usuários reais, um proxy na frente do Core precisa validar um
 token e reescrever o header com o subject autenticado.
 
-## Os dois ambientes
+## O banco e as migrations
 
-|             | Homologação          | Produção          |
-| ----------- | -------------------- | ----------------- |
-| Diretório   | `/srv/omnia/homolog` | `/srv/omnia/prod` |
-| Porta       | `8080`               | `80`              |
-| Environment | `homolog`            | `production`      |
-| Quando      | branch `develop`     | branch `main`     |
-| Aprovação   | nenhuma              | merge na `main`   |
+As migrations do Core ficam em `drizzle_core.__drizzle_migrations`, separadas do
+padrão `drizzle` que o pacote `knowledge` usa.
+
+Os dois pacotes apontam para o mesmo banco. Se compartilhassem a tabela de
+controle, o migrator do Core leria o carimbo do `knowledge` e concluiria que uma
+migration própria — mais antiga que aquele carimbo — já tinha sido aplicada, e a
+pularia.
+
+O mesmo schema precisa estar no `drizzle.config.ts`, para o `npm run db:migrate`
+do desenvolvimento gravar onde o container grava.
+
+## Branches
+
+| Branch    | O que acontece                                    |
+| --------- | ------------------------------------------------- |
+| `develop` | constrói e publica as imagens com a tag `develop` |
+| `main`    | publica e atualiza a stack                        |
+
+Rollback não é um botão no Portainer: aponte `OMNIA_CORE_IMAGE` e
+`OMNIA_WEB_IMAGE` no `.Env` para o sha de um deploy anterior e atualize a stack.
 
 ## Documentos relacionados
 

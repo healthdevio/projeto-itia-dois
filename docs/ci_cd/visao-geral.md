@@ -4,10 +4,7 @@ O caminho completo de um `git push` até a aplicação no ar.
 
 ```mermaid
 flowchart TD
-    P([git push]) --> B{branch?}
-
-    B -->|develop| CI
-    B -->|main| CI
+    P([git push]) --> CI
 
     subgraph CI [CI · ci.yml]
         direction LR
@@ -18,24 +15,27 @@ flowchart TD
     end
 
     CI --> D{todos passaram?}
+    D -->|não| PARA([bloqueado])
 
-    D -->|não| PARA([nada é publicado])
     D -->|sim| CD
 
-    subgraph CD [CD · cd.yml]
-        CD1[Construir e publicar<br/>build + push no ghcr.io]
-        CD2{branch?}
-        CD2 -->|develop| HOM[Deploy homologação]
-        CD2 -->|main| PROD[Deploy produção]
+    subgraph CD [CD · deploy-pw2c.yml]
+        CD1[Construir e publicar<br/>registry da PW2C]
+        CD2[GET stack no Portainer]
+        CD2 --> CD3[Trocar só as tags]
+        CD3 --> CD4[PUT · Swarm redesenha as tasks]
     end
-
-    HOM --> VMH[VM · /srv/omnia/homolog]
-    PROD --> VMP[VM · /srv/omnia/prod]
 ```
 
-**O portão do `D`** é o que garante que o código publicado é o código testado.
-Se qualquer um dos quatro jobs da CI falhar, o CD não roda: nada é publicado e
-nada é implantado.
+**O portão do `D`** garante que o código publicado é o código testado. Se
+qualquer um dos quatro jobs da CI falhar, o CD não roda.
+
+O `deploy-pw2c.yml` dispara direto em `push`, sem esperar a CI. É uma escolha
+diferente do modelo anterior: lá o `workflow_run` segurava a publicação até a CI
+passar. Aqui o deploy confia que a branch só recebe código que passou.
+
+Se isso for um problema — alguém com acesso de escrita direto na `main` —, o
+`workflow_run` resolve. Mas a empresa pediu o modelo de `push`.
 
 ## Os quatro jobs da CI
 
@@ -52,80 +52,60 @@ resultado da interface.
 O job **Imagens Docker** constrói as imagens mas não as executa. Um container que
 nunca subiu não é testado por ele — essa verificação acontece no deploy.
 
-## A etapa de publicação
+## A publicação
 
 ```mermaid
 flowchart LR
-    A[Resolver commit<br/>e branch] --> B[Baixar código<br/>ref: head_sha]
-    B --> C[Autenticar<br/>no ghcr.io]
-    C --> D[Publicar chat-core<br/>duas tags]
-    D --> E[Publicar chat-web<br/>duas tags]
-    E --> F[Montar referências<br/>com a tag do sha]
+    A[Checkout] --> B[Autenticar<br/>no registry da PW2C]
+    B --> C[Publicar chat-core<br/>três tags]
+    C --> D[Publicar chat-web<br/>três tags]
+    D --> E[Ler a stack<br/>GET /file]
+    E --> F[Trocar as duas tags<br/>no .Env]
+    F --> G[PUT<br/>RepullImageAndRedeploy]
 ```
 
-O passo `Resolver commit` normaliza os dois gatilhos possíveis:
-
-| Gatilho             | De onde vem o commit                 |
-| ------------------- | ------------------------------------ |
-| `workflow_run`      | `github.event.workflow_run.head_sha` |
-| `workflow_dispatch` | `github.sha`                         |
-
-Sem essa normalização, o disparo manual cairia na branch errada — sem erro no log,
-apenas a imagem errada.
-
-### As tags
-
-Cada imagem recebe duas:
+### As três tags
 
 ```
-ghcr.io/healthdevio/chat-core:89d7ca2    ← o deploy usa esta
-ghcr.io/healthdevio/chat-core:develop     ← só inspeção
+registry.../chat-core:latest      ← inspeção
+registry.../chat-core:<sha>       ← reversão
+registry.../chat-core:<branch>    ← o que o deploy aplica
 ```
 
-A tag do commit existe porque `latest` é um ponteiro que se move: sem número de
-versão não há como reverter um deploy errado.
+O deploy escreve a tag da branch no `.Env` da stack. A tag do sha é a via de
+voltar.
 
-## A decisão do destino
+## A atualização da stack
 
 ```mermaid
 flowchart TD
-    X{needs.build.outputs.branch}
-
-    X -->|develop| S1[deploy-homolog<br/>environment: homolog]
-    X -->|main| S2[deploy-prod<br/>environment: production]
-
-    S1 --> D1[deploy.sh<br/>/srv/omnia/homolog]
-    S2 --> D2[deploy.sh<br/>/srv/omnia/prod]
+    G[GET /api/stacks/id/file] --> S[guarda compose + Env]
+    S --> J[jq: troca só<br/>OMNIA_CORE_IMAGE e OMNIA_WEB_IMAGE]
+    J --> P[PUT com compose inteiro<br/>+ Env inteiro]
+    P --> W[Swarm redesenha as tasks]
 ```
 
-Dois filtros protegem produção: o `if:` do job e o GitHub Environment
-`production`, configurado para aceitar apenas `main`. Se algo escapar do
-primeiro, o segundo barra.
+Três detalhes que fazem esse passo funcionar:
 
-## Os dois gatilhos
+**O `PUT` substitui.** Sem `StackFileContent` no corpo, o Swarm entende que a
+stack ficou sem serviços e remove tudo.
 
-| Gatilho             | Quando dispara                                   | Para quê                        |
-| ------------------- | ------------------------------------------------ | ------------------------------- |
-| `workflow_run`      | CI termina com `success`, em `develop` ou `main` | o caminho normal                |
-| `workflow_dispatch` | pelo botão "Run workflow" na aba Actions         | repetir um deploy sem novo push |
+**O `Env` vai inteiro.** A senha do Postgres e a chave da Nvidia vivem lá, não no
+compose. Mandar só as duas tags deixaria o banco subir sem senha.
 
-O manual existe porque `workflow_run` só enxerga workflows na branch padrão. No
-intervalo entre o `cd.yml` entrar na `develop` e chegar na `main`, o automático
-não dispara — e a falha é silenciosa.
+**O compose é reenviado.** Por isso o `GET` antes: o deploy mexe só no que muda e
+devolve o resto igual.
 
-## Quando o CD não roda
+Ver [deploy.md](deploy.md) para o detalhe.
 
-```mermaid
-flowchart TD
-    A{CI terminou<br/>com success?}
-    A -->|não| N[CD não dispara]
-    A -->|sim| B{cd.yml está<br/>na branch padrão?}
-    B -->|não| N2[CD não dispara<br/>nem pelo botão]
-    B -->|sim| C[CD dispara]
-```
+## Por que a API e não um webhook
 
-O segundo caso é a pegadinha mais cara do desenho: sem erro, sem aviso, o CD
-simplesmente não acontece.
+O Portainer é **Community Edition**, e webhook de stack é Business Edition. Na CE
+o botão não aparece na tela, e `POST /api/stacks/webhooks/{id}` devolve 404.
+
+A API existe nas duas edições. O custo é precisar de quatro secrets em vez de um:
+`PORTAINER_URL`, `PORTAINER_API_KEY`, `PORTAINER_STACK_ID` e
+`PORTAINER_ENDPOINT_ID`.
 
 ## Documentos relacionados
 
@@ -133,5 +113,5 @@ simplesmente não acontece.
 | -------------------------------------- | --------------------------------- |
 | [pre-requisitos.md](pre-requisitos.md) | o que precisa existir antes       |
 | [publicacao.md](publicacao.md)         | build e publicação em detalhe     |
-| [deploy.md](deploy.md)                 | o que acontece na VM              |
+| [deploy.md](deploy.md)                 | o que acontece no cluster         |
 | [operacao.md](operacao.md)             | verificar, diagnosticar, reverter |

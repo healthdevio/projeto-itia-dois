@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    command: ['postgres', '-c', 'shared_preload_libraries=pg_stat_statements']
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-omnia}
+      POSTGRES_USER: ${POSTGRES_USER:-omnia_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .Env da stack}
+    volumes:
+      - omnia_postgres_data:/var/lib/postgresql/data
+    networks:
+      - omnia_net
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == compute01
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        parallelism: 1
+        order: stop-first
+        failure_action: pause
+
+  core:
+    image: ${OMNIA_CORE_IMAGE:-registry.cloud.grupopw2c.com.br/chat-core:latest}
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-omnia_user}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .Env da stack}@postgres:5432/${POSTGRES_DB:-omnia}
+      CORE_PORT: '3001'
+      AI_PROVIDER: ${AI_PROVIDER:-echo}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
+      NVIDIA_MODEL: ${NVIDIA_MODEL:-meta/llama-3.3-70b-instruct}
+      NVIDIA_BASE_URL: ${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
+      NVIDIA_TIMEOUT_MS: ${NVIDIA_TIMEOUT_MS:-300000}
+      NVIDIA_MAX_TOKENS: ${NVIDIA_MAX_TOKENS:-400}
+    networks:
+      - omnia_net
+    deploy:
+      mode: replicated
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+      restart_policy:
+        condition: any
+        delay: 5s
+
+  web:
+    image: ${OMNIA_WEB_IMAGE:-registry.cloud.grupopw2c.com.br/chat-web:latest}
+    ports:
+      - target: 80
+        published: ${OMNIA_WEB_PORT:-8080}
+        protocol: tcp
+        mode: host
+    networks:
+      - omnia_net
+    depends_on:
+      - core
+    deploy:
+      mode: replicated
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+      restart_policy:
+        condition: any
+        delay: 5s
+
+volumes:
+  omnia_postgres_data:
+
+networks:
+  omnia_net:
+    driver: overlay
+    attachable: true
