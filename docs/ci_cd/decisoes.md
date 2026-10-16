@@ -254,7 +254,7 @@ existir, em vez de subir um banco com senha vazia.
 Uma fonte só, sem `sed` para reescrever URL e sem arquivo para montar na mão.
 
 O ponto de atenção: o `.Env` é legível por quem tem acesso ao Portainer, e o
-`deploy-pw2c.yml` o lê e reenvia. Quem precisar de isolamento, volta para
+`cd.yml` o lê e reenvia. Quem precisar de isolamento, volta para
 `docker secret`.
 
 ## `platforms: linux/amd64`

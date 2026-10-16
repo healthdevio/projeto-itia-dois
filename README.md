@@ -165,7 +165,7 @@ push ──> CI ──> CD ──> registry PW2C ──> cluster Swarm
 ```
 
 A CI valida quatro coisas em paralelo — frontend, Core, formatação e build das
-imagens Docker. O `deploy-pw2c.yml` constrói as duas imagens, publica no registry
+imagens Docker. O `cd.yml` constrói as duas imagens, publica no registry
 da empresa e atualiza a stack pela API do Portainer.
 
 | Branch    | O que acontece                                    |

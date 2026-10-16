@@ -19,7 +19,7 @@ flowchart TD
 
     D -->|sim| CD
 
-    subgraph CD [CD · deploy-pw2c.yml]
+    subgraph CD [CD · cd.yml]
         CD1[Construir e publicar<br/>registry da PW2C]
         CD2[GET stack no Portainer]
         CD2 --> CD3[Trocar só as tags]
@@ -30,7 +30,7 @@ flowchart TD
 **O portão do `D`** garante que o código publicado é o código testado. Se
 qualquer um dos quatro jobs da CI falhar, o CD não roda.
 
-O `deploy-pw2c.yml` dispara direto em `push`, sem esperar a CI. É uma escolha
+O `cd.yml` dispara direto em `push`, sem esperar a CI. É uma escolha
 diferente do modelo anterior: lá o `workflow_run` segurava a publicação até a CI
 passar. Aqui o deploy confia que a branch só recebe código que passou.
 

@@ -31,7 +31,7 @@ aplicação não mudou, é a 3.
 | Etapa   | Onde                                              |
 | ------- | ------------------------------------------------- |
 | Build   | `apps/docker/Dockerfile.core`, `Dockerfile.web`   |
-| Publish | `.github/workflows/deploy-pw2c.yml`, job `build`  |
+| Publish | `.github/workflows/cd.yml`, job `build`           |
 | Deploy  | job `build-and-deploy`, etapa `Atualizar a stack` |
 
 ## Onde cada coisa mora
@@ -50,7 +50,7 @@ develop ──> build e publica
 main    ──> build, publica e atualiza a stack
 ```
 
-O `deploy-pw2c.yml` dispara em ambas as branches. Em `develop`, publica as
+O `cd.yml` dispara em ambas as branches. Em `develop`, publica as
 imagens com a tag `develop`. Em `main`, publica e redeploya a stack.
 
 ## O que difere de um compose comum

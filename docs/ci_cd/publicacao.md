@@ -65,7 +65,7 @@ flowchart TD
 
 Cada build publica três tags: `latest`, o sha completo, e o nome da branch.
 
-**A tag de branch é a que o deploy aplica.** O `deploy-pw2c.yml` escreve
+**A tag de branch é a que o deploy aplica.** O `cd.yml` escreve
 `OMNIA_CORE_IMAGE` e `OMNIA_WEB_IMAGE` no `.Env` da stack com
 `chat-core:<branch>`, e o `RepullImageAndRedeploy` faz o Swarm buscar essa tag de
 novo no registry.

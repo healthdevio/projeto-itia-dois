@@ -135,7 +135,7 @@ stack (`#!/ stacks/1/...`), e o `ENDPOINT_ID` em **Home**.
 git push origin main
 ```
 
-Acompanhe em **Actions → Deploy Chat Omnia (PW2C / Swarm)**.
+Acompanhe em **Actions → CD (Continuous Delivery)**.
 
 Confirme o resultado no cluster:
 
