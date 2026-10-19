@@ -1,17 +1,7 @@
-# Imagem do Core (apps/chat-core).
-#
-# Duas etapas: build compila o TS e leva o devDependencies inteiro; a final
-# traz só dist/ e as dependências de produção.
-#
-# As migrations vão na imagem porque o deploy as aplica num container separado,
-# antes do Core subir. São .sql versionados, então basta a pasta drizzle/.
-
 FROM node:22-alpine AS build
 
 WORKDIR /app
 
-# O lockfile vem antes do código: a camada de dependências só é invalidada
-# quando a lista muda, não a cada commit.
 COPY apps/chat-core/package.json apps/chat-core/package-lock.json ./
 
 RUN npm ci
@@ -21,8 +11,6 @@ COPY apps/chat-core/src ./src
 
 RUN npm run build
 
-# ---------------------------------------------------------------------------
-
 FROM node:22-alpine AS deps
 
 WORKDIR /app
@@ -31,11 +19,8 @@ COPY apps/chat-core/package.json apps/chat-core/package-lock.json ./
 
 RUN npm ci --omit=dev && npm cache clean --force
 
-# ---------------------------------------------------------------------------
-
 FROM node:22-alpine AS runtime
 
-# wget vem no busybox do alpine e serve ao healthcheck.
 WORKDIR /app
 
 ENV NODE_ENV=production \
@@ -45,16 +30,15 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY apps/chat-core/drizzle ./drizzle
 COPY apps/chat-core/package.json ./
+COPY apps/docker/entrypoint.sh /entrypoint.sh
 
-# O Core não escreve em disco, então roda sem root.
+RUN chmod +x /entrypoint.sh
+
 USER node
 
 EXPOSE 3001
 
-# Checar o código HTTP e não o corpo: / responde "degraded" quando o Postgres
-# cai, e derrubar o Core por causa do banco trocaria degradação visível por
-# indisponibilidade total.
-HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
+HEALTHCHECK --interval=15s --timeout=5s --start-period=90s --retries=5 \
   CMD wget --quiet --tries=1 --spider http://127.0.0.1:${CORE_PORT}/ || exit 1
 
-CMD ["node", "dist/index.js"]
+ENTRYPOINT ["/bin/sh", "/entrypoint.sh"]

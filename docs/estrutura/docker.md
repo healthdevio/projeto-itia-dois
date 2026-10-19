@@ -63,65 +63,60 @@ impersonar outro usuário. Por isso o compose publica **só** a porta da interfa
 Num ambiente com usuários reais, um proxy na frente do Core precisa validar um
 token (JWT, sessão, mTLS) e reescrever o header com o subject autenticado.
 
-## docker-compose.deploy.yml
+## A stack do Swarm
 
-Um compose para os dois ambientes. O que muda entre homologação e produção é o
-`.env` (imagem, porta, secrets), não o arquivo — dois composes por ambiente
-divergiriam sem ninguém perceber.
+O deploy vai para `apps/docker/pw2c/docker-stack.yml`, que é stack do Docker
+Swarm — não compose.
 
-| Serviço        | Função                       | Porta         |
-| -------------- | ---------------------------- | ------------- |
-| `db`           | espera o Postgres (só check) | —             |
-| `migrate-core` | migrations do Core           | —             |
-| `core`         | API                          | interna       |
-| `web`          | nginx                        | `${WEB_PORT}` |
+| Serviço    | Função                               | Onde roda   |
+| ---------- | ------------------------------------ | ----------- |
+| `postgres` | o banco, com pgvector                | compute01   |
+| `core`     | API, migrations e servidor HTTP      | qualquer nó |
+| `web`      | nginx, serve a interface e faz proxy | qualquer nó |
 
-### Não tem serviço `postgres`
+O banco **é** da stack. Não existe mais a separação entre compose e Postgres
+gerenciado por fora.
 
-O banco já existe na VM (container `omnia-postgres`, volume
-`ubuntu_omnia_postgres_data`) e é gerenciado pelo Portainer. Este compose **não o
-cria** — só o alcança, pela rede externa `omnia-db`.
+### `depends_on` não funciona no Swarm
 
-Subir um Postgres aqui criaria um banco novo e vazio, com volume separado, e o
-Core passaria a falar com ele em vez do banco real.
+Nem o `depends_on` nem o `service_completed_successfully` têm efeito no Swarm. E
+todo serviço é perpétuo: não existe container que termina, então um serviço de
+migration sairia com o Swarm recriando em laço.
 
-`deploy.sh` cria a rede se faltar. Ver [deploy.md](deploy.md) para conectar o
-`omnia-postgres` a ela — **já feito** na VM.
+Quem espera é o `entrypoint.sh` do Core:
 
-O serviço `db` existe só para o Core não subir antes do banco responder: espera o
-`pg_isready` passar e sai. Não gerencia o container alheio.
+```
+espera o Postgres → node dist/db/migrate.js → node dist/index.js
+```
 
-### Não tem serviço `migrate-knowledge`
+Por isso `replicas: 1` no Core é obrigatório — duas tasks rodariam a migration ao
+mesmo tempo.
+
+### O Postgres fica preso ao compute01
+
+O volume é local. Um banco que muda de nó sobe vazio, e a migration reporta
+sucesso criando o schema no lugar errado.
+
+```yaml
+placement:
+  constraints:
+    - node.hostname == compute01
+```
+
+### Não tem serviço para o `knowledge`
 
 As migrations do pacote `knowledge` criam `users`, `permissions`,
 `api_integrations` e `chat_history` — tabelas que **nenhum serviço do Omnia lê**.
 O Core tem o schema dele próprio (`conversations`, `messages`, `suggestions`) e é
-só ele que o compose deploya.
+só ele que a stack sobe.
 
 O `knowledge` continua com migrations aplicadas pelo compose de desenvolvimento,
-que é onde ele está em uso. Quando virar produto, o serviço volta e
-`IMAGE_KNOWLEDGE` volta ao `.env`.
+que é onde ele está em uso. Quando virar produto, o serviço volta.
 
-### `service_completed_successfully`
-
-```yaml
-core:
-  depends_on:
-    migrate-core:
-      condition: service_completed_successfully
-```
-
-`migrate-core` tem `restart: 'no'` e termina. Sem esta condição, o Core sobe
-junto com as migrations e quebra no primeiro acesso ao banco.
-
-O mesmo vale para o `db`, que também **sai** depois de pronto. Um container que
-termina nunca fica `healthy`, então `service_healthy` nele seria uma espera que
-nunca satisfaz — o deploy travaria antes de começar.
-
-### Ordem de subida
+## Ordem de subida
 
 ```
-db (espera o postgres) ──> migrate-core (sai) ──> core (healthy) ──> web
+postgres ──> core (espera, migra, serve) ──> web
 ```
 
 ## O `.dockerignore`

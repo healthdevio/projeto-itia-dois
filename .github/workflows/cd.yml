@@ -1,290 +1,201 @@
-# ```
-# push ──> CI (ci.yml) ──> CD (cd.yml) ──> publicar imagem ──> deploy na VM
-# ```
-
-# ## Este arquivo ainda não faz deploy
-#
-# Só o primeiro movimento: constrói e publica. O deploy na VM é o job `deploy`,
-# que entra no próximo passo. Ver docs/estrutura/deploy.md.
-#
-# ## Duas formas de disparar
-#
-# `workflow_run`     automático, depois que a CI passa
-# `workflow_dispatch` manual, pelo botão "Run workflow" na aba Actions
-#
-# O manual existe porque `workflow_run` só enxerga workflows que estão na branch
-# padrão (`main`). Entre o merge do cd.yml na develop e o merge na main, o
-# automático não dispara — e falha em silêncio, sem erro nenhum. O botão manual
-# cobre esse intervalo.
-
 name: CD (Continuous Delivery)
 
 on:
-  workflow_run:
-    # Nome exato do workflow em ci.yml. Se o `name:` de lá mudar, este
-    # workflow_run para de disparar — e sem erro visível.
-    workflows: ['CI (Continuous Integration)']
-    types: [completed]
+  push:
+    branches:
+      - main
 
-  workflow_dispatch:
-
-# `packages: write` é o que permite publicar no ghcr.io. Sem isso o `docker
-# push` falha com "denied". O GITHUB_TOKEN é automático — não precisa criar.
 permissions:
   contents: read
-  packages: write
 
-# Um deploy por vez. `cancel-in-progress: false` de propósito: em produção um
-# deploy em andamento não pode ser cancelado no meio, porque a imagem antiga pode
-# já ter saído do registry.
 concurrency:
   group: cd-${{ github.ref_name }}
   cancel-in-progress: false
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository_owner }}
-
 jobs:
-  build:
-    name: Construir e publicar
+  build-and-deploy:
     runs-on: ubuntu-latest
 
-    # `steps.*.outputs` só vale dentro do próprio job. O job de deploy precisa
-    # saber a branch e as tags, então elas viram outputs do job.
-    outputs:
-      branch: ${{ steps.ctx.outputs.branch }}
-      sha: ${{ steps.ctx.outputs.sha }}
-      image-core: ${{ steps.images.outputs.core }}
-      image-web: ${{ steps.images.outputs.web }}
-
-    # `workflow_run` não aceita filtro de branch no `on:`, então as condições
-    # vêm todas aqui.
-    #
-    # O primeiro termo é o disparo manual, que não tem `workflow_run` e por isso
-    # passaria pela checagem de baixo como branch vazia.
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       (github.event.workflow_run.head_branch == 'develop' ||
-        github.event.workflow_run.head_branch == 'main'))
-
     steps:
-      # Os dois gatilhos trazem o commit em lugares diferentes:
-      #   workflow_run      → event.workflow_run.head_sha
-      #   workflow_dispatch → github.sha
-      #
-      # Sem este passo, o `if:` de cima passaria, mas o checkout cairia na
-      # branch padrão e a imagem seria de outro código — sem erro no log.
-      - name: Resolver commit e branch
-        id: ctx
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            SHA="${{ github.sha }}"
-            BRANCH="${{ github.ref_name }}"
-          else
-            SHA="${{ github.event.workflow_run.head_sha }}"
-            BRANCH="${{ github.event.workflow_run.head_branch }}"
-          fi
-
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-          echo "short=${SHA:0:7}" >> "$GITHUB_OUTPUT"
-          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
-
-      - name: Resumo do que será publicado
-        run: |
-          echo "commit: ${{ steps.ctx.outputs.sha }}"
-          echo "tag:    ${{ steps.ctx.outputs.short }}"
-          echo "branch: ${{ steps.ctx.outputs.branch }}"
-
-      - name: Baixar o código
+      - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.ctx.outputs.sha }}
 
-      - name: Configurar Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Autenticar no ghcr.io
+      - name: Login to PW2C Private Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: registry.cloud.grupopw2c.com.br
+          username: ${{ secrets.PW2C_REGISTRY_USERNAME }}
+          password: ${{ secrets.PW2C_REGISTRY_PASSWORD }}
 
-      # Tag por commit, nunca `latest`.
-      #
-      # `latest` é um ponteiro que se move: se um deploy der errado não há como
-      # voltar, porque ele já aponta para outra imagem. Com o sha, o rollback é
-      # `docker pull ghcr.io/healthdevio/chat-core:5f62538`.
-      #
-      # A tag com o nome da branch serve só para inspeção: mostra "o que está em
-      # main" sem precisar saber o sha. O deploy usa sempre a tag do sha.
-      #
-      # ## Por que as tags são explícitas e não vêm do metadata-action
-      #
-      # O `metadata-action` com várias imagens gera uma lista de tags para
-      # TODAS elas. Passar essa mesma lista nos dois `build-push-action` faz cada
-      # build publicar nas duas: o Core vai também para `chat-web`, e a
-      # interface também para `chat-core`. O último push sobrescreve o outro, e
-      # `chat-core` acaba contendo a imagem do nginx — sem `node`, sem `dist`.
-      #
-      # O sintoma é `node: not found` no `migrate-core`, longe da causa.
-      - name: Publicar a imagem do Core
+      - name: Build and Push Core
         uses: docker/build-push-action@v6
         with:
           context: .
           file: apps/docker/Dockerfile.core
+          platforms: linux/amd64
+          provenance: false
+          sbom: false
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/chat-core:${{ steps.ctx.outputs.short }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/chat-core:${{ steps.ctx.outputs.branch }}
-          labels: |
-            org.opencontainers.image.title=chat-core
-            org.opencontainers.image.revision=${{ steps.ctx.outputs.sha }}
+            registry.cloud.grupopw2c.com.br/chat-core:latest
+            registry.cloud.grupopw2c.com.br/chat-core:${{ github.sha }}
+            registry.cloud.grupopw2c.com.br/chat-core:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Publicar a imagem da interface
+      - name: Build and Push Web
         uses: docker/build-push-action@v6
         with:
           context: .
           file: apps/docker/Dockerfile.web
+          platforms: linux/amd64
+          provenance: false
+          sbom: false
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/chat-web:${{ steps.ctx.outputs.short }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/chat-web:${{ steps.ctx.outputs.branch }}
-          labels: |
-            org.opencontainers.image.title=chat-web
-            org.opencontainers.image.revision=${{ steps.ctx.outputs.sha }}
+            registry.cloud.grupopw2c.com.br/chat-web:latest
+            registry.cloud.grupopw2c.com.br/chat-web:${{ github.sha }}
+            registry.cloud.grupopw2c.com.br/chat-web:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Referência completa com a tag do commit. O `deploy.sh` recebe isto como
-      # IMAGE_CORE e IMAGE_WEB e grava no .env da VM — é isso que faz o
-      # `docker compose pull` na VM buscar exatamente a imagem deste commit.
-      - name: Montar as referências
-        id: images
+      - name: Buscar o estado atual da stack
+        id: stack
+        env:
+          PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
+          PORTAINER_API_KEY: ${{ secrets.PORTAINER_API_KEY }}
+          PORTAINER_STACK_ID: ${{ secrets.PORTAINER_STACK_ID }}
+          PORTAINER_ENDPOINT_ID: ${{ secrets.PORTAINER_ENDPOINT_ID }}
         run: |
-          echo "core=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/chat-core:${{ steps.ctx.outputs.short }}" >> "$GITHUB_OUTPUT"
-          echo "web=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/chat-web:${{ steps.ctx.outputs.short }}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
 
-      - name: O que foi publicado
+          for v in PORTAINER_URL PORTAINER_API_KEY PORTAINER_STACK_ID PORTAINER_ENDPOINT_ID; do
+            if [ -z "${!v}" ]; then
+              echo "::error::secret $v ausente" >&2
+              exit 1
+            fi
+          done
+
+          BASE="${PORTAINER_URL%/}"
+          AUTH="X-API-Key: ${PORTAINER_API_KEY}"
+
+          echo "stack: ${PORTAINER_STACK_ID} (endpoint ${PORTAINER_ENDPOINT_ID})"
+
+          curl -fsS -H "$AUTH" \
+            "${BASE}/api/stacks/${PORTAINER_STACK_ID}/file?endpointId=${PORTAINER_ENDPOINT_ID}" \
+            > stack-antes.json
+
+          jq -r '.StackFileContent' stack-antes.json > stack.yml
+          jq -c '.Env // []' stack-antes.json > env-antes.json
+
+          if [ ! -s stack.yml ]; then
+            echo "::error::StackFileContent veio vazio" >&2
+            exit 1
+          fi
+
+          echo "linhas do compose: $(wc -l < stack.yml)"
+
+      - name: Montar o payload
+        id: payload
+        env:
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
         run: |
-          echo "branch: ${{ steps.ctx.outputs.branch }}"
-          echo "commit: ${{ steps.ctx.outputs.sha }}"
+          set -euo pipefail
+
+          jq --arg core "registry.cloud.grupopw2c.com.br/chat-core:${BRANCH}" \
+             --arg web  "registry.cloud.grupopw2c.com.br/chat-web:${BRANCH}" '
+            map(
+              if .Name == "OMNIA_CORE_IMAGE" then .Value = $core
+              elif .Name == "OMNIA_WEB_IMAGE" then .Value = $web
+              else .
+              end
+            )
+          ' env-antes.json > env-final.json
+
+          if ! jq -e 'map(select(.Name == "OMNIA_CORE_IMAGE")) | length > 0' \
+            env-final.json >/dev/null; then
+            echo "::warning::OMNIA_CORE_IMAGE nao estava na stack; as imagens vao usar o default do compose (latest)"
+          fi
+
+          jq -n --slurpfile s stack-antes.json --slurpfile e env-final.json '{
+            StackFileContent: $s[0].StackFileContent,
+            Env: $e[0],
+            RepullImageAndRedeploy: true
+          }' > payload.json
+
+          echo "payload: $(wc -c < payload.json) bytes"
+          echo "variaveis: $(jq 'length' < env-final.json)"
+
+      - name: Atualizar a stack
+        env:
+          PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
+          PORTAINER_API_KEY: ${{ secrets.PORTAINER_API_KEY }}
+          PORTAINER_STACK_ID: ${{ secrets.PORTAINER_STACK_ID }}
+          PORTAINER_ENDPOINT_ID: ${{ secrets.PORTAINER_ENDPOINT_ID }}
+        run: |
+          set -euo pipefail
+
+          BASE="${PORTAINER_URL%/}"
+
+          STATUS=$(curl -sS -o resposta.json -w '%{http_code}' \
+            --max-time 60 \
+            -X PUT \
+            -H "X-API-Key: ${PORTAINER_API_KEY}" \
+            -H 'Content-Type: application/json' \
+            "${BASE}/api/stacks/${PORTAINER_STACK_ID}?endpointId=${PORTAINER_ENDPOINT_ID}" \
+            --data-binary @payload.json || echo "000")
+
+          case "$STATUS" in
+            200|204)
+              echo "stack atualizada (HTTP ${STATUS})"
+              ;;
+            *)
+              echo "::error::API respondeu HTTP ${STATUS}" >&2
+              cat resposta.json >&2 || true
+              exit 1
+              ;;
+          esac
+
+      - name: Conferir a stack
+        env:
+          PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
+          PORTAINER_API_KEY: ${{ secrets.PORTAINER_API_KEY }}
+          PORTAINER_STACK_ID: ${{ secrets.PORTAINER_STACK_ID }}
+          PORTAINER_ENDPOINT_ID: ${{ secrets.PORTAINER_ENDPOINT_ID }}
+        run: |
+          set -euo pipefail
+
+          BASE="${PORTAINER_URL%/}"
+          AUTH="X-API-Key: ${PORTAINER_API_KEY}"
+
+          curl -fsS -H "$AUTH" \
+            "${BASE}/api/stacks/${PORTAINER_STACK_ID}?endpointId=${PORTAINER_ENDPOINT_ID}" \
+            > stack-depois.json
+
+          echo "--- servicos ---"
+          jq -r '.Services[]? | "  \(.Spec.Name): \(.Spec.Mode.Replicated.Replicas // 0) replica(s)"' \
+            stack-depois.json
+
           echo
-          echo "${{ steps.images.outputs.core }}"
-          echo "${{ steps.images.outputs.web }}"
+          echo "a API responde antes das tasks subirem. Para o estado real:"
+          echo "  docker service ls --filter name=omnia_"
+          echo "  docker service ps <servico> --no-trunc"
 
-  # Os dois jobs de deploy são idênticos exceto pelo diretório e pelo ambiente do
-  # GitHub. Poderia ser um job só com matriz, mas a matriz esconde a diferença
-  # entre homologação e produção num bloco `include:` difícil de ler, e aqui a
-  # diferença é justamente o que importa.
-  #
-  # Os arquivos de deploy são enviados a cada deploy em vez de serem copiados à
-  # mão: uma cópia na VM desatualizada é um compose diferente do repositório, e
-  # o primeiro sintoma é um deploy que roda com a configuração antiga.
-
-  deploy-homolog:
-    name: Deploy homologação
-    needs: build
-    runs-on: ubuntu-latest
-    environment: homolog
-
-    if: needs.build.outputs.branch == 'develop'
-
-    steps:
-      - name: Baixar o código
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.build.outputs.sha }}
-
-      # Diagnóstico do scp: se o `source` não resolver, o drone-scp falha com
-      # "tar: empty archive" sem dizer qual caminho não existiu. Esta lista
-      # transforma um erro opaco em um caminho visível.
-      - name: Conferir os arquivos que serão enviados
-        run: ls -la apps/docker/docker-compose.deploy.yml apps/docker/deploy.sh
-
-      - name: Enviar o compose e o script
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          # Uma linha separada por vírgula. O bloco `|` com quebra de linha
-          # final vira um terceiro item vazio na lista, e o glob do tar não
-          # resolve — daí o "empty archive".
-          source: apps/docker/docker-compose.deploy.yml,apps/docker/deploy.sh
-          # Sem isto o tar mantém a árvore: o arquivo cairia em
-          # /srv/omnia/homolog/apps/docker/deploy.sh, e o script executado
-          # continuaria sendo a cópia antiga que está na raiz.
-          strip_components: 2
-          target: /srv/omnia/homolog
-
-      # `env:` define as variáveis no runner; `envs:` (dentro de `with:`) diz
-      # quais delas atravessam o SSH. Sem o `envs`, a action não repassa
-      # nada, e o deploy.sh aborta com "informe IMAGE_CORE".
-      #
-      # O parêntese do `envs` não é decorativo: sem ele a lista é lida como um
-      # argumento só.
-      - name: Aplicar
-        uses: appleboy/ssh-action@v1.2.2
+      - name: Resumo
         env:
-          IMAGE_CORE: ${{ needs.build.outputs.image-core }}
-          IMAGE_WEB: ${{ needs.build.outputs.image-web }}
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: 'IMAGE_CORE,IMAGE_WEB'
-          script: |
-            chmod +x /srv/omnia/homolog/deploy.sh
-            cd /srv/omnia/homolog
-            ./deploy.sh /srv/omnia/homolog
-
-  deploy-prod:
-    name: Deploy produção
-    needs: build
-    runs-on: ubuntu-latest
-
-    # O ambiente `production` aceita apenas `main` (ver
-    # docs/estrutura/config_github.md). Um deploy vindo de outra branch é
-    # barrado pelo próprio GitHub antes deste job rodar.
-    environment: production
-
-    if: needs.build.outputs.branch == 'main'
-
-    steps:
-      - name: Baixar o código
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.build.outputs.sha }}
-
-      - name: Conferir os arquivos que serão enviados
-        run: ls -la apps/docker/docker-compose.deploy.yml apps/docker/deploy.sh
-
-      - name: Enviar o compose e o script
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: apps/docker/docker-compose.deploy.yml,apps/docker/deploy.sh
-          strip_components: 2
-          target: /srv/omnia/prod
-
-      - name: Aplicar
-        uses: appleboy/ssh-action@v1.2.2
-        env:
-          IMAGE_CORE: ${{ needs.build.outputs.image-core }}
-          IMAGE_WEB: ${{ needs.build.outputs.image-web }}
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: 'IMAGE_CORE,IMAGE_WEB'
-          script: |
-            chmod +x /srv/omnia/prod/deploy.sh
-            cd /srv/omnia/prod
-            ./deploy.sh /srv/omnia/prod
+          SHA: ${{ github.sha }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          {
+            echo "### Deploy $BRANCH"
+            echo
+            echo "- commit: \`${SHA}\`"
+            echo "- chat-core: \`registry.cloud.grupopw2c.com.br/chat-core:${BRANCH}\`"
+            echo "- chat-web: \`registry.cloud.grupopw2c.com.br/chat-web:${BRANCH}\`"
+            echo
+            echo "Reversao: aponte OMNIA_CORE_IMAGE e OMNIA_WEB_IMAGE para o sha."
+          } >> "$GITHUB_STEP_SUMMARY"

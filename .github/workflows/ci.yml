@@ -1,3 +1,11 @@
+# Valida o repositório antes de o CD publicar qualquer imagem.
+#
+# ```
+# PR ou push ──> 4 jobs em paralelo ──> tudo verde? ──> CD
+# ```
+#
+# `main` entra porque o PR develop → main também passa por aqui. Ver docs/ci_cd/.
+
 name: CI (Continuous Integration)
 
 on:
@@ -18,8 +26,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Jobs separados por app: num job único, uma falha de formatação no Core
-  # esconderia o resultado da interface. Rodam em paralelo.
+  # Jobs separados por app, para que uma falha não esconda o resultado dos
+  # outros. Rodam em paralelo.
 
   frontend:
     name: Frontend (chat-omnia)
@@ -53,8 +61,7 @@ jobs:
         run: npm run build
 
       - name: Verificar build não-git-ignored
-        # Um dist committado por engano quebraria o npm ci do servidor e
-        # colocaria artefato velho em produção.
+        # Um dist versionado quebraria o npm ci do servidor.
         run: |
           if git ls-files --error-unmatch apps/chat-omnia/dist >/dev/null 2>&1; then
             echo "::error::apps/chat-omnia/dist está versionado. Remova do git."
@@ -80,8 +87,7 @@ jobs:
         working-directory: apps/chat-core
         run: npm ci
 
-      # typecheck roda src e test: tsx não checa tipos, então um teste com erro
-      # de tipo só apareceria no tsc de outra pessoa.
+      # typecheck roda src e test: tsx não checa tipos.
       - name: Verificar TypeScript
         working-directory: apps/chat-core
         run: npm run typecheck
@@ -112,17 +118,13 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-      # Na raiz: o prettier tem um único conjunto de regras para o repositório
-      # inteiro, e app por app deixaria de fora a raiz e docs/. Em ubuntu a
-      # checagem é sobre LF de verdade, que é o que o .gitattributes garante.
+      # Na raiz: o prettier tem um conjunto de regras para o repositório inteiro.
+      # Em ubuntu a checagem é sobre LF, que é o que o .gitattributes garante.
       - name: Verificar formatação
         run: npm run format:check
 
-  # Confere que as duas imagens construem. O CD as constrói de novo, a partir do
-  # mesmo commit: um Dockerfile quebrado é discovery de deploy, e deploy é o
-  # pior lugar para descobrir que um COPY aponta para caminho que não existe.
-  #
-  # Sem push e sem load: o que importa é o build terminar.
+  # Confere que as imagens construem. O CD as constrói de novo, do mesmo
+  # commit: um Dockerfile quebrado não pode ser descoberto no deploy.
   images:
     name: Imagens Docker
     runs-on: ubuntu-latest

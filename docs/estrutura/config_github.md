@@ -9,178 +9,117 @@ Onde: `github.com/healthdevio/projeto-itia-dois` → **Settings**.
 
 Em **Settings → Secrets and variables → Actions → New repository secret**.
 
-| Secret           | Valor                                | Para quê           |
-| ---------------- | ------------------------------------ | ------------------ |
-| `DEPLOY_SSH_KEY` | conteúdo de `ssh-key-2026-09-22.key` | abrir sessão na VM |
-| `DEPLOY_HOST`    | `167.126.20.64`                      | endereço da VM     |
-| `DEPLOY_USER`    | `ubuntu`                             | usuário do SSH     |
+| Secret                   | Valor                                 | Para quê                   |
+| ------------------------ | ------------------------------------- | -------------------------- |
+| `PW2C_REGISTRY_USERNAME` | usuário do registry da empresa        | publicar as imagens        |
+| `PW2C_REGISTRY_PASSWORD` | senha ou token do registry            | idem                       |
+| `PORTAINER_URL`          | `https://portainer.da.empresa.com.br` | endereço do Portainer      |
+| `PORTAINER_API_KEY`      | token de acesso do Portainer          | atualizar a stack pela API |
+| `PORTAINER_STACK_ID`     | id da stack `omnia`                   | qual stack atualizar       |
+| `PORTAINER_ENDPOINT_ID`  | id do ambiente Swarm                  | qual cluster               |
 
 O GitHub mostra só o nome, nunca o valor.
 
-### Como colar a chave privada
+### Os dois ids que não dá para adivinhar
 
-O `Set-Clipboard` do PowerShell nem sempre existe. O caminho que funciona:
+**`PORTAINER_STACK_ID`** aparece na URL da tela da stack:
 
-```powershell
-notepad "C:\Users\Alec\Downloads\ssh-key-2026-09-22.key"
+```
+https://portainer.da.empresa.com.br/#!/stacks/1/view
+                                          ^ o id da stack
 ```
 
-`Ctrl+A`, `Ctrl+C`, fecha **sem salvar** — salvar pelo Bloco de Notas troca LF por
-CRLF, e o SSH recusa a chave.
+**`PORTAINER_ENDPOINT_ID`** fica em **Home** do Portainer, ou em **Settings →
+Endpoints**. Em um cluster com um único ambiente, quase sempre é `1`.
 
-No campo "Secret" do GitHub, cola com `Ctrl+V`. A primeira linha tem que ser
-`-----BEGIN RSA PRIVATE KEY-----`, e o arquivo tem 27 linhas.
+## Token da API do Portainer
 
-## Ambientes
+Em **Account settings → Access tokens → Add access token**.
 
-Em **Settings → Environments**.
+O token precisa de escopo de escrita em stacks. **Copie uma vez** — não dá para
+reexibir depois, e é preciso gerar outro se perder.
 
-| Ambiente     | Proteção                              | Comportamento                 |
-| ------------ | ------------------------------------- | ----------------------------- |
-| `homolog`    | nenhuma                               | qualquer branch pode deployar |
-| `production` | `Selected branches and tags` → `main` | só `main`                     |
+## Por que o token e não uma senha
 
-O passo de proteção: **Configure production → Deployment branches and tags →
-Selected branches and tags → digitar `main`**.
+O `cd.yml` não usa `username`/`password` do Portainer. Usa token, porque
+é revogável sem trocar senha, e o escopo é explícito: o token faz o que o
+deploy precisa e nada mais.
 
-## Required reviewers não existe neste plano
+## O registry
 
-A tela de `production` **não tem** "Required reviewers" nem "Wait timer". Não é
-erro de configuração — é restrição de plano:
+O registry é da empresa, não do GitHub:
 
-| Plano                   | Repo privado | Required reviewers |
-| ----------------------- | ------------ | ------------------ |
-| Free / Free for org     | privado      | **não disponível** |
-| Free / Free for org     | público      | disponível         |
-| Pro / Team / Enterprise | privado      | disponível         |
+```
+registry.cloud.grupopw2c.com.br
+```
 
-Este repositório é privado e está no Free.
+Isso muda duas coisas em relação ao `ghcr.io`:
 
-### O que substitui a aprovação
+|                        | `ghcr.io`                  | Registry da empresa                    |
+| ---------------------- | -------------------------- | -------------------------------------- |
+| Credencial no workflow | `GITHUB_TOKEN`, automático | `PW2C_REGISTRY_PASSWORD`, criado à mão |
+| Visibilidade           | herda do repositório       | a que a empresa definir                |
 
-O merge do PR `develop → main`. O `fluxo_de_versionamento.md` já define que
-produção só integra após aprovação — a aprovação acontece na tela do PR, e não
-na tela do workflow.
+O repositório continua privado. O `cd.yml` não precisa de
+`packages: write` — as permissões padrão bastam, porque não é o GitHub Packages.
 
-A consequência prática é pequena: o botão "Approve deployment" apareceria em
-outro lugar, não em outro momento.
+## Autenticação no cluster
 
-## O que o repositório herda
-
-| Item                  | Visibilidade |
-| --------------------- | ------------ |
-| Repositório           | privado      |
-| Packages no `ghcr.io` | **privadas** |
-
-Package herda a visibilidade do repo. Como o repo é privado, a VM precisa de
-credencial para `docker pull` — estar na rede não basta.
-
-## Autenticação no registry na VM
-
-Uma vez, por máquina. O token precisa do escopo `read:packages` — criado em
-**Settings → Developer settings → Personal access tokens (classic)**. O
-comando está na seção seguinte, porque tem um detalhe (`sudo`) que quebra o
-deploy.
-
-O `GITHUB_TOKEN` do workflow não serve aqui: ele vale só dentro do runner do
-GitHub Actions, não na VM.
-
-Alternativa mais correta para produção: **usuário de máquina** do GitHub
-(`https://github.com/organizations/healthdevio/settings/machines`), feito para
-automação. Mais um cadastro, e o token não fica preso a uma pessoa.
-
-## O login é SEM sudo
-
-O `ubuntu` já está no grupo `docker`, e o `deploy.sh` chama `docker` direto:
+O cluster precisa da **mesma** credencial para o `pull`. Uma vez, no servidor:
 
 ```bash
-docker network create "$NETWORK"
-"${compose[@]}" --env-file .env -f "$COMPOSE_FILE" pull
+printf 'usuario' | docker login registry.cloud.grupopw2c.com.br --password-stdin
 ```
 
-Com `sudo docker login`, a credencial vai para
-`/root/.docker/config.json`. O `deploy.sh` roda como `ubuntu`, não acha o token,
-e o `pull` falha com `unauthorized` — mesmo tendo sido feito o login.
-
-```console
-$ id
-uid=1001(ubuntu) gid=1001(ubuntu) groups=1001(ubuntu),4(adm),24(cdrom),
-27(sudo),30(dip),102(lxd),109(docker)
-                                  ^^^^^^^^^ oubuntu já tem acesso ao daemon
-```
-
-## Como colar sem errar
-
-Colar o token direto no prompt é frágil: o Termius envia o texto colado já
-com Enter, e às vezes o token chega antes de o comando começar a ler. O sintoma
-é o token virar argumento:
-
-```console
-$ docker login ghcr.io -u Aleczinho --password-stdin
-pNCaSpPwcWmwRJfOKr04SmfaE
-docker: 'docker login' requires at most 1 argument
-```
-
-O mais seguro é passar por arquivo temporário:
-
-```bash
-nano /tmp/tok
-# cola o token, Ctrl+O, Enter, Ctrl+X
-
-docker login ghcr.io -u Aleczinho --password-stdin < /tmp/tok
-rm /tmp/tok
-```
-
-O `<` redireciona o arquivo para a entrada do comando: sem depender de quando o
-token é colado, sem eco na tela, e sem entrar no histórico do shell.
-
-Pelo prompt direto também funciona, mas em **dois passos separados**: digite o
-comando e pressione Enter sozinho, só então cole o token e pressione Enter.
-
-### Evite `read -s`
-
-```bash
-read -s GHCR_TOKEN          # NÃO fazer assim
-```
-
-Colando as linhas de uma vez, o `read` consome a primeira e as seguintes viram
-entrada do shell — que ecoa o token na tela.
-
-## Conferir que gravou
+Conferir:
 
 ```bash
 cat ~/.docker/config.json
 ```
 
 ```json
-{ "auths": { "ghcr.io": { "auth": "QWxLY3ppb..." } } }
+{ "auths": { "registry.cloud.grupopw2c.com.br": { "auth": "QWxLY3ppb..." } } }
 ```
 
-Se aparecer `credsStore` no lugar, o docker guardou no credential helper do
-sistema — também está correto.
-
 O valor em `auth` é base64, que é **codificação, não criptografia**: reverte-se
-trivialmente. Por isso um token que apareceu em print precisa ser revogado, e
-não só trocado.
+trivialmente. Por isso uma senha que apareceu em print precisa ser revogada, e não
+só trocada.
+
+### Divergência é a causa mais comum
+
+O segredo no GitHub e a credencial no cluster são dois lugares independentes.
+Trocar no GitHub e esquecer no cluster produz `unauthorized` no `pull` — com o
+workflow inteiro verde.
+
+## Ambientes
+
+O `cd.yml` **não usa GitHub Environments**. A proteção de produção
+acontece pelo merge do PR, não por approval na tela do workflow.
+
+Se a empresa quiser aprovação explícita antes de atualizar a stack, dá para
+adicionar o `environment: production` no job e configurar a protection em
+Settings → Environments. Não é necessário para o funcionar.
 
 ## `unauthorized` vs `manifest unknown`
 
-| Erro no `pull`     | Significa                                                              |
-| ------------------ | ---------------------------------------------------------------------- |
-| `unauthorized`     | login falhou, ou foi feito como outro usuário, ou o token foi revogado |
-| `manifest unknown` | login ok; a imagem ainda não foi publicada                             |
-
-`manifest unknown` logo depois de logar é o resultado esperado, porque o
-`cd.yml` ainda está na `develop` e não disparou.
+| Erro no `pull`     | Significa                                                     |
+| ------------------ | ------------------------------------------------------------- |
+| `unauthorized`     | login falhou, ou a credencial divergiu entre GitHub e cluster |
+| `manifest unknown` | login ok; a imagem ainda não foi publicada                    |
 
 ## Checklist
 
 ```
-[ ] DEPLOY_SSH_KEY criado
-[ ] DEPLOY_HOST criado
-[ ] DEPLOY_USER criado
-[ ] ambiente homolog criado
-[ ] ambiente production criado, com "main" em Selected branches
-[ ] docker login ghcr.io feito na VM, sem sudo
+[ ] PW2C_REGISTRY_USERNAME criado
+[ ] PW2C_REGISTRY_PASSWORD criado
+[ ] PORTAINER_URL criado
+[ ] PORTAINER_API_KEY criado
+[ ] PORTAINER_STACK_ID criado
+[ ] PORTAINER_ENDPOINT_ID criado
+[ ] docker login no registry feito no cluster
+[ ] OMNIA_CORE_IMAGE e OMNIA_WEB_IMAGE presentes no .Env da stack
 [ ] tokens que apareceram em print, revogados
 ```
+
+Os dois últimos itens não são do GitHub, mas o deploy falha sem eles. Ver
+[pré-requisitos](../ci_cd/pre-requisitos.md).
