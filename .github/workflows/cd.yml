@@ -13,7 +13,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  build-and-push:
+    name: Build and Push
     runs-on: ubuntu-latest
 
     steps:
@@ -30,6 +31,13 @@ jobs:
           username: ${{ secrets.PW2C_REGISTRY_USERNAME }}
           password: ${{ secrets.PW2C_REGISTRY_PASSWORD }}
 
+      # Tags explicitas por build. Um gerador unico de tags seria compartilhado
+      # pelos dois builds, e cada um publicaria nas duas imagens: o `chat-core`
+      # acabaria contendo a imagem do nginx, com `node: not found` no boot.
+      #
+      # A tag de branch existe porque a stack e redesenhada a cada deploy. A tag
+      # de commit continua sendo a via de reverte: apontar OMNIA_CORE_IMAGE e
+      # OMNIA_WEB_IMAGE no Portainer para o sha de um deploy anterior.
       - name: Build and Push Core
         uses: docker/build-push-action@v6
         with:
@@ -62,140 +70,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Buscar o estado atual da stack
-        id: stack
-        env:
-          PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
-          PORTAINER_API_KEY: ${{ secrets.PORTAINER_API_KEY }}
-          PORTAINER_STACK_ID: ${{ secrets.PORTAINER_STACK_ID }}
-          PORTAINER_ENDPOINT_ID: ${{ secrets.PORTAINER_ENDPOINT_ID }}
-        run: |
-          set -euo pipefail
-
-          for v in PORTAINER_URL PORTAINER_API_KEY PORTAINER_STACK_ID PORTAINER_ENDPOINT_ID; do
-            if [ -z "${!v}" ]; then
-              echo "::error::secret $v ausente" >&2
-              exit 1
-            fi
-          done
-
-          BASE="${PORTAINER_URL%/}"
-          AUTH="X-API-Key: ${PORTAINER_API_KEY}"
-
-          echo "stack: ${PORTAINER_STACK_ID} (endpoint ${PORTAINER_ENDPOINT_ID})"
-
-          curl -fsS -H "$AUTH" \
-            "${BASE}/api/stacks/${PORTAINER_STACK_ID}/file?endpointId=${PORTAINER_ENDPOINT_ID}" \
-            > stack-antes.json
-
-          jq -r '.StackFileContent' stack-antes.json > stack.yml
-          jq -c '.Env // []' stack-antes.json > env-antes.json
-
-          if [ ! -s stack.yml ]; then
-            echo "::error::StackFileContent veio vazio" >&2
-            exit 1
-          fi
-
-          echo "linhas do compose: $(wc -l < stack.yml)"
-
-      - name: Montar o payload
-        id: payload
-        env:
-          BRANCH: ${{ github.ref_name }}
-          SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-
-          jq --arg core "registry.cloud.grupopw2c.com.br/chat-core:${BRANCH}" \
-             --arg web  "registry.cloud.grupopw2c.com.br/chat-web:${BRANCH}" '
-            map(
-              if .Name == "OMNIA_CORE_IMAGE" then .Value = $core
-              elif .Name == "OMNIA_WEB_IMAGE" then .Value = $web
-              else .
-              end
-            )
-          ' env-antes.json > env-final.json
-
-          if ! jq -e 'map(select(.Name == "OMNIA_CORE_IMAGE")) | length > 0' \
-            env-final.json >/dev/null; then
-            echo "::warning::OMNIA_CORE_IMAGE nao estava na stack; as imagens vao usar o default do compose (latest)"
-          fi
-
-          jq -n --slurpfile s stack-antes.json --slurpfile e env-final.json '{
-            StackFileContent: $s[0].StackFileContent,
-            Env: $e[0],
-            RepullImageAndRedeploy: true
-          }' > payload.json
-
-          echo "payload: $(wc -c < payload.json) bytes"
-          echo "variaveis: $(jq 'length' < env-final.json)"
-
-      - name: Atualizar a stack
-        env:
-          PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
-          PORTAINER_API_KEY: ${{ secrets.PORTAINER_API_KEY }}
-          PORTAINER_STACK_ID: ${{ secrets.PORTAINER_STACK_ID }}
-          PORTAINER_ENDPOINT_ID: ${{ secrets.PORTAINER_ENDPOINT_ID }}
-        run: |
-          set -euo pipefail
-
-          BASE="${PORTAINER_URL%/}"
-
-          STATUS=$(curl -sS -o resposta.json -w '%{http_code}' \
-            --max-time 60 \
-            -X PUT \
-            -H "X-API-Key: ${PORTAINER_API_KEY}" \
-            -H 'Content-Type: application/json' \
-            "${BASE}/api/stacks/${PORTAINER_STACK_ID}?endpointId=${PORTAINER_ENDPOINT_ID}" \
-            --data-binary @payload.json || echo "000")
-
-          case "$STATUS" in
-            200|204)
-              echo "stack atualizada (HTTP ${STATUS})"
-              ;;
-            *)
-              echo "::error::API respondeu HTTP ${STATUS}" >&2
-              cat resposta.json >&2 || true
-              exit 1
-              ;;
-          esac
-
-      - name: Conferir a stack
-        env:
-          PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
-          PORTAINER_API_KEY: ${{ secrets.PORTAINER_API_KEY }}
-          PORTAINER_STACK_ID: ${{ secrets.PORTAINER_STACK_ID }}
-          PORTAINER_ENDPOINT_ID: ${{ secrets.PORTAINER_ENDPOINT_ID }}
-        run: |
-          set -euo pipefail
-
-          BASE="${PORTAINER_URL%/}"
-          AUTH="X-API-Key: ${PORTAINER_API_KEY}"
-
-          curl -fsS -H "$AUTH" \
-            "${BASE}/api/stacks/${PORTAINER_STACK_ID}?endpointId=${PORTAINER_ENDPOINT_ID}" \
-            > stack-depois.json
-
-          echo "--- servicos ---"
-          jq -r '.Services[]? | "  \(.Spec.Name): \(.Spec.Mode.Replicated.Replicas // 0) replica(s)"' \
-            stack-depois.json
-
-          echo
-          echo "a API responde antes das tasks subirem. Para o estado real:"
-          echo "  docker service ls --filter name=omnia_"
-          echo "  docker service ps <servico> --no-trunc"
-
       - name: Resumo
         env:
           SHA: ${{ github.sha }}
           BRANCH: ${{ github.ref_name }}
         run: |
           {
-            echo "### Deploy $BRANCH"
+            echo "### Build $BRANCH"
             echo
             echo "- commit: \`${SHA}\`"
             echo "- chat-core: \`registry.cloud.grupopw2c.com.br/chat-core:${BRANCH}\`"
             echo "- chat-web: \`registry.cloud.grupopw2c.com.br/chat-web:${BRANCH}\`"
             echo
-            echo "Reversao: aponte OMNIA_CORE_IMAGE e OMNIA_WEB_IMAGE para o sha."
+            echo "Publicadas as imagens. Atualize a stack manualmente no Portainer."
+            echo "1. Stacks -> omnia -> Environment variables"
+            echo "2. Atualize OMNIA_CORE_IMAGE e OMNIA_WEB_IMAGE"
+            echo "3. Update the stack com Repull image"
           } >> "$GITHUB_STEP_SUMMARY"
