@@ -183,7 +183,7 @@ jobs:
           echo
           echo "a API responde antes das tasks subirem. Para o estado real:"
           echo "  docker service ls --filter name=omnia_"
-          echo "  docker service ps <servico> --no-trunc"
+          echo "  docker service ps <seeeervico> --no-trunc"
 
       - name: Resumo
         env:
