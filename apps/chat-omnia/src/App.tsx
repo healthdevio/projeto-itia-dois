@@ -3,6 +3,7 @@ import { useState } from 'react';
 import FloatingChatButton from './interface/chat/FloatingChatButton';
 import MiniChat from './interface/chat/MiniChat';
 import ExpandedChat from './interface/chat/ExpandedChat';
+import HealthIndicator from './components/HealthIndicator';
 import type { MessageProps } from './interface/messages/MessageItem';
 
 function App() {
@@ -51,6 +52,7 @@ function App() {
         )
       ) : null}
       <FloatingChatButton isOpen={isOpen} onClick={toggleChat} />
+      <HealthIndicator />
     </div>
   );
 }

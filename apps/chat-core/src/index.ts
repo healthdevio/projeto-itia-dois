@@ -6,6 +6,7 @@ import { checkDatabase, closeDatabase } from './db/client.js';
 import { conversationRoutes } from './routes/conversations.js';
 import { messageRoutes } from './routes/messages.js';
 import { suggestionRoutes } from './routes/suggestions.js';
+import { health } from './routes/health.js';
 import { getProvider } from './services/ai/index.js';
 const app = new Hono();
 app.use('*', cors());
@@ -21,6 +22,7 @@ app.get('/', async (c) => {
 app.route('/api/messages', messageRoutes);
 app.route('/api/conversations', conversationRoutes);
 app.route('/api/suggestions', suggestionRoutes);
+app.route('/', health);
 const port = parseInt(process.env.CORE_PORT || '3001');
 console.log(`[Core] Iniciando servidor na porta ${port}...`);
 try {
