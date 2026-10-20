@@ -10,13 +10,26 @@ import { getProvider } from './services/ai/index.js';
 const app = new Hono();
 app.use('*', cors());
 app.use('*', logger());
-app.get('/', async (c) => {
+// Health check routes
+app.get('/health', async (c) => {
   const databaseUp = await checkDatabase();
+  const timestamp = new Date().toISOString();
   return c.json({
     status: databaseUp ? 'ok' : 'degraded',
     service: 'chat-ai-core',
     database: databaseUp ? 'up' : 'down',
+    timestamp,
   });
+});
+app.get('/health/ready', async (c) => {
+  const databaseUp = await checkDatabase();
+  if (databaseUp) {
+    return c.json({ status: 'pass' });
+  }
+  return c.json({ status: 'fail', reason: 'database_down' }, 503);
+});
+app.get('/health/live', async (c) => {
+  return c.json({ status: 'ok' });
 });
 app.route('/api/messages', messageRoutes);
 app.route('/api/conversations', conversationRoutes);
