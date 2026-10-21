@@ -28,6 +28,16 @@ services:
 
   core:
     image: ${OMNIA_CORE_IMAGE:-registry.cloud.grupopw2c.com.br/chat-core:latest}
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget --quiet --tries=1 --spider http://127.0.0.1:${CORE_PORT:-80}/health/live || exit 1',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-omnia_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omniaabanco2026}

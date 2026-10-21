@@ -1,11 +1,3 @@
-# Valida o repositório antes de o CD publicar qualquer imagem.
-#
-# ```
-# PR ou push ──> 4 jobs em paralelo ──> tudo verde? ──> CD
-# ```
-#
-# `main` entra porque o PR develop → main também passa por aqui. Ver docs/ci_cd/.
-
 name: CI (Continuous Integration)
 
 on:
@@ -26,13 +18,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Jobs separados por app, para que uma falha não esconda o resultado dos
+  # Jobs separados por aplicativo, para que uma falha nǜo esconda o resultado dos
   # outros. Rodam em paralelo.
 
   frontend:
-    name: Frontend (chat-omnia)
+    name: Frontend (chat-omia)
     runs-on: ubuntu-latest
-
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
@@ -49,29 +40,28 @@ jobs:
         run: npm ci
 
       - name: Verificar TypeScript
-        working-directory: apps/chat-omnia
+        working-directory: apps/chat-omia
         run: npm run typecheck
 
       - name: Verificar ESLint
-        working-directory: apps/chat-omnia
+        working-directory: apps/chat-omia
         run: npm run lint
 
       - name: Gerar build
-        working-directory: apps/chat-omnia
+        working-directory: apps/chat-omia
         run: npm run build
 
-      - name: Verificar build não-git-ignored
+      - name: Verificar build nǜo-git-ignored
         # Um dist versionado quebraria o npm ci do servidor.
-        run: |
+        run: |-
           if git ls-files --error-unmatch apps/chat-omnia/dist >/dev/null 2>&1; then
-            echo "::error::apps/chat-omnia/dist está versionado. Remova do git."
+            echo "::error::apps/chat-omnia/dist estǭ versionado. Remova do git."
             exit 1
           fi
 
   core:
     name: Core (chat-core)
     runs-on: ubuntu-latest
-
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
@@ -87,7 +77,7 @@ jobs:
         working-directory: apps/chat-core
         run: npm ci
 
-      # typecheck roda src e test: tsx não checa tipos.
+      # typecheck roda src e test: tsx nǜo checa tipos.
       - name: Verificar TypeScript
         working-directory: apps/chat-core
         run: npm run typecheck
@@ -101,7 +91,7 @@ jobs:
         run: npm run build
 
   format:
-    name: Formatação (prettier)
+    name: Formatação (Prettier)
     runs-on: ubuntu-latest
 
     steps:
@@ -118,13 +108,16 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-      # Na raiz: o prettier tem um conjunto de regras para o repositório inteiro.
-      # Em ubuntu a checagem é sobre LF, que é o que o .gitattributes garante.
+      # Auto-fix: corrige problemas de formatação automaticamente
+      - name: Executar npm run format
+        run: npm run format
+
+      # Verificar formatação (fail se houver problemas restantes)
       - name: Verificar formatação
         run: npm run format:check
 
-  # Confere que as imagens construem. O CD as constrói de novo, do mesmo
-  # commit: um Dockerfile quebrado não pode ser descoberto no deploy.
+  # Confere que as imagens construem. O CD as constr��i de novo, do mesmo
+  # commit: um Dockerfile quebrado nǜo pode ser descoberto no deploy.
   images:
     name: Imagens Docker
     runs-on: ubuntu-latest
@@ -143,8 +136,8 @@ jobs:
           context: .
           file: apps/docker/Dockerfile.core
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          sbom: false
+          provenance: false
 
       - name: Construir imagem da interface
         uses: docker/build-push-action@v6
@@ -152,5 +145,5 @@ jobs:
           context: .
           file: apps/docker/Dockerfile.web
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          sbom: false
+          provenance: false
