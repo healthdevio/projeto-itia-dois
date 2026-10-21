@@ -5,8 +5,8 @@ services:
     image: pgvector/pgvector:pg16
     command: ['postgres', '-c', 'shared_preload_libraries=pg_stat_statements']
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-omnia}
-      POSTGRES_USER: ${POSTGRES_USER:-omnia_user}
+      POSTGRES_DB: ${POSTGRES_DB:-omia}
+      POSTGRES_USER: ${POSTGRES_USER:-omia_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .Env da stack}
     volumes:
       - omnia_postgres_data:/var/lib/postgresql/data
@@ -29,8 +29,11 @@ services:
   core:
     image: ${OMNIA_CORE_IMAGE:-registry.cloud.grupopw2c.com.br/chat-core:latest}
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-omnia_user}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .Env da stack}@postgres:5432/${POSTGRES_DB:-omnia}
-      CORE_PORT: '3001'
+      POSTGRES_USER: ${POSTGRES_USER:-omnia_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omniaabanco2026}
+      POSTGRES_DB: ${POSTGRES_DB:-omnia}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-omnia_user}:${POSTGRES_PASSWORD:-omniaabanco2026}@postgres:5432/${POSTGRES_DB:-omnia}
+      CORE_PORT: '80'
       AI_PROVIDER: ${AI_PROVIDER:-echo}
       NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
       NVIDIA_MODEL: ${NVIDIA_MODEL:-meta/llama-3.3-70b-instruct}
@@ -42,6 +45,9 @@ services:
     deploy:
       mode: replicated
       replicas: 1
+      placement:
+        constraints:
+          - node.hostname == compute01
       update_config:
         parallelism: 1
         delay: 10s
@@ -65,6 +71,9 @@ services:
     deploy:
       mode: replicated
       replicas: 1
+      placement:
+        constraints:
+          - node.hostname == compute01
       update_config:
         parallelism: 1
         delay: 10s

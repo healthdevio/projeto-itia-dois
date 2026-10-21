@@ -34,7 +34,7 @@ app.get('/health/live', async (c) => {
 app.route('/api/messages', messageRoutes);
 app.route('/api/conversations', conversationRoutes);
 app.route('/api/suggestions', suggestionRoutes);
-const port = parseInt(process.env.CORE_PORT || '3001');
+const port = parseInt(process.env.CORE_PORT || '80');
 console.log(`[Core] Iniciando servidor na porta ${port}...`);
 try {
   const provider = await getProvider();
