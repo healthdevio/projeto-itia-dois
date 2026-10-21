@@ -38,6 +38,7 @@ jobs:
       - name: Instalar dependências
         working-directory: apps/chat-omnia
         run: npm ci
+        shell: bash
 
       - name: Verificar TypeScript
         working-directory: apps/chat-omia
