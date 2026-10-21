@@ -4,7 +4,8 @@
     "noEmit": true,
     "declaration": false,
     "sourceMap": false,
-    "rootDir": "."
+    "rootDir": ".",
+    "types": ["node"]
   },
   "include": ["src/**/*", "test/**/*"]
 }
