@@ -39,15 +39,15 @@ jobs:
         shell: bash
 
       - name: Verificar TypeScript
-        working-directory: apps/chat-omia
+        working-directory: apps/chat-omnia
         run: npm run typecheck
 
       - name: Verificar ESLint
-        working-directory: apps/chat-omia
+        working-directory: apps/chat-omnia
         run: npm run lint
 
       - name: Gerar build
-        working-directory: apps/chat-omia
+        working-directory: apps/chat-omnia
         run: npm run build
 
       - name: Verificar build nǜo-git-ignored
