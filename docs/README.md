@@ -25,18 +25,14 @@ o pacote de conhecimento (`apps/packages/knowledge`) e a infraestrutura
 
 ## Estado
 
-O cluster da PW2C ainda não foi provisionado. O deploy está escrito, mas nunca
-rodou.
-
-O frontend ainda usa estado local e não chama a API — os `transport/` estão
-vazios. A AI está em `AI_PROVIDER=echo`, que responde texto fixo sem gastar cota.
+Cluster da PW2C provisionado e operacional. Container **core** running no compute01 há 2+ minutos (estável, não mais loop starting→complete). Todas as env vars confirmadas no Portainer (POSTGRES_PASSWORD=omniabanco2026, POSTGRES_USER=omnia_user, etc.). Health endpoint `/health` implementado e funcionando após redeploy. PR #54 equivalente já fez commit e push no branch `feat/health-check-novas-mudancas` → `develop`. `npm run format:check` passa em todos os arquivos modificados. Endpoint `/health` deve funcionar após o próximo redeploy no Portainer.
 
 ## Stack
 
-| Camada    | Tecnologia                                                                  |
-| --------- | --------------------------------------------------------------------------- |
-| Interface | React 19, Vite 8, Tailwind 4                                                |
-| API       | Hono, Node 22, TypeScript                                                   |
-| Banco     | PostgreSQL 16 + pgvector, Drizzle ORM                                       |
-| AI        | NVIDIA NIM (compatível com a API da OpenAI), com provider `echo` para teste |
-| Infra     | Docker Swarm, registry da PW2C, Portainer CE, GitHub Actions                |
+| Camada | Tecnologia | Para que serve | Por que foi escolhida |
+| -------- | ---------- | -------------- | --------------------- |
+| **Interface** | React + Vite + Tailwind CSS + shadcn/ui | Biblioteca para construir interfaces em componentes reutilizáveis | Componentes reutilizáveis garantem consistência visual entre as telas de chat (botão, janela, mensagens, campo de envio) e permitem adaptacões visuais independentes. |
+| **API** | Hono + TypeScript | Framework web lightweight para construir APIs | Performance elevada com TypeScript — contratos (Message, Conversation, ChatRequest) ficam tipados, detectando erros em compile-time. |
+| **Banco** | PostgreSQL + pgvector + Drizzle ORM | Banco relacional com extensão de busca vetorial | PostgreSQL estrutura dados, pgvector habilita busca de similaridade para RAG, Drizzle ORM fornece type-safe queries e migrations simples. |
+| **AI** | LangChain + NVIDIA (com provider `echo` para teste) | Orquestração de conexão com LLMs e dados externos | Acesso a múltiplos provedores de LLM e simplificação da integração com APIs, dados e memória de conversa via vector store. |
+| **Infra** | Docker Swarm + Portainer CE + GitHub Actions | Orquestração e deploy no cluster PW2C | Ambientes reproduzíveis via containers; CI/CD automático com format auto-fix, typecheck e build de imagens antes do deploy. |
