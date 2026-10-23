@@ -32,25 +32,24 @@ jobs:
           password: ${{ secrets.PW2C_REGISTRY_PASSWORD }}
 
       # Tags explicitas por build. Um gerador unico de tags seria compartilhado
-      # pelos dois builds, e cada um publicaria nas duas imagens: o `chat-core`
-      # acabaria contendo a imagem do nginx, com `node: not found` no boot.
-      #
-      # A tag de branch existe porque a stack e redesenhada a cada deploy. A tag
-      # de commit continua sendo a via de reverte: apontar OMNIA_CORE_IMAGE e
-      # OMNIA_WEB_IMAGE no Portainer para o sha de um deploy anterior.
-      - name: Build and Push Core
+      # pelos dois builds, e cada um publicaria nas duas imagens: o `chat-back`
+      # acaba contendo o backend (core + API). A tag de branch existe porque a stack
+      # e redesenhada a cada deploy. A tag de commit continua sendo a via de reverte:
+      # apontar OMNIA_BACKEND_IMAGE e OMNIA_WEB_IMAGE no Portainer para o sha de um
+      # deploy anterior.
+      - name: Build and Push Backend
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: apps/docker/Dockerfile.core
+          file: apps/docker/Dockerfile.back
           platforms: linux/amd64
           provenance: false
           sbom: false
           push: true
           tags: |
-            registry.cloud.grupopw2c.com.br/chat-core:latest
-            registry.cloud.grupopw2c.com.br/chat-core:${{ github.sha }}
-            registry.cloud.grupopw2c.com.br/chat-core:${{ github.ref_name }}
+            registry.cloud.grupopw2c.com.br/chat-back:latest
+            registry.cloud.grupopw2c.com.br/chat-back:${{ github.sha }}
+            registry.cloud.grupopw2c.com.br/chat-back:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -79,11 +78,11 @@ jobs:
             echo "### Build $BRANCH"
             echo
             echo "- commit: \`${SHA}\`"
-            echo "- chat-core: \`registry.cloud.grupopw2c.com.br/chat-core:${BRANCH}\`"
+            echo "- chat-back: \`registry.cloud.grupopw2c.com.br/chat-back:${BRANCH}\`"
             echo "- chat-web: \`registry.cloud.grupopw2c.com.br/chat-web:${BRANCH}\`"
             echo
             echo "Publicadas as imagens. Atualize a stack manualmente no Portainer."
             echo "1. Stacks -> omnia -> Environment variables"
-            echo "2. Atualize OMNIA_CORE_IMAGE e OMNIA_WEB_IMAGE"
+            echo "2. Atualize OMNIA_BACKEND_IMAGE e OMNIA_WEB_IMAGE"
             echo "3. Update the stack com Repull image"
           } >> "$GITHUB_STEP_SUMMARY"
