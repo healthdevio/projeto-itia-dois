@@ -18,8 +18,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Jobs separados por aplicativo, para que uma falha nǜo esconda o resultado dos
-  # outros. Rodam em paralelo.
 
   frontend:
     name: Frontend (chat-omia)
@@ -40,15 +38,15 @@ jobs:
         shell: bash
 
       - name: Verificar TypeScript
-        working-directory: apps/chat-omia
+        working-directory: apps/chat-omnia
         run: npm run typecheck
 
       - name: Verificar ESLint
-        working-directory: apps/chat-omia
+        working-directory: apps/chat-omnia
         run: npm run lint
 
       - name: Gerar build
-        working-directory: apps/chat-omia
+        working-directory: apps/chat-omnia
         run: npm run build
 
       - name: Verificar build nǜo-git-ignored
@@ -108,16 +106,12 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-      # Auto-fix: corrige problemas de formatação automaticamente
       - name: Executar npm run format
         run: npm run format
 
-      # Verificar formatação (fail se houver problemas restantes)
       - name: Verificar formatação
         run: npm run format:check
 
-  # Confere que as imagens construem. O CD as constr��i de novo, do mesmo
-  # commit: um Dockerfile quebrado nǜo pode ser descoberto no deploy.
   images:
     name: Imagens Docker
     runs-on: ubuntu-latest
