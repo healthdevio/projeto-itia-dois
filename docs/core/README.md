@@ -24,23 +24,22 @@ Contrato da API, para quem consome.
 
 ## Identidade
 
-Todos os endpoints de conversa, mensagem e sugestão exigem o header `X-User-Id`.
+Todos os endpoints de conversa, mensagem e sugestão exigem JWT OIDC válido no header `Authorization: Bearer`.
 
 ```bash
-curl -H "X-User-Id: ana" http://localhost:3001/api/conversations/current
+curl -H "Authorization: Bearer <access-token>" http://localhost:3001/api/conversations/current
 ```
 
-Sem o header, a resposta é `401`.
+Sem token válido ou sem configuração OIDC, a resposta é `401`.
 
-> **`X-User-Id` não é autenticação.** O Core confia no valor cru: qualquer cliente
-> pode enviar o que quiser e impersonar outro usuário. Num ambiente com usuários
-> reais, um proxy na frente precisa validar um token (JWT, sessão, mTLS) e
-> reescrever o header com o subject autenticado.
+> O Core valida assinatura, issuer, audience e expiração do JWT via JWKS. Configure
+> `OIDC_ISSUER`, `OIDC_AUDIENCE` e `OIDC_JWKS_URL`; o claim `sub` determina o
+> usuário. Headers `X-User-Id` e `X-Tenant-Id` enviados pelo cliente são ignorados.
 
-O header `X-Tenant-Id` é opcional e escolhe apenas o prompt da requisição. Ele
-não concede acesso a nada.
+O tenant opcional vem do claim configurado em `OIDC_TENANT_CLAIM` (padrão
+`tenant_id`) e escolhe apenas o prompt da requisição. Ele não concede acesso.
 
 ## Onde a API está documentada
 
-O contrato completo está no `README.md` de `apps/chat-core`. Esta pasta tem a
+O contrato completo está no `README.md` de `apps/chat-back`. Esta pasta tem a
 especificação por modelo; o README tem o ponto de entrada prático.

@@ -1,6 +1,8 @@
 # Deploy
 
-O que acontece no cluster depois que a imagem está publicada.
+O que a stack Swarm pretende executar. Confira os arquivos atuais antes de usar este documento como procedimento.
+
+> **Estado:** os nomes de serviço e imagem foram alinhados no repositório. A configuração ainda precisa passar pelo build e ser conferida no cluster. O CD publica as imagens aprovadas, mas a atualização da stack permanece manual no Portainer.
 
 ## Entrada pela API do Portainer
 
@@ -56,11 +58,11 @@ flowchart LR
     W -->|proxy /api| C
 ```
 
-| Serviço    | Função                               | Onde roda   |
-| ---------- | ------------------------------------ | ----------- |
-| `postgres` | o banco, com pgvector                | compute01   |
-| `core`     | a API, a migration e o servidor HTTP | qualquer nó |
-| `web`      | nginx, serve a interface e faz proxy | qualquer nó |
+| Serviço    | Função                                 | Onde roda   |
+| ---------- | -------------------------------------- | ----------- |
+| `postgres` | o banco, com pgvector                  | compute01   |
+| `core`     | a API, as migrations e o servidor HTTP | `compute01` |
+| `web`      | nginx, serve a interface e faz proxy   | `compute01` |
 
 ### O Postgres está na stack
 
@@ -143,11 +145,10 @@ Cacheado, a interface continua servindo a versão anterior depois de um deploy.
 
 ### Por que a API não é publicada
 
-O Core confia no header cru `X-User-Id`: qualquer cliente pode enviar o que
-quiser e impersonar outro usuário. Por isso a stack publica **só** a interface.
-
-Num ambiente com usuários reais, um proxy na frente do Core precisa validar um
-token e reescrever o header com o subject autenticado.
+O Core valida JWT Bearer com a configuração OIDC (`OIDC_ISSUER`,
+`OIDC_AUDIENCE`, `OIDC_JWKS_URL`) e deriva o usuário do `sub`. Os headers
+`X-User-Id` enviados pelo cliente são ignorados. A stack publica **só** a
+interface; a UI ainda precisa ser integrada ao provedor para obter tokens.
 
 ## O banco e as migrations
 

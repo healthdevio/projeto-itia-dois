@@ -8,7 +8,18 @@ import { messageRoutes } from './routes/messages.js';
 import { suggestionRoutes } from './routes/suggestions.js';
 import { getProvider } from './services/ai/index.js';
 const app = new Hono();
-app.use('*', cors());
+const corsOrigins = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+app.use(
+  '*',
+  cors({
+    origin: corsOrigins,
+    allowHeaders: ['Authorization', 'Content-Type'],
+    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  }),
+);
 app.use('*', logger());
 // Health check routes
 app.get('/health', async (c) => {

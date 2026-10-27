@@ -19,20 +19,17 @@ O Core do chat é responsável por:
 ## Multi-usuário
 
 Cada usuário tem a sua própria conversa ativa e o seu próprio histórico. Tudo
-é escopado por `user_id`, resolvido a partir do header `X-User-Id`.
+é escopado por `user_id`, resolvido a partir do `sub` de um JWT OIDC validado.
 
 ```
-curl -H 'X-User-Id: ana' http://localhost:3001/api/conversations/current
+curl -H 'Authorization: Bearer <access-token>' http://localhost:3001/api/conversations/current
 ```
 
-Sem o header, os endpoints de conversa e de mensagem respondem `401`.
+Sem token válido ou sem configuração OIDC, os endpoints protegidos respondem `401`.
 
-> ⚠️ **`X-User-Id` não é autenticação.** O Core confia no valor cru do header:
-> qualquer cliente pode enviar o que quiser e impersonar outro usuário. Em um
-> ambiente com usuários reais, coloque um proxy/gateway na frente do Core que
-> valide um token (JWT, sessão, mTLS) e reescreva `X-User-Id` com o subject
-> autenticado. Não exponha o Core diretamente. Ver
-> `src/middleware/identity.ts`.
+> O Core valida assinatura, issuer, audience e expiração do JWT via JWKS. Configure
+> `OIDC_ISSUER`, `OIDC_AUDIENCE` e `OIDC_JWKS_URL`. O `sub` assinado determina o
+> usuário; headers `X-User-Id` e `X-Tenant-Id` enviados pelo cliente são ignorados.
 
 ## Estrutura
 
@@ -43,7 +40,7 @@ src/
 │   ├── client.ts               # Pool Postgres + cliente Drizzle (conexão preguiçosa)
 │   └── schema.ts               # Tabelas conversations, messages e suggestions
 ├── middleware/
-│   └── identity.ts             # Resolve X-User-Id → contexto (401 se ausente)
+│   └── identity.ts             # Valida JWT OIDC e resolve sub → contexto
 ├── models/
 │   ├── message.ts              # Modelo de mensagem (entrada da interface)
 │   ├── conversation.ts         # Modelo de conversa + máquina de estados
@@ -160,7 +157,7 @@ Formato completo em [`docs/core/Conversation.md`](../../docs/core/Conversation.m
 POST /api/messages
 ```
 
-Exige `X-User-Id`. A mensagem entra na conversa ativa **de quem enviou**, e o
+Exige JWT Bearer válido. A mensagem entra na conversa ativa **de quem enviou**, e o
 contexto montado para a AI é o daquele usuário.
 
 **Request Body:**
@@ -260,7 +257,7 @@ A cada resposta da AI as sugestões são substituídas pelas novas — o context
 mudou, e uma chip desatualizada levaria o usuário a pedir algo que a AI já
 respondeu. `POST` é o contrário: acrescenta ao fim, sem apagar o que já estava.
 
-Tudo é escopado por `X-User-Id`, como a conversa. Rotacionar a conversa
+Tudo é escopado pelo `sub` autenticado, como a conversa. Rotacionar a conversa
 (`POST /api/conversations/rotate`) começa uma lista nova, e a antiga vai embora
 junto com a conversa.
 
