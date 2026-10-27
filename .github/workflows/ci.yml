@@ -18,9 +18,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   frontend:
-    name: Frontend (chat-omia)
+    name: Frontend (chat-omnia)
     runs-on: ubuntu-latest
     steps:
       - name: Baixar código
@@ -31,6 +30,7 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+          cache-dependency-path: apps/chat-omnia/package-lock.json
 
       - name: Instalar dependências
         working-directory: apps/chat-omnia
@@ -75,7 +75,6 @@ jobs:
         working-directory: apps/chat-core
         run: npm ci
 
-      # typecheck roda src e test: tsx nǜo checa tipos.
       - name: Verificar TypeScript
         working-directory: apps/chat-core
         run: npm run typecheck
@@ -106,9 +105,6 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-      - name: Executar npm run format
-        run: npm run format
-
       - name: Verificar formatação
         run: npm run format:check
 
@@ -129,15 +125,31 @@ jobs:
         with:
           context: .
           file: apps/docker/Dockerfile.core
-          push: false
-          sbom: false
-          provenance: false
+          load: true
+          tags: local/chat-core:${{ github.sha }}
+
+      - name: Verificar vulnerabilidades da imagem do Core
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          scan-type: image
+          image-ref: local/chat-core:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
 
       - name: Construir imagem da interface
         uses: docker/build-push-action@v6
         with:
           context: .
           file: apps/docker/Dockerfile.web
-          push: false
-          sbom: false
-          provenance: false
+          load: true
+          tags: local/chat-web:${{ github.sha }}
+
+      - name: Verificar vulnerabilidades da imagem web
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          scan-type: image
+          image-ref: local/chat-web:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
