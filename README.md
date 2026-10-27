@@ -1,8 +1,9 @@
 # Chat Omnia
 
 Chat com IA, monorepo com interface React, API Hono, base de conhecimento com
-pgvector e entrega contínua no cluster Docker Swarm da PW2C. A `develop` publica
-as imagens, a `main` atualiza a stack.
+pgvector e entrega contínua para um cluster Docker Swarm da PW2C. A CI valida
+`develop` e `main`; após CI aprovada em `main`, o CD publica imagens com tags
+imutáveis por commit. A atualização da stack continua manual no Portainer.
 
 ## Início rápido
 
@@ -10,31 +11,31 @@ Requisitos: Node.js 24 e npm 11. Docker para o banco.
 
 ```bash
 # 1. o banco
-cp apps/docker/.env.dev apps/docker/.env    # preencha POSTGRES_PASSWORD
+cp apps/docker/.env.example apps/docker/.env # preencha POSTGRES_PASSWORD
 docker compose -f apps/docker/docker-compose.yml up -d
 
 # 2. o Core
-cd apps/chat-core
-npm install
-cp .env.example .env                        # preencha DATABASE_URL
+cd apps/chat-back
+npm ci
+cp .env.example .env                        # substitua YOUR_URL_ENCODED_PASSWORD
 npm run migrate
 npm run dev
 
 # 3. a interface
 cd apps/chat-omnia
-npm install
+npm ci
 npm run dev
 ```
 
 Essas portas valem só para o desenvolvimento local, com os dois servidores do
 Vite e do Node na sua máquina:
 
-| Serviço      | Endereço                | Vem de                          |
-| ------------ | ----------------------- | ------------------------------- |
-| Interface    | <http://localhost:5173> | default do Vite                 |
-| API          | <http://localhost:3001> | `CORE_PORT` no `.env` do Core   |
-| Health check | <http://localhost:3001> | mesma rota do Core              |
-| Postgres     | `localhost:5433`        | `'5433:5432'` no compose de dev |
+| Serviço      | Endereço                | Vem de                           |
+| ------------ | ----------------------- | -------------------------------- |
+| Interface    | <http://localhost:5173> | default do Vite                  |
+| API          | <http://localhost:3001> | `CORE_PORT` no `.env` do backend |
+| Health check | <http://localhost:3001> | mesma rota do Core               |
+| Postgres     | `localhost:5433`        | `'5433:5432'` no compose de dev  |
 
 Quem usa o sistema de verdade não acessa nenhuma delas. Em homologação e
 produção a entrada é o nginx, e a API **não tem porta publicada** — ela só
@@ -62,14 +63,14 @@ navegador ──/api/...──> nginx ──> core ──> AI provider
 **A conversa nunca vai para a AI.** Ela é estado interno do Core. Apenas as
 mensagens saem, e cada envio carrega o contexto do diálogo.
 
-Cada usuário tem a própria conversa, resolvida pelo header `X-User-Id`. Um Core
+Cada usuário tem a própria conversa, resolvida pelo claim `sub` de um JWT OIDC verificado. Um Core
 atende várias pessoas sem misturar histórico.
 
 ## Componentes
 
 ```text
 apps/chat-omnia/         Interface React, Vite, Tailwind
-apps/chat-core/          API Hono, Drizzle, Postgres
+apps/chat-back/          API Hono, Drizzle, Postgres
 apps/packages/knowledge/ Base de conhecimento, embeddings e RAG
 apps/packages/omnia-ai/  Context, memória, perfil, ferramentas
 apps/packages/sdk/       Contratos e componentes compartilhados
@@ -137,7 +138,7 @@ Os comandos rodam dentro de cada app. Não há workspace npm na raiz.
 
 ```bash
 # Core
-cd apps/chat-core
+cd apps/chat-back
 npm run dev          # hot reload
 npm run build        # tsc
 npm run test         # 95 testes, node:test via tsx
@@ -164,14 +165,14 @@ O `format` da raiz vale para o repositório inteiro — é por isso que existe
 push ──> CI ──> CD ──> registry PW2C ──> cluster Swarm
 ```
 
-A CI valida quatro coisas em paralelo — frontend, Core, formatação e build das
-imagens Docker. O `cd.yml` constrói as duas imagens, publica no registry
-da empresa e atualiza a stack pela API do Portainer.
+A CI valida frontend, backend, formatação e build das imagens Docker. O CD
+publica imagens depois que a CI da branch `main` passa; a atualização da stack
+continua manual pelo Portainer.
 
-| Branch    | O que acontece                                    |
-| --------- | ------------------------------------------------- |
-| `develop` | constrói e publica as imagens com a tag `develop` |
-| `main`    | publica e atualiza a stack                        |
+| Branch    | O que acontece                                             |
+| --------- | ---------------------------------------------------------- |
+| `develop` | CI; não publica imagens                                    |
+| `main`    | CI aprovada, build e publicação das imagens; deploy manual |
 
 A stack tem três serviços — Postgres, Core e web — na rede overlay `omnia_net`.
 Quem fala com o navegador é o nginx, e ele encaminha `/api` para o Core. **Nem o
@@ -195,15 +196,15 @@ compartilhada pulam migrations. O sintoma e a causa estão em
 
 ## Estado
 
-O cluster da PW2C ainda não foi provisionado. O deploy está escrito, mas nunca
-rodou.
+O deploy deve ser considerado bloqueado até que a stack e os nomes das imagens
+sejam validados no ambiente. Consulte [CI/CD](docs/ci_cd/README.md).
 
-|             |                                                  |
-| ----------- | ------------------------------------------------ |
-| Infra       | stack, workflow e secrets descritos, não subidos |
-| API e banco | validados na VM anterior, não no cluster         |
-| AI          | `AI_PROVIDER=echo` — texto fixo, sem cota        |
-| Interface   | **estado local, não chama a API**                |
+|             |                                                             |
+| ----------- | ----------------------------------------------------------- |
+| Infra       | configuração em evolução; confira Portainer antes de operar |
+| API e banco | código versionado; validar no cluster antes de release      |
+| AI          | `AI_PROVIDER=echo` — texto fixo, sem cota                   |
+| Interface   | **estado local, não chama a API**                           |
 
 `apps/chat-omnia/src/transport/rest` e `transport/sse` estão vazios, e a tela
 usa estado mockado em `App.tsx`. O caminho nginx → Core → Postgres foi validado
@@ -238,5 +239,5 @@ branch mas não do histórico. Ver [operação](docs/ci_cd/operacao.md).
 | [docs/estrutura/](docs/estrutura/README.md)                  | CI, Docker, ambientes, testes, versionamento |
 | [docs/interface/](docs/interface/estrutura_componentes.md)   | Componentes da interface                     |
 
-O detalhe da API está em [`apps/chat-core/README.md`](apps/chat-core/README.md),
+O detalhe da API está em [`apps/chat-back/README.md`](apps/chat-back/README.md),
 inclusive o contrato do `AIProvider` e o harness local de teste.

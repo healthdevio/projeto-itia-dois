@@ -1,78 +1,55 @@
-# Fluxo de Git e Contexto do Projeto — Chat Omnia
+# Fluxo de Git e contexto do projeto
 
-**Data:** 2026-10-21 | **Branch:** `develop` | **Remote:** `itia`
+Este documento resume convenções de contribuição e pontos de atenção atuais. Confirme nomes de branches e remotes no repositório antes de executar comandos de publicação.
 
-## 1. Fluxo Obrigatório
+## Fluxo de contribuição
+
+O fluxo documentado pelo projeto usa branches de tarefa e Pull Requests. A CI roda em PRs para `develop` e `main`.
 
 ```bash
-git checkout develop && git pull
+git checkout develop
+git pull
 git checkout -b feat/nome-da-tarefa
 # ... alterações ...
-git add .
-git commit -m "tipo: descrição em português"
-git push -u itia feat/nome-da-tarefa
+git add <arquivos>
+git commit -m "tipo: descrição"
+git push -u origin feat/nome-da-tarefa
 ```
 
-### Regras de Commit
+| Prefixo  | Uso                 |
+| -------- | ------------------- |
+| `feat:`  | Nova funcionalidade |
+| `fix:`   | Correção            |
+| `docs:`  | Documentação        |
+| `chore:` | Manutenção          |
 
-| Tipo     | Significado         | Exemplo                       |
-| -------- | ------------------- | ----------------------------- |
-| `feat:`  | Nova funcionalidade | `feat: adiciona health check` |
-| `fix:`   | Correção de bug     | `fix: corrige auth`           |
-| `docs:`  | Documentação        | `docs: atualiza leiaute`      |
-| `chore:` | Manutenção          | `chore: atualiza .env`        |
+## Arquitetura atual
 
-### Variáveis Críticas (Portainer)
+- Backend: `apps/chat-back`, API Hono em TypeScript.
+- Frontend: `apps/chat-omnia`, React e Vite; ainda não conectado ao transporte da API.
+- Banco: PostgreSQL; o pacote `knowledge` não está integrado ao fluxo principal.
+- Deploy: stack Docker Swarm em `apps/docker/pw2c/docker-stack.yml` e publicação pelo GitHub Actions.
 
-| Variável            | Valor                                              |
-| ------------------- | -------------------------------------------------- |
-| `POSTGRES_PASSWORD` | `omniabanco2026`                                   |
-| `POSTGRES_USER`     | `omnia_user`                                       |
-| `OMNIA_CORE_IMAGE`  | `registry.cloud.grupopw2c.com.br/chat-core:latest` |
+## Health checks
 
----
+- `GET /health`: estado geral e conectividade com o banco.
+- `GET /health/ready`: responde 200 se o banco está disponível e 503 caso contrário.
+- `GET /health/live`: indica que o processo está vivo.
 
-## 2. Stack e Arquitetura
+As rotas estão em `apps/chat-back/src/index.ts`. O nginx proxy `/health` para o backend.
 
-- **Monorepo** com `chat-core` (Hono/TS) e `chat-omnia` (React/Vite)
-- **Banco:** PostgreSQL 16 + pgvector no Swarm (`compute01`)
-- **Infra:** Docker Swarm, Portainer, registry `registry.cloud.grupopw2c.com.br`
-- **API Gateway:** Nginx (proxy `core:80` → frontend na porta 8080)
-- **IA:** Provider `echo` (teste), NVIDIA (produção)
+## Bloqueios de deploy conhecidos
 
----
+- Dockerfile, workflow, stack e nginx foram alinhados em torno de `apps/chat-back`, imagem `chat-core` e serviço `core`; valide o build e a resolução no Swarm antes do deploy.
+- O CD publica após CI aprovada e deixa atualização da stack manual no Portainer.
+- A identidade agora vem do `sub` de um JWT Bearer verificado. Configure OIDC e integre a UI antes de liberar usuários reais.
 
-## 3. Health Check
+## Credenciais
 
-- `GET /health` → `{"status":"ok","service":"chat-ai-core","database":"up","timestamp":"..."}`
-- `GET /health/ready` → readiness probe (200/503)
-- `GET /health/live` → liveness probe (200)
+Este documento não armazena valores de secrets. Configure senhas e tokens apenas nos gestores apropriados. Uma credencial de banco apareceu em versão anterior deste arquivo; se foi utilizada, rotacione-a e verifique o histórico Git.
 
-**No Frontend:** Hook `useHealthCheck` faz polling a cada 30s e exibe badge verde/vermelho.
+## Documentos relacionados
 
----
-
-## 4. Checklist Pré-Deploy
-
-- [ ] Core rebuild e push da imagem
-- [ ] Stack no Portainer com env vars preenchidas
-- [ ] 6 secrets no GitHub (2 registry + 4 Portainer)
-- [ ] Nó `compute01` confirmado (`docker node ls`)
-- [ ] SSL/HTTPS configurado no Load Balancer
-- [ ] Health check funcionando: `https://projeto-itia-dois.cloud.grupopw2c.com.br/health`
-
----
-
-## 5. Problemas Conhecidos
-
-| Sintoma                    | Causa                           | Solução                                    |
-| -------------------------- | ------------------------------- | ------------------------------------------ |
-| `starting → complete` loop | Variáveis de env inconsistentes | Verificar `POSTGRES_PASSWORD` no Portainer |
-| `502 Bad Gateway`          | Nginx sem responder             | `Update the stack` + `Repull image`        |
-| `GET / 404`                | Core sem rotas `/health`        | Verificar `index.ts` do Core               |
-
----
-
-**Última atualização:** 2026-10-21  
-**Versão:** 1.0  
-**Mantido por:** Equipe Chat Omnia
+- [Contexto atual](../contexto/contexto-ia.md)
+- [CI/CD](../ci_cd/README.md)
+- [Health checks](health-check-core.md)

@@ -70,7 +70,7 @@ O mesmo `:?` está no `docker-stack.yml`, e tem o mesmo efeito: **sem
 ### A porta 5433
 
 O compose de dev publica `5433:5432`, para não colidir com um Postgres que já
-exista na máquina. O `.env.example` do `chat-core` aponta para `localhost:5432`,
+exista na máquina. O `.env.example` do `chat-back` aponta para `localhost:5432`,
 então para usar o banco local:
 
 ```bash
@@ -133,7 +133,7 @@ confirmar que está de pé, aí trocar para `nvidia`.
 ## Portas
 
 O stack publica **só** a interface. O Core (3001) fica em `expose`, sem `ports` —
-ele confia no header cru `X-User-Id`, e publicá-lo transformaria esse header em
+o backend valida JWT OIDC, mas a interface ainda precisa ser integrada para
 autorização.
 
 ```yaml

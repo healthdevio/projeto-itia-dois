@@ -1,74 +1,37 @@
 # CI/CD
 
-Como o projeto chega do `git push` até a aplicação rodando no cluster Docker
-Swarm da PW2C, e o que precisa estar pronto para isso acontecer.
+Índice da documentação de integração, publicação e operação do Chat Omnia.
 
-| Documento                                         | Assunto                                                    |
-| ------------------------------------------------- | ---------------------------------------------------------- |
-| [visao-geral.md](visao-geral.md)                  | As três etapas e o diagrama do caminho completo            |
-| [decisoes.md](decisoes.md)                        | **Por que cada chose assim.** Sem comentários nos arquivos |
-| [troca-de-servidor/](troca-de-servidor/README.md) | Como o deploy saiu da Oracle e veio para o cluster         |
-| [pre-requisitos.md](pre-requisitos.md)            | O que precisa existir antes do primeiro deploy             |
-| [publicacao.md](publicacao.md)                    | Construção e publicação das imagens                        |
-| [deploy.md](deploy.md)                            | O que acontece no cluster, serviço por serviço             |
-| [operacao.md](operacao.md)                        | Verificar, diagnosticar e reverter                         |
-| [problemas/](problemas/README.md)                 | **Diagnóstico.** Por sintoma, causa e resolução            |
+## Estado atual
 
-## As três etapas
+Os nomes de backend, serviço e imagem foram alinhados. A configuração ainda precisa passar pelo build da CI e validação no cluster antes de ser considerada operacional. O CD publica após CI aprovada, mas não atualiza a stack automaticamente.
 
-```
-1. BUILD     código  →  imagem
-2. PUBLISH   imagem  →  registry
-3. DEPLOY    registry →  cluster rodando
-```
+Inconsistências confirmadas no repositório:
 
-Separar as três é o que torna o problema diagnosticável. Se o build passou mas o
-`pull` dá `manifest unknown`, o problema é a etapa 2. Se o `pull` funcionou e a
-aplicação não mudou, é a 3.
+- `Dockerfile.core` compila `apps/chat-back`; o serviço Swarm e o upstream nginx usam `core`.
+- O CD publica `chat-core`, nome configurado na stack.
+- A CI agora executa `npm run format:check` sem alterar arquivos.
+- O Postgres tem health check; a inicialização do backend também aguarda conexão antes das migrations.
 
-## Onde cada etapa mora
+## Documentos
 
-| Etapa   | Onde                                              |
-| ------- | ------------------------------------------------- |
-| Build   | `apps/docker/Dockerfile.core`, `Dockerfile.web`   |
-| Publish | `.github/workflows/cd.yml`, job `build`           |
-| Deploy  | job `build-and-deploy`, etapa `Atualizar a stack` |
+| Documento                                           | Conteúdo                                                       |
+| --------------------------------------------------- | -------------------------------------------------------------- |
+| [Visão geral](visao-geral.md)                       | Gatilhos e etapas atuais dos workflows                         |
+| [Decisões](decisoes.md)                             | Justificativas históricas da configuração de deploy            |
+| [Pré-requisitos](pre-requisitos.md)                 | Configuração do cluster e credenciais                          |
+| [Publicação](publicacao.md)                         | Build e publicação de imagens                                  |
+| [Deploy](deploy.md)                                 | Modelo de stack previsto                                       |
+| [Operação](operacao.md)                             | Verificação e diagnóstico; confira os nomes reais dos serviços |
+| [Problemas](problemas/README.md)                    | Diagnóstico por sintomas                                       |
+| [Migração de servidor](troca-de-servidor/README.md) | Registro histórico da migração da VM Oracle para Swarm         |
 
-## Onde cada coisa mora
+## Fluxo configurado
 
-```
-registry.cloud.grupopw2c.com.br     registry privado da empresa
-chat-core                           API, migrations e a configuração de AI
-chat-web                            nginx que serve a interface e faz proxy /api
-stack "omnia"                       Postgres + Core + web, no Swarm
+```text
+PR/push para develop ou main -> CI
+push para main -> CD: build e push das imagens
+depois do CD -> atualização manual da stack no Portainer
 ```
 
-## A ordem dos ambientes
-
-```
-develop ──> build e publica
-main    ──> build, publica e atualiza a stack
-```
-
-O `cd.yml` dispara em ambas as branches. Em `develop`, publica as
-imagens com a tag `develop`. Em `main`, publica e redeploya a stack.
-
-## O que difere de um compose comum
-
-O cluster é **Swarm**, não `docker compose`. Três consequências:
-
-- `depends_on` não funciona. Quem espera por quem é o `entrypoint.sh` do Core.
-- Todo serviço é perpétuo. Não existe container de migration que sai; a migration
-  roda dentro do Core antes do servidor HTTP.
-- O Postgres fica preso ao `compute01`. O volume é local, e um banco que muda de
-  nó sobe vazio.
-
-Ver [deploy.md](deploy.md) para o detalhe de cada uma.
-
-## Estado
-
-O cluster da PW2C ainda não foi provisionado. O deploy está escrito e revisado,
-mas nunca rodou — diferente da homologação anterior na VM, que validou o
-caminho nginx → Core → Postgres.
-
-O que falta está em [pre-requisitos.md](pre-requisitos.md).
+O CD não depende explicitamente da conclusão da CI e não atualiza a stack. Alinhe isso com as regras de proteção de branches e com o processo de release desejado.

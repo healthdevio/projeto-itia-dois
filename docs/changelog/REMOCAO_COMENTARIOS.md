@@ -1,6 +1,6 @@
 # Remoção de comentários dos arquivos de infraestrutura
 
-Data: 2026-10-19  
+Data: 2026-10-19
 Commit: `5846d80` — `refactor(cd): tira os comentarios dos arquivos e leva a senha para o .Env`
 
 ---
@@ -183,8 +183,8 @@ if [ -n "${DATABASE_URL:-}" ]; then
 
 ## Princípio adotado
 
-> **Comentário que explica o código é redundante.**  
-> **Comentário que explica a decisão evita repetição do erro.**  
+> **Comentário que explica o código é redundante.**
+> **Comentário que explica a decisão evita repetição do erro.**
 > **Decisão documentada fora do código vive mais que o código.**
 
 ---

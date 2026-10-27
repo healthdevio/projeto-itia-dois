@@ -1,38 +1,48 @@
-# Projeto Omnia IA
+# Documentação do Chat Omnia
 
-Chat com IA. Monorepo com a interface (`apps/chat-omnia`), a API (`apps/chat-core`),
-o pacote de conhecimento (`apps/packages/knowledge`) e a infraestrutura
-(`apps/docker`).
+Índice da documentação do monorepo. Os arquivos abaixo descrevem o código e a infraestrutura versionados; confirme o estado do cluster diretamente no Portainer antes de executar operações.
 
 ## Por onde começar
 
-| Você quer...               | Leia                                                                                      |
-| -------------------------- | ----------------------------------------------------------------------------------------- |
-| _entender a pipeline_      | [`docs/ci_cd/`](../docs/ci_cd/README.md)                                                  |
-| _diagnosticar um erro_     | [`docs/ci_cd/problemas/`](../docs/ci_cd/problemas/README.md)                              |
-| _usar a API_               | [`docs/core/`](../docs/core/README.md)                                                    |
-| _entender o versionamento_ | [`docs/estrutura/fluxo_de_versionamento.md`](../docs/estrutura/fluxo_de_versionamento.md) |
-| _rodar localmente_         | [Pré-requisitos](../docs/ci_cd/pre-requisitos.md)                                         |
+| Objetivo                                     | Documento                                                                      |
+| -------------------------------------------- | ------------------------------------------------------------------------------ |
+| Entender o estado e as limitações conhecidas | [contexto do projeto](contexto/contexto-ia.md)                                 |
+| Executar e revisar CI/CD                     | [CI/CD](ci_cd/README.md)                                                       |
+| Operar a stack e investigar falhas           | [operação](ci_cd/operacao.md) e [problemas](ci_cd/problemas/README.md)         |
+| Entender a API atual                         | [README do backend](../apps/chat-back/README.md) e [contratos](core/README.md) |
+| Entender a interface                         | [documentação da interface](interface/README.md)                               |
+| Entender Docker e ambientes                  | [Docker](estrutura/docker.md) e [ambientes](estrutura/ambientes.md)            |
 
-## Apps
+## Componentes
 
-| Pasta                     | O quê                         |
-| ------------------------- | ----------------------------- |
-| `apps/chat-omnia`         | interface React (Vite)        |
-| `apps/chat-core`          | API Hono + Postgres (Drizzle) |
-| `apps/packages/knowledge` | base de conhecimento e RAG    |
-| `apps/docker`             | imagens, compose e deploy     |
+| Caminho                   | Conteúdo                                                                            |
+| ------------------------- | ----------------------------------------------------------------------------------- |
+| `apps/chat-omnia`         | Interface React e Vite; atualmente ainda usa estado/resposta local.                 |
+| `apps/chat-back`          | API Hono, persistência PostgreSQL, migrations e testes.                             |
+| `apps/packages/knowledge` | Schema e migrations da base de conhecimento; não está integrado ao fluxo principal. |
+| `apps/docker`             | Dockerfiles, nginx, compose local e stack Swarm.                                    |
+| `.github/workflows`       | Workflows de CI e publicação de imagens.                                            |
 
-## Estado
+## Estado DevOps verificado no repositório
 
-Cluster da PW2C provisionado e operacional. Container **core** running no compute01 há 2+ minutos (estável, não mais loop starting→complete). Todas as env vars confirmadas no Portainer (POSTGRES_PASSWORD=omniabanco2026, POSTGRES_USER=omnia_user, etc.). Health endpoint `/health` implementado e funcionando após redeploy. PR #54 equivalente já fez commit e push no branch `feat/health-check-novas-mudancas` → `develop`. `npm run format:check` passa em todos os arquivos modificados. Endpoint `/health` deve funcionar após o próximo redeploy no Portainer.
+- A CI valida frontend e backend, executa testes, verifica Prettier sem alterar arquivos e constrói as imagens.
+- O CD publica somente após CI aprovada em `main`, usando o SHA do commit; a atualização da stack continua manual no Portainer.
+- Dockerfile, stack, nginx e workflow estão alinhados em torno do backend `apps/chat-back`, serviço `core` e imagem `chat-core`; a primeira execução de build/deploy ainda precisa validar essa configuração.
+- A stack exige `POSTGRES_PASSWORD`, usa `omnia` como banco padrão e verifica a saúde do Postgres.
+- A API exige JWT OIDC verificado e deriva a identidade do claim `sub`; configure issuer, audience e JWKS antes de usar endpoints protegidos.
+- A documentação histórica contém uma credencial de banco em claro. Se ela foi usada, faça rotação e verifique o histórico Git.
 
-## Stack
+## Índice
 
-| Camada | Tecnologia | Para que serve | Por que foi escolhida |
-| -------- | ---------- | -------------- | --------------------- |
-| **Interface** | React + Vite + Tailwind CSS + shadcn/ui | Biblioteca para construir interfaces em componentes reutilizáveis | Componentes reutilizáveis garantem consistência visual entre as telas de chat (botão, janela, mensagens, campo de envio) e permitem adaptacões visuais independentes. |
-| **API** | Hono + TypeScript | Framework web lightweight para construir APIs | Performance elevada com TypeScript — contratos (Message, Conversation, ChatRequest) ficam tipados, detectando erros em compile-time. |
-| **Banco** | PostgreSQL + pgvector + Drizzle ORM | Banco relacional com extensão de busca vetorial | PostgreSQL estrutura dados, pgvector habilita busca de similaridade para RAG, Drizzle ORM fornece type-safe queries e migrations simples. |
-| **AI** | LangChain + NVIDIA (com provider `echo` para teste) | Orquestração de conexão com LLMs e dados externos | Acesso a múltiplos provedores de LLM e simplificação da integração com APIs, dados e memória de conversa via vector store. |
-| **Infra** | Docker Swarm + Portainer CE + GitHub Actions | Orquestração e deploy no cluster PW2C | Ambientes reproduzíveis via containers; CI/CD automático com format auto-fix, typecheck e build de imagens antes do deploy. |
+| Pasta/arquivo                                                | Assunto                                                      |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| [ci_cd/](ci_cd/README.md)                                    | Pipeline, publicação, stack, operação e diagnóstico          |
+| [estrutura/](estrutura/README.md)                            | CI, Docker, ambientes, testes e versionamento                |
+| [core/](core/README.md)                                      | Contratos e comportamento da API                             |
+| [interface/](interface/README.md)                            | Componentes e estado da interface                            |
+| [contexto/](contexto/contexto-ia.md)                         | Contexto de manutenção e limitações atuais                   |
+| [PROCESSO_MIGRACAO.md](PROCESSO_MIGRACAO.md)                 | Registro histórico da migração da VM para Swarm              |
+| [CONTEXTO_MODELO.md](CONTEXTO_MODELO.md)                     | Contexto inicial e regras de trabalho para assistentes de IA |
+| [RESUMO_PRIORIDADES_DEVOPS.md](RESUMO_PRIORIDADES_DEVOPS.md) | Mudanças aplicadas, limitações e decisões pendentes          |
+| [nginx-health-check.md](nginx-health-check.md)               | Registro histórico do health check nginx/Core                |
+| [changelog/](changelog/CHANGELOG.md)                         | Registros históricos de alterações                           |

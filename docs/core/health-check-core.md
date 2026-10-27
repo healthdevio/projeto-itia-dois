@@ -1,7 +1,7 @@
 # Health Check — Core (Backend)
 
-**Arquivo:** `apps/chat-core/src/index.ts`  
-**Endpoints:** `GET /health`, `GET /health/ready`, `GET /health/live`  
+**Arquivo:** `apps/chat-back/src/index.ts`
+**Endpoints:** `GET /health`, `GET /health/ready`, `GET /health/live`
 **Propósito:** Monitoring, Kubernetes/Swarm probes, frontend status indicator
 
 ## Rotas Disponíveis
@@ -20,7 +20,7 @@
 
 ## Implementação
 
-As rotas foram adicionadas em `apps/chat-core/src/index.ts` após os imports. O nginx (`apps/docker/nginx.conf`) já proxyava `/health` para o Core. Agora o core responde corretamente, liberando o endpoint.
+As rotas foram adicionadas em `apps/chat-back/src/index.ts` após os imports. O nginx (`apps/docker/nginx.conf`) já proxyava `/health` para o Core. Agora o core responde corretamente, liberando o endpoint.
 
 ## Checklist de Deploy
 

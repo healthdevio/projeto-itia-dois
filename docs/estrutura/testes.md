@@ -1,10 +1,10 @@
-# Testes
+# Testes automatizados automatizados
 
-Suíte do Core: `apps/chat-core/test/`, **95 testes**, rodar com `node --test`
+Suíte do Core: `apps/chat-back/test/`, **95 testes**, rodar com `node --test`
 via `tsx`. Sem framework novo — `node:test` e `node:assert` já vêm no Node.
 
 ```bash
-cd apps/chat-core
+cd apps/chat-back
 npm test
 ```
 
@@ -60,7 +60,7 @@ npm run smoke
 ```
 
 Ele sobe o Core contra um Postgres de verdade e exercita o fluxo ponta a ponta.
-É git-ignored (`apps/chat-core/.gitignore`), porque guarda a `NVIDIA_API_KEY` de
+É git-ignored (regras locais de ignore do backend), porque guarda a `NVIDIA_API_KEY` de
 quem roda.
 
 Se a CI precisar cobrir o caminho com banco, o caminho é um serviço Postgres

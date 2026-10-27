@@ -1,8 +1,8 @@
 # Processo de Migração — Oracle Cloud VM → PW2C Docker Swarm
 
-**Data:** 2026-10-19  
-**Branch:** `feat/deploy-pw2c-swarm` → `develop`  
-**Merge final:** `47540cd` → `develop`  
+**Data:** 2026-10-19
+**Branch:** `feat/deploy-pw2c-swarm` → `develop`
+**Merge final:** `47540cd` → `develop`
 **PR para main:** pendente
 
 ---

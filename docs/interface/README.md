@@ -7,26 +7,31 @@ Esta pasta reúne a documentação da camada de Interface do Chat Omnia. O proje
 Os documentos de componentes usam o mesmo nome do arquivo React correspondente (`.tsx`), conforme a convenção adotada para facilitar a localização da documentação.
 
 ### Componentes de chat
+
 - [`FloatingChatButton.md`](FloatingChatButton.md) — botão flutuante que abre ou fecha a interface.
 - [`MiniChat.md`](MiniChat.md) — visualização compacta do chat.
 - [`ExpandedChat.md`](ExpandedChat.md) — visualização expandida.
 - [`ChatHeader.md`](ChatHeader.md) — cabeçalho reutilizado nas visualizações do chat.
 
 ### Mensagens e entrada
+
 - [`MessageItem.md`](MessageItem.md) — apresentação de uma mensagem individual.
 - [`MessageList.md`](MessageList.md) — apresentação da lista de mensagens.
 - [`ChatInput.md`](ChatInput.md) — entrada de texto e ação de envio.
 
 ### Estados visuais
+
 - [`ChatStateView.md`](ChatStateView.md) — apresentação dos estados visuais da interface.
 - [`LoadingIndicator.md`](LoadingIndicator.md) — indicador visual de carregamento.
 
 ### Sugestões e histórico
+
 - [`SuggestionList.md`](SuggestionList.md) — apresentação e seleção de sugestões.
 - [`HistoryPanel.md`](HistoryPanel.md) — área de apresentação do histórico.
 - [`HistoryItem.md`](HistoryItem.md) — item individual do histórico.
 
 ### Aplicação e arquitetura
+
 - [`App.md`](App.md) — coordenação da interface e estado compartilhado.
 - [`configuracao_ambiente.md`](configuracao_ambiente.md) — configuração do ambiente de desenvolvimento.
 - [`estrutura_componentes.md`](estrutura_componentes.md) — organização das pastas e responsabilidades.

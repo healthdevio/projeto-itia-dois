@@ -1,7 +1,6 @@
 # Decisões do deploy
 
-Cada decisão da stack e do workflow, com o motivo. Os arquivos de infraestrutura
-não trazem comentários — a razão está aqui.
+Registro das decisões tomadas para uma versão anterior da stack e do workflow. Os arquivos atuais já divergiram em nomes de serviço e imagem; não use este documento como especificação da configuração vigente sem reconciliar essas diferenças.
 
 | Decisão                                                       | Motivo curto                                                     |
 | ------------------------------------------------------------- | ---------------------------------------------------------------- |
