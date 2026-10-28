@@ -4,7 +4,7 @@ import { describe, it } from 'node:test';
 import { Hono } from 'hono';
 
 import { messageRoutes } from '../../src/routes/messages.js';
-import { USER_ID_HEADER } from '../../src/middleware/identity.js';
+import { authorizationHeaders } from '../helpers/identity.js';
 
 // Cobre o que a rota decide antes de gravar e chamar a AI. O resto depende do
 // Postgres e fica para o smoke test (`npm run smoke`).
@@ -16,12 +16,12 @@ function app() {
   return instance;
 }
 
-function post(body: unknown, headers: Record<string, string> = {}) {
+async function post(body: unknown, headers: Record<string, string> = {}) {
   return app().request('/api/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      [USER_ID_HEADER]: 'ana',
+      ...(await authorizationHeaders()),
       ...headers,
     },
     body: typeof body === 'string' ? body : JSON.stringify(body),
@@ -35,7 +35,7 @@ const validBody = {
 };
 
 describe('POST /api/messages · identidade', () => {
-  it('responde 401 sem o header de usuário', async () => {
+  it('responde 401 sem token Bearer', async () => {
     const response = await app().request('/api/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -47,12 +47,17 @@ describe('POST /api/messages · identidade', () => {
     const body = await response.json();
 
     assert.equal(body.success, false);
-    assert.match(body.error, new RegExp(USER_ID_HEADER));
+    assert.match(body.error, /Bearer/);
   });
 
-  it('responde 401 para user id malformado, antes de tocar no banco', async () => {
-    const response = await post(validBody, {
-      [USER_ID_HEADER]: 'usuário com espaço',
+  it('responde 401 para subject malformado, antes de tocar no banco', async () => {
+    const response = await app().request('/api/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(await authorizationHeaders('usuário com espaço')),
+      },
+      body: JSON.stringify(validBody),
     });
 
     assert.equal(response.status, 401);
