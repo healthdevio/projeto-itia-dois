@@ -1,25 +1,29 @@
 name: CD (Continuous Delivery)
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ['CI (Continuous Integration)']
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
 
 concurrency:
-  group: cd-${{ github.ref_name }}
+  group: cd-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: false
 
 jobs:
   build-and-push:
-    name: Build and Push
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    name: Build and Push approved commit
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout commit approved by CI
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -31,25 +35,19 @@ jobs:
           username: ${{ secrets.PW2C_REGISTRY_USERNAME }}
           password: ${{ secrets.PW2C_REGISTRY_PASSWORD }}
 
-      # Tags explicitas por build. Um gerador unico de tags seria compartilhado
-      # pelos dois builds, e cada um publicaria nas duas imagens: o `chat-back`
-      # acaba contendo o backend (core + API). A tag de branch existe porque a stack
-      # e redesenhada a cada deploy. A tag de commit continua sendo a via de reverte:
-      # apontar OMNIA_BACKEND_IMAGE e OMNIA_WEB_IMAGE no Portainer para o sha de um
-      # deploy anterior.
       - name: Build and Push Backend
         uses: docker/build-push-action@v6
         with:
           context: .
           file: apps/docker/Dockerfile.back
           platforms: linux/amd64
-          provenance: false
-          sbom: false
           push: true
+          sbom: true
+          provenance: true
           tags: |
             registry.cloud.grupopw2c.com.br/chat-back:latest
-            registry.cloud.grupopw2c.com.br/chat-back:${{ github.sha }}
-            registry.cloud.grupopw2c.com.br/chat-back:${{ github.ref_name }}
+            registry.cloud.grupopw2c.com.br/chat-back:${{ github.event.workflow_run.head_sha }}
+            registry.cloud.grupopw2c.com.br/chat-back:${{ github.event.workflow_run.head_branch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -59,30 +57,28 @@ jobs:
           context: .
           file: apps/docker/Dockerfile.web
           platforms: linux/amd64
-          provenance: false
-          sbom: false
           push: true
+          sbom: true
+          provenance: true
           tags: |
             registry.cloud.grupopw2c.com.br/chat-web:latest
-            registry.cloud.grupopw2c.com.br/chat-web:${{ github.sha }}
-            registry.cloud.grupopw2c.com.br/chat-web:${{ github.ref_name }}
+            registry.cloud.grupopw2c.com.br/chat-web:${{ github.event.workflow_run.head_sha }}
+            registry.cloud.grupopw2c.com.br/chat-web:${{ github.event.workflow_run.head_branch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Resumo
+      - name: Publication summary
         env:
-          SHA: ${{ github.sha }}
-          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           {
-            echo "### Build $BRANCH"
+            echo "### Published CI-approved commit"
             echo
+            echo "- branch: \`${BRANCH}\`"
             echo "- commit: \`${SHA}\`"
             echo "- chat-back: \`registry.cloud.grupopw2c.com.br/chat-back:${BRANCH}\`"
             echo "- chat-web: \`registry.cloud.grupopw2c.com.br/chat-web:${BRANCH}\`"
             echo
-            echo "Publicadas as imagens. Atualize a stack manualmente no Portainer."
-            echo "1. Stacks -> omnia -> Environment variables"
-            echo "2. Atualize OMNIA_BACKEND_IMAGE e OMNIA_WEB_IMAGE"
-            echo "3. Update the stack com Repull image"
+            echo "Images are published with SBOM and provenance. Update the Portainer stack manually using these immutable SHA tags."
           } >> "$GITHUB_STEP_SUMMARY"
