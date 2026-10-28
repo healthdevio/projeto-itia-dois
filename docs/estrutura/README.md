@@ -14,14 +14,15 @@ reverter.
 
 ## Conteúdo desta pasta
 
-| Documento                                              | Assunto                                      |
-| ------------------------------------------------------ | -------------------------------------------- |
-| [ci.md](ci.md)                                         | Os 4 jobs da CI e o que cada um valida       |
-| [docker.md](docker.md)                                 | As imagens, a stack e o nginx                |
-| [ambientes.md](ambientes.md)                           | Dev local, stack e senhas                    |
-| [config_github.md](config_github.md)                   | Secrets do registry e do Portainer no GitHub |
-| [testes.md](testes.md)                                 | A suíte do Core: o que cobre e o que não     |
-| [fluxo_de_versionamento.md](fluxo_de_versionamento.md) | Branch, PR, revisão, promoção                |
+| Documento                                                | Assunto                                      |
+| -------------------------------------------------------- | -------------------------------------------- |
+| [ci.md](ci.md)                                           | Os 4 jobs da CI e o que cada um valida       |
+| [docker.md](docker.md)                                   | As imagens, a stack e o nginx                |
+| [ambientes.md](ambientes.md)                             | Dev local, stack e senhas                    |
+| [config_github.md](config_github.md)                     | Secrets do registry e do Portainer no GitHub |
+| [testes.md](testes.md)                                   | A suíte do Core: o que cobre e o que não     |
+| [fluxo_de_versionamento.md](fluxo_de_versionamento.md)   | Branch, PR, revisão, promoção                |
+| [fluxo-de-commits-e-push.md](fluxo-de-commits-e-push.md) | Comandos de branch, commit, push e PR        |
 
 ## Modelo do Core
 

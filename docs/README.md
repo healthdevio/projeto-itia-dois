@@ -34,15 +34,17 @@
 
 ## Índice
 
-| Pasta/arquivo                                                | Assunto                                                      |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| [ci_cd/](ci_cd/README.md)                                    | Pipeline, publicação, stack, operação e diagnóstico          |
-| [estrutura/](estrutura/README.md)                            | CI, Docker, ambientes, testes e versionamento                |
-| [core/](core/README.md)                                      | Contratos e comportamento da API                             |
-| [interface/](interface/README.md)                            | Componentes e estado da interface                            |
-| [contexto/](contexto/contexto-ia.md)                         | Contexto de manutenção e limitações atuais                   |
-| [PROCESSO_MIGRACAO.md](PROCESSO_MIGRACAO.md)                 | Registro histórico da migração da VM para Swarm              |
-| [CONTEXTO_MODELO.md](CONTEXTO_MODELO.md)                     | Contexto inicial e regras de trabalho para assistentes de IA |
-| [RESUMO_PRIORIDADES_DEVOPS.md](RESUMO_PRIORIDADES_DEVOPS.md) | Mudanças aplicadas, limitações e decisões pendentes          |
-| [nginx-health-check.md](nginx-health-check.md)               | Registro histórico do health check nginx/Core                |
-| [changelog/](changelog/CHANGELOG.md)                         | Registros históricos de alterações                           |
+| Pasta/arquivo                                                                     | Assunto                                                      |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| [ci_cd/](ci_cd/README.md)                                                         | Pipeline, publicação, stack, operação e diagnóstico          |
+| [estrutura/](estrutura/README.md)                                                 | CI, Docker, ambientes, testes e versionamento                |
+| [fluxo de commits e push](estrutura/fluxo-de-commits-e-push.md)                   | Branch, commit, push e Pull Request                          |
+| [resolução CI do chat-back](ci_cd/problemas/resolucao-ci-chat-back-oidc-trivy.md) | Diagnóstico e resolução do CI do chat-back                   |
+| [core/](core/README.md)                                                           | Contratos e comportamento da API                             |
+| [interface/](interface/README.md)                                                 | Componentes e estado da interface                            |
+| [contexto/](contexto/contexto-ia.md)                                              | Contexto de manutenção e limitações atuais                   |
+| [PROCESSO_MIGRACAO.md](PROCESSO_MIGRACAO.md)                                      | Registro histórico da migração da VM para Swarm              |
+| [CONTEXTO_MODELO.md](CONTEXTO_MODELO.md)                                          | Contexto inicial e regras de trabalho para assistentes de IA |
+| [RESUMO_PRIORIDADES_DEVOPS.md](RESUMO_PRIORIDADES_DEVOPS.md)                      | Mudanças aplicadas, limitações e decisões pendentes          |
+| [nginx-health-check.md](nginx-health-check.md)                                    | Registro histórico do health check nginx/Core                |
+| [changelog/](changelog/CHANGELOG.md)                                              | Registros históricos de alterações                           |
