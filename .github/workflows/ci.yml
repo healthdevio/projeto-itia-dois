@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -50,7 +51,7 @@ jobs:
         run: npm run build
 
       - name: Verificar build nǜo-git-ignored
-        # Um dist versionado quebraria o npm ci do servidor.
+        
         run: |-
           if git ls-files --error-unmatch apps/chat-omnia/dist >/dev/null 2>&1; then
             echo "::error::apps/chat-omnia/dist estǭ versionado. Remova do git."
@@ -60,6 +61,9 @@ jobs:
   backend:
     name: Backend (chat-back)
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  
+      contents: read
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
@@ -79,6 +83,11 @@ jobs:
         working-directory: apps/chat-back
         run: npm run typecheck
 
+      - name: Configurar Autenticação OIDC
+        uses: microsoft/setup-node@v3
+        with:
+          node-version: '24'
+        
       - name: Rodar testes
         working-directory: apps/chat-back
         run: npm test
