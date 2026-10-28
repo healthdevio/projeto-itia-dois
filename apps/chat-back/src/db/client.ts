@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from '../../node_modules/@types/pg/index.js';
+import { Pool } from 'pg';
 import * as schema from './schema.js';
 config();
 function requireDatabaseUrl(): string {
