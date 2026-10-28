@@ -8,7 +8,7 @@
 import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { Pool } from '../../node_modules/@types/pg/index.js';
+import { Pool } from 'pg';
 
 import * as schema from './schema.js';
 
