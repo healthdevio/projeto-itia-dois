@@ -35,19 +35,19 @@ jobs:
           username: ${{ secrets.PW2C_REGISTRY_USERNAME }}
           password: ${{ secrets.PW2C_REGISTRY_PASSWORD }}
 
-      - name: Build and Push Core
+      - name: Build and Push Backend
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: apps/docker/Dockerfile.core
+          file: apps/docker/Dockerfile.back
           platforms: linux/amd64
           push: true
           sbom: true
           provenance: true
           tags: |
-            registry.cloud.grupopw2c.com.br/chat-core:latest
-            registry.cloud.grupopw2c.com.br/chat-core:${{ github.event.workflow_run.head_sha }}
-            registry.cloud.grupopw2c.com.br/chat-core:${{ github.event.workflow_run.head_branch }}
+            registry.cloud.grupopw2c.com.br/chat-back:latest
+            registry.cloud.grupopw2c.com.br/chat-back:${{ github.event.workflow_run.head_sha }}
+            registry.cloud.grupopw2c.com.br/chat-back:${{ github.event.workflow_run.head_branch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -77,8 +77,8 @@ jobs:
             echo
             echo "- branch: \`${BRANCH}\`"
             echo "- commit: \`${SHA}\`"
-            echo "- core: \`registry.cloud.grupopw2c.com.br/chat-core:${SHA}\`"
-            echo "- web: \`registry.cloud.grupopw2c.com.br/chat-web:${SHA}\`"
+            echo "- chat-back: \`registry.cloud.grupopw2c.com.br/chat-back:${BRANCH}\`"
+            echo "- chat-web: \`registry.cloud.grupopw2c.com.br/chat-web:${BRANCH}\`"
             echo
             echo "Images are published with SBOM and provenance. Update the Portainer stack manually using these immutable SHA tags."
           } >> "$GITHUB_STEP_SUMMARY"
