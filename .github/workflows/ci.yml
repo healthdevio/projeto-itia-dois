@@ -57,7 +57,7 @@ jobs:
             exit 1
           fi
 
-  core:
+  backend:
     name: Backend (chat-back)
     runs-on: ubuntu-latest
     steps:
@@ -111,7 +111,7 @@ jobs:
   images:
     name: Imagens Docker
     runs-on: ubuntu-latest
-    needs: [frontend, core, format]
+    needs: [frontend, backend, format]
 
     steps:
       - name: Baixar código
