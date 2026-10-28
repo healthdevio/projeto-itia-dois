@@ -44,12 +44,12 @@ está duplicada de propósito, para cada um poder ter as suas medidas.
 
 Quatro estados, definidos pelo tipo `ChatStateViewProps`:
 
-| Estado | O que mostra |
-| ------ | ------------ |
-| `greeting` | "Como posso ajudar?" |
-| `idle` | nada — só as mensagens |
-| `thinking` | indicador de carregamento |
-| `error` | "Não foi possível enviar sua mensagem." |
+| Estado     | O que mostra                            |
+| ---------- | --------------------------------------- |
+| `greeting` | "Como posso ajudar?"                    |
+| `idle`     | nada — só as mensagens                  |
+| `thinking` | indicador de carregamento               |
+| `error`    | "Não foi possível enviar sua mensagem." |
 
 O `App.tsx` mantém `state` com `useState` e **nunca muda o valor** — ele fica em
 `greeting` a vida inteira. É o que falta para a tela estar conectada: quem vai
@@ -80,13 +80,13 @@ endpoints que o Core já expõe (`/api/suggestions` e `/api/conversations`).
 
 ## Comandos
 
-| Comando | O que faz |
-| ------- | --------- |
-| `npm run dev` | Vite em modo desenvolvimento |
-| `npm run build` | typecheck e build em `dist/` |
-| `npm run preview` | serve o `dist/` |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | `tsc -b` |
+| Comando             | O que faz                    |
+| ------------------- | ---------------------------- |
+| `npm run dev`       | Vite em modo desenvolvimento |
+| `npm run build`     | typecheck e build em `dist/` |
+| `npm run preview`   | serve o `dist/`              |
+| `npm run lint`      | ESLint                       |
+| `npm run typecheck` | `tsc -b`                     |
 
 O `format` e o `format:check` desta pasta existem, mas quem manda é o da raiz:
 ele cobre o repositório inteiro com um conjunto só de regras.
@@ -108,16 +108,16 @@ Detalhamento em [`docs/ci_cd/deploy.md`](../../docs/ci_cd/deploy.md).
 
 ## Documentação
 
-| Documento | Assunto |
-| --------- | ------- |
-| [estrutura_componentes.md](../../docs/interface/estrutura_componentes.md) | Os componentes e o que cada um faz |
-| [chat_expandido.md](../../docs/interface/chat_expandido.md) | A janela expandida |
-| [mini_chat.md](../../docs/interface/mini_chat.md) | A janela compacta |
-| [botao_flutuante.md](../../docs/interface/botao_flutuante.md) | O botão que abre o chat |
-| [mensagens_e_envio.md](../../docs/interface/mensagens_e_envio.md) | Mensagens e envio |
-| [estados_visuais.md](../../docs/interface/estados_visuais.md) | Os quatro estados |
-| [sugestoes_e_historicos.md](../../docs/interface/sugestoes_e_historicos.md) | Sugestões e histórico |
-| [configuracao_ambiente.md](../../docs/interface/configuracao_ambiente.md) | Configuração da interface |
+| Documento                                                                   | Assunto                            |
+| --------------------------------------------------------------------------- | ---------------------------------- |
+| [estrutura_componentes.md](../../docs/interface/estrutura_componentes.md)   | Os componentes e o que cada um faz |
+| [chat_expandido.md](../../docs/interface/chat_expandido.md)                 | A janela expandida                 |
+| [mini_chat.md](../../docs/interface/mini_chat.md)                           | A janela compacta                  |
+| [botao_flutuante.md](../../docs/interface/botao_flutuante.md)               | O botão que abre o chat            |
+| [mensagens_e_envio.md](../../docs/interface/mensagens_e_envio.md)           | Mensagens e envio                  |
+| [estados_visuais.md](../../docs/interface/estados_visuais.md)               | Os quatro estados                  |
+| [sugestoes_e_historicos.md](../../docs/interface/sugestoes_e_historicos.md) | Sugestões e histórico              |
+| [configuracao_ambiente.md](../../docs/interface/configuracao_ambiente.md)   | Configuração da interface          |
 
 O contrato do backend está em [`docs/core/`](../../docs/core/README.md), e a
 pipeline em [`docs/ci_cd/`](../../docs/ci_cd/README.md).

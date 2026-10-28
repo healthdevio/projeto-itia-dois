@@ -5,13 +5,19 @@ services:
     image: pgvector/pgvector:pg16
     command: ['postgres', '-c', 'shared_preload_libraries=pg_stat_statements']
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-omia}
-      POSTGRES_USER: ${POSTGRES_USER:-omia_user}
+      POSTGRES_DB: ${POSTGRES_DB:-omnia}
+      POSTGRES_USER: ${POSTGRES_USER:-omnia_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .Env da stack}
     volumes:
       - omnia_postgres_data:/var/lib/postgresql/data
     networks:
       - omnia_net
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     deploy:
       mode: replicated
       replicas: 1
@@ -40,9 +46,9 @@ services:
       start_period: 30s
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-omnia_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omniaabanco2026}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .Env da stack}
       POSTGRES_DB: ${POSTGRES_DB:-omnia}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-omnia_user}:${POSTGRES_PASSWORD:-omniaabanco2026}@postgres:5432/${POSTGRES_DB:-omnia}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-omnia_user}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .Env da stack}@postgres:5432/${POSTGRES_DB:-omnia}
       CORE_PORT: '80'
       AI_PROVIDER: ${AI_PROVIDER:-echo}
       NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
@@ -50,6 +56,11 @@ services:
       NVIDIA_BASE_URL: ${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
       NVIDIA_TIMEOUT_MS: ${NVIDIA_TIMEOUT_MS:-300000}
       NVIDIA_MAX_TOKENS: ${NVIDIA_MAX_TOKENS:-400}
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-}
+      OIDC_JWKS_URL: ${OIDC_JWKS_URL:-}
+      OIDC_TENANT_CLAIM: ${OIDC_TENANT_CLAIM:-tenant_id}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
     networks:
       - omnia_net
     deploy:
@@ -76,8 +87,6 @@ services:
         mode: host
     networks:
       - omnia_net
-    depends_on:
-      - core
     deploy:
       mode: replicated
       replicas: 1

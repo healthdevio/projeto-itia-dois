@@ -9,7 +9,7 @@ responsabilidades separadas entre Interface, Chat Core, transporte e
 componentes de IA/conhecimento.
 
 Na arquitetura atual, a Interface está em `apps/chat-omnia/` e o Chat
-Core em `apps/chat-core/`. A Interface é responsável pela apresentação e
+Core em `apps/chat-back/`. A Interface é responsável pela apresentação e
 interação do usuário; regras de domínio, contratos e estados do Core
 devem permanecer desacoplados da camada visual.
 

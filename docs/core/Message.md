@@ -1,4 +1,4 @@
-## Modelo de Message
+# Modelo de Message
 
 Esse documento trata de como deve ser formatada o modelo do message que vem da interface, passa pelo core e então é enviada para o AI.
 
@@ -48,9 +48,9 @@ POST /api/messages
 
 ### Identidade
 
-Este endpoint exige o header `X-User-Id`. Sem ele, a resposta é `401`. A mensagem entra na conversa ativa **de quem enviou**, e o contexto repassado à AI é o desse usuário — nunca o de outro.
+Este endpoint exige JWT Bearer válido. Sem ele, a resposta é `401`. A mensagem entra na conversa ativa **de quem enviou**, e o contexto repassado à AI é o desse usuário — nunca o de outro.
 
-> `X-User-Id` não é autenticação: o Core confia no valor cru do header. Ver [Identidade e multi-usuário](./Conversation.md#identidade-e-multi-usuário).
+> O `sub` do JWT verificado define o usuário. Ver [Identidade e multi-usuário](./Conversation.md#jwt-bearer-e-identidade).
 
 ### Request Body
 
@@ -79,7 +79,7 @@ O corpo da requisição deve conter o JSON no formato especificado acima, com `c
 | ------ | ---------------------------------------------------------------------------------------------- |
 | `200`  | Mensagem processada com sucesso                                                                |
 | `400`  | JSON inválido, campos obrigatórios faltando (message_id, message, origin) ou `config` inválido |
-| `401`  | `X-User-Id` ausente ou inválido                                                                |
+| `401`  | Token Bearer ausente ou inválido                                                               |
 | `500`  | Erro interno ao processar mensagem                                                             |
 | `502`  | O provider da AI falhou. O `error` traz a causa reportada por ele                              |
 
@@ -168,7 +168,7 @@ informação.
 ### Localização do Serviço
 
 ```
-apps/chat-core/src/services/ai/
+apps/chat-back/src/services/ai/
 ├── index.ts          API pública (buildContext, sendToAI, AIError)
 ├── context.ts        Montagem do contexto da conversa
 ├── provider.ts       Interface AIProvider + registro dos providers
@@ -180,7 +180,7 @@ apps/chat-core/src/services/ai/
 
 ### Como funciona
 
-1. A interface envia a mensagem, com `X-User-Id`, para o endpoint `/api/messages`
+1. A interface envia a mensagem, com token Bearer, para o endpoint `/api/messages`
 2. O Core valida e processa a mensagem, e valida o `config` antes de qualquer escrita
 3. O Core grava a mensagem na conversa ativa **do usuário**, já existente ou recém-criada
 4. O Core monta o **contexto** da conversa (mensagens anteriores + ids do histórico) e entrega `{ message, context, config }` ao provider da AI
@@ -340,7 +340,7 @@ A máquina de estados completa está em [Conversation.md](./Conversation.md#conv
 - [ ] Retry com backoff no `502` do provider da AI
 - [ ] Streaming da resposta, para a AI aparecer token a token
 - [ ] Substituir o provider de teste pela AI de verdade (`providers/` foi feito para isso)
-- [ ] Autenticação real no Core (hoje `X-User-Id` não autentica nada — ver [Conversation.md](./Conversation.md))
+- [ ] Integrar a UI ao provedor OIDC configurado para obter e enviar tokens (ver [Conversation.md](./Conversation.md))
 
 ### Variáveis de Ambiente
 

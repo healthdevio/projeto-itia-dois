@@ -1,7 +1,7 @@
 # Changelog — Migração Oracle → PW2C (Swarm)
 
-Data: 2026-10-19  
-Branch: `feat/deploy-pw2c-swarm` → `develop`  
+Data: 2026-10-19
+Branch: `feat/deploy-pw2c-swarm` → `develop`
 Merge: `47540cd`
 
 ---

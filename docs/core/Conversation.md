@@ -1,4 +1,4 @@
-## Modelo de Conversation
+# Modelo de Conversation
 
 Esse documento trata de como deve ser formatada a conversa atual que o Core entrega para a interface, e de como ela é armazenada.
 
@@ -17,27 +17,17 @@ Diferente da `message`, que é enviada para a AI, a `conversation` é **lida** p
 
 Toda conversa pertence a um usuário. Cada um tem a sua própria conversa ativa e o seu próprio histórico; um usuário nunca vê nem afeta a conversa de outro.
 
-### O header `X-User-Id`
+### JWT Bearer e identidade
 
-A identidade chega no header `X-User-Id` e é resolvida pelo middleware em `src/middleware/identity.ts`. **Todos os endpoints de conversa e de mensagem exigem o header** — sem ele a resposta é `401`, antes de qualquer acesso ao banco.
+A identidade é resolvida pelo middleware em `src/middleware/identity.ts` a partir do claim `sub` de um JWT assinado. Todos os endpoints de conversa e mensagem exigem `Authorization: Bearer <token>` válido — sem token válido ou configuração OIDC respondem `401`.
 
 ```bash
-curl -H 'X-User-Id: ana' http://localhost:3001/api/conversations/current
+curl -H 'Authorization: Bearer <access-token>' http://localhost:3001/api/conversations/current
 ```
 
-Formato aceito: de 1 a 64 caracteres, casando com `[A-Za-z0-9._:|+@-]`. Isso cobre ids opacos (`u_123`), emails e subjects de provedores de identidade, que costumam usar `|` como separador (`auth0|abc123`).
+Configure `OIDC_ISSUER`, `OIDC_AUDIENCE` e `OIDC_JWKS_URL`; produção exige URL JWKS HTTPS. A aplicação verifica a assinatura com algoritmos RS256/ES256 e valida issuer, audience e expiração. O `sub` precisa ter de 1 a 64 caracteres aceitos pelo middleware. Os headers de identidade enviados pelo cliente são ignorados.
 
-### ⚠️ Isto não é autenticação
-
-> O Core confia no **valor cru** do header. Qualquer cliente pode enviar o que quiser e impersonar qualquer outro usuário. O que existe aqui é uma _fronteira de identidade_, não uma barreira de segurança.
-
-Para um ambiente com usuários reais, é preciso um proxy ou gateway na frente do Core que:
-
-1. Valide um token real (JWT, sessão, mTLS).
-2. Reescreva `X-User-Id` com o subject autenticado.
-3. Remova o header que veio do cliente.
-
-O Core não deve ser exposto diretamente nesse cenário. O contrato de identidade foi isolado em `src/middleware/identity.ts` justamente para que essa troca aconteça em um único lugar — nada mais no Core lê identidade.
+O JWT precisa ser emitido por um provedor de identidade confiável e estar destinado a esta API (`aud`). A configuração genérica está implementada, mas ainda depende dos valores reais do provedor. O tenant opcional vem do claim `OIDC_TENANT_CLAIM` (padrão `tenant_id`), nunca do header controlado pelo cliente.
 
 ### O que o Core garante hoje
 
@@ -68,7 +58,7 @@ Cria a conversa automaticamente na primeira chamada, de modo que a interface nun
 | Código | Descrição                                      |
 | ------ | ---------------------------------------------- |
 | `200`  | Conversa atual entregue com sucesso            |
-| `401`  | `X-User-Id` ausente ou inválido                |
+| `401`  | Token Bearer ausente ou inválido               |
 | `500`  | Erro interno (banco indisponível, por exemplo) |
 
 #### Response Body (200)
@@ -133,7 +123,7 @@ Variante enxuta de `/current`: devolve **apenas** a conversa ativa, sem o `histo
 | Código | Descrição                           |
 | ------ | ----------------------------------- |
 | `200`  | Conversa ativa entregue com sucesso |
-| `401`  | `X-User-Id` ausente ou inválido     |
+| `401`  | Token Bearer ausente ou inválido    |
 | `500`  | Erro interno                        |
 
 ```json
@@ -158,7 +148,7 @@ Encerra a conversa em andamento **do usuário** — que passa a integrar o `hist
 | Código | Descrição                        |
 | ------ | -------------------------------- |
 | `200`  | Nova conversa criada com sucesso |
-| `401`  | `X-User-Id` ausente ou inválido  |
+| `401`  | Token Bearer ausente ou inválido |
 | `500`  | Erro interno                     |
 
 ```json
@@ -327,7 +317,7 @@ O pool de conexões é preguiçoso: o Core sobe e responde ao health check mesmo
 
 O servidor não reinicia sozinho quando o banco volta; a próxima requisição reconecta via pool.
 
-A ausência de `X-User-Id` é independente do banco: responde `401` sem tocar o Postgres, já que a identidade é validada no middleware.
+A ausência de token Bearer válido é independente do banco: responde `401` sem tocar o Postgres, já que a identidade é validada no middleware.
 
 ---
 

@@ -1,0 +1,37 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+
+  - package-ecosystem: npm
+    directory: /apps/chat-back
+    schedule:
+      interval: weekly
+      day: monday
+
+  - package-ecosystem: npm
+    directory: /apps/chat-omnia
+    schedule:
+      interval: weekly
+      day: monday
+
+  - package-ecosystem: npm
+    directory: /apps/packages/knowledge
+    schedule:
+      interval: weekly
+      day: monday
+
+  - package-ecosystem: docker
+    directory: /apps/docker
+    schedule:
+      interval: weekly
+      day: monday
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

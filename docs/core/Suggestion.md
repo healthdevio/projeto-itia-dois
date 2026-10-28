@@ -1,4 +1,4 @@
-## Modelo de Suggestion
+# Modelo de Suggestion
 
 Esse documento trata de como deve ser formatada a sugestão que o Core entrega para a interface, e de onde ela vem.
 
@@ -39,10 +39,10 @@ A produção da sugestão é da **AI** — o Core não sabe o que é um modelo d
 
 ## Identidade e multi-usuário
 
-Todo endpoint de sugestão exige o header `X-User-Id`, resolvido pelo middleware em `src/middleware/identity.ts`. Sem ele, a resposta é `401`, antes de qualquer acesso ao banco.
+Todo endpoint de sugestão exige JWT OIDC válido no header `Authorization: Bearer`, resolvido pelo middleware em `src/middleware/identity.ts`. Sem token válido, a resposta é `401`, antes de qualquer acesso ao banco.
 
 ```bash
-curl -H 'X-User-Id: ana' http://localhost:3001/api/suggestions
+curl -H 'Authorization: Bearer <access-token>' http://localhost:3001/api/suggestions
 ```
 
 A escopo vem da conversa, como nas mensagens:
@@ -56,7 +56,7 @@ A escopo vem da conversa, como nas mensagens:
 
 Um cliente não consegue ler nem escrever as sugestões de outra pessoa, nem passando um id de conversa no corpo da requisição: o repositório resolve a conversa ativa a partir do `userId` e ignora qualquer id informado.
 
-> ⚠️ **`X-User-Id` não é autenticação.** Ver [Identidade e multi-usuário](./Conversation.md#identidade-e-multi-usuário).
+> O `sub` do token verificado determina o usuário. Ver [Identidade e multi-usuário](./Conversation.md#jwt-bearer-e-identidade).
 
 ---
 
@@ -81,7 +81,7 @@ Nunca devolve `404`: se o usuário ainda não conversou, a conversa ativa é cri
 | Código | Descrição                                      |
 | ------ | ---------------------------------------------- |
 | `200`  | Sugestões entregues com sucesso                |
-| `401`  | `X-User-Id` ausente ou inválido                |
+| `401`  | Token Bearer ausente ou inválido               |
 | `500`  | Erro interno (banco indisponível, por exemplo) |
 
 **Response Body (200):**
@@ -126,7 +126,7 @@ Ids repetidos dentro da conversa são ignorados: reenviar a mesma requisição n
 | ------ | ---------------------------------------------------------------- |
 | `200`  | Sugestões registradas com sucesso                                |
 | `400`  | JSON inválido, lista vazia, mais de 8 sugestões ou item inválido |
-| `401`  | `X-User-Id` ausente ou inválido                                  |
+| `401`  | Token Bearer ausente ou inválido                                 |
 | `500`  | Erro interno                                                     |
 
 **Response Body (200):**
@@ -164,11 +164,11 @@ Limpa a lista da conversa ativa **do usuário**. É o que a interface chama depo
 
 Nenhuma outra conversa é afetada. Sem sugestões para remover, a resposta é `200` com `deleted: 0` — apagar de uma lista vazia não é erro.
 
-| Código | Descrição                       |
-| ------ | ------------------------------- |
-| `200`  | Sugestões removidas com sucesso |
-| `401`  | `X-User-Id` ausente ou inválido |
-| `500`  | Erro interno                    |
+| Código | Descrição                        |
+| ------ | -------------------------------- |
+| `200`  | Sugestões removidas com sucesso  |
+| `401`  | Token Bearer ausente ou inválido |
+| `500`  | Erro interno                     |
 
 **Response Body (200):**
 
@@ -250,7 +250,7 @@ A tabela **não tem `user_id`**, pelo mesmo motivo das mensagens: `conversation_
 
 ## Testar
 
-O harness de desenvolvimento fica em `apps/chat-core/local/` e **é git-ignored**: um REPL de terminal e um smoke test. Ver [`local/README.md`](../../apps/chat-core/local/README.md).
+O harness de desenvolvimento fica em `apps/chat-back/local/` e **é git-ignored**: um REPL de terminal e um smoke test. Ver a seção “Harness local” no [README do backend](../../apps/chat-back/README.md).
 
 ```bash
 npm run repl    # REPL de terminal contra o Core

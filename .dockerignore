@@ -16,7 +16,7 @@
 **/.env
 **/.env.*
 
-apps/chat-core/local
+apps/chat-back/local
 **/.vscode
 **/.idea
 **/*.log

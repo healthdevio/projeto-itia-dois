@@ -1,4 +1,4 @@
-## Modelo de ChatConfig
+# Modelo de ChatConfig
 
 Esse documento trata da configuração que a interface escolhe na tela e o Core repassa para a AI: idioma, tom e tamanho da resposta.
 
@@ -60,7 +60,7 @@ O config **não tem endpoint próprio**: ele viaja no corpo da mensagem, porque 
 POST /api/messages
 ```
 
-Exige `X-User-Id` e os campos obrigatórios da mensagem (`message_id`, `message`, `origin`). Ver [Message.md](./Message.md#request-body).
+Exige JWT Bearer válido e os campos obrigatórios da mensagem (`message_id`, `message`, `origin`). Ver [Message.md](./Message.md#request-body).
 
 **Request Body** — `config` é opcional:
 
@@ -100,7 +100,7 @@ No exemplo, a interface pediu dois campos e o Core entregou os três: `language`
 | ------ | ----------------------------------------------------------------- |
 | `200`  | Mensagem processada, com o config efetivo em `data.config`        |
 | `400`  | `config` inválido. O erro diz o campo e os valores aceitos        |
-| `401`  | `X-User-Id` ausente ou inválido                                   |
+| `401`  | Token Bearer ausente ou inválido                                  |
 | `500`  | Erro interno ao processar mensagem                                |
 | `502`  | O provider da AI falhou. O `error` traz a causa reportada por ele |
 
@@ -169,7 +169,7 @@ A resposta não muda: `{"response": "...", "suggestions": [...]}`. Quem fala com
 
 ### Sem estado no Core
 
-Não há tabela, repositório nem endpoint de config. A implementação está isolada em [`src/models/chat-config.ts`](../../apps/chat-core/src/models/chat-config.ts): validação, defaults e o resumo que aparece nos logs dos dois lados.
+Não há tabela, repositório nem endpoint de config. A implementação está isolada em [`src/models/chat-config.ts`](../../apps/chat-back/src/models/chat-config.ts): validação, defaults e o resumo que aparece nos logs dos dois lados.
 
 Quando aparecer a necessidade de **lembrar** a escolha do usuário (para a tela já abrir com o tom que ele escolheu da última vez), aí sim o config ganha tabela e um `GET /api/config`. O modelo já está separado para essa hora: `ChatConfig` é o que a interface manda, e o que vier a ser guardado é outra coisa.
 
@@ -189,7 +189,7 @@ longa leva segundos, e isso é o modelo escrevendo, não o Core travado.
 
 ## Testar
 
-O harness de desenvolvimento fica em `apps/chat-core/local/` e **é git-ignored**. Ele traz um REPL de terminal e um smoke test. Ver [`local/README.md`](../../apps/chat-core/local/README.md).
+O harness de desenvolvimento fica em `apps/chat-back/local/` e **é git-ignored**. Ele traz um REPL de terminal e um smoke test. Ver a seção “Harness local” no [README do backend](../../apps/chat-back/README.md).
 
 ```bash
 npm run repl    # REPL de terminal contra o Core

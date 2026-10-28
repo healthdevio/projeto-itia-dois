@@ -2,6 +2,8 @@
 
 Verificar se o deploy funcionou, diagnosticar quando não funcionou, e reverter.
 
+> A stack versionada usa `omnia_core`, `omnia_postgres` e imagem `chat-core`. Confirme no Portainer que a stack implantada foi atualizada para esta configuração antes de executar comandos de rollback.
+
 ## Verificar
 
 No cluster:
@@ -52,7 +54,7 @@ http://<host>:8080
 Prova a cadeia inteira: navegador → nginx → Core → Postgres.
 
 ```powershell
-curl.exe -H "X-User-Id: ana" http://<host>:8080/api/conversations/current
+curl.exe -H "Authorization: Bearer <access-token>" http://<host>:8080/api/conversations/current
 ```
 
 ```json
@@ -63,7 +65,7 @@ Para enviar uma mensagem, o corpo vai num arquivo — aspas em linha de comando 
 PowerShell não sobrevivem:
 
 ```powershell
-curl.exe -H "X-User-Id: ana" -H "Content-Type: application/json" `
+curl.exe -H "Authorization: Bearer <access-token>" -H "Content-Type: application/json" `
   --data-binary "@C:\Users\Alec\mensagem.json" `
   http://<host>:8080/api/messages
 ```
@@ -146,6 +148,38 @@ Drizzle não tem `down`. Se a versão antiga não roda com o schema novo, o roll
 
 Por isso a tag de commit é publicada: é o que torna o rollback possível.
 
+## Backup e restauração do Postgres
+
+O volume do Postgres é local ao `compute01`; uma cópia no mesmo nó não protege contra a perda dele. O script [`backup-postgres.sh`](../../apps/docker/backup-postgres.sh) cria um dump custom do serviço Swarm `omnia_postgres`, criptografa com `age` e exige que o destino seja um filesystem externo montado.
+
+No nó do Postgres, instale Docker CLI e `age`, monte um destino externo e configure a chave pública age. Há três opções práticas:
+
+1. **Pasta de rede/NFS em NAS ou servidor separado:** monte, por exemplo, `/mnt/omnia-backups`. É a opção inicial mais simples se a empresa já administra um NAS. Confirme que a montagem aponta para outro equipamento e restrinja leitura/escrita ao operador de backup.
+2. **Armazenamento de objetos compatível com S3:** bucket privado em AWS S3, MinIO ou serviço corporativo. O script atual escreve em filesystem; seria necessário adicionar uma etapa de upload (por exemplo, AWS CLI ou rclone), com credencial limitada ao bucket e política de retenção.
+3. **Postgres gerenciado com backups próprios:** reduz a operação do banco, mas requer migração de arquitetura e não é uma configuração pronta nesta stack.
+
+Para começar, recomendo NFS/NAS separado se já houver um disponível; se não, storage de objetos compatível com S3. Em ambos, mantenha a criptografia `age`, retenha cópias e guarde a chave privada fora do cluster. O script atual funciona com as opções filesystem/NFS:
+
+```bash
+BACKUP_DIR=/mnt/omnia-backups \
+AGE_RECIPIENT=age1... \
+POSTGRES_SERVICE=omnia_postgres \
+RETENTION_DAYS=30 \
+sh /opt/omnia/backup-postgres.sh
+```
+
+Depois do teste, agende um backup diário às 02:00 UTC pelo cron do nó. Exemplo; ajuste caminhos e a chave pública ao ambiente:
+
+```cron
+0 2 * * * BACKUP_DIR=/mnt/omnia-backups AGE_RECIPIENT=age1... POSTGRES_SERVICE=omnia_postgres RETENTION_DAYS=30 /bin/sh /opt/omnia/backup-postgres.sh >> /var/log/omnia-backup.log 2>&1
+```
+
+O script mantém 30 dias no destino montado. O responsável pela operação deve conferir diariamente o resultado e o espaço disponível. Guarde a chave privada age separadamente do cluster e teste a descriptografia.
+
+Faça mensalmente um ensaio de restauração em um banco isolado, nunca sobrescrevendo a base de produção durante o teste. Registre o tempo de recuperação e a data do último backup recuperável. Como ponto de partida, a rotina diária oferece RPO de até 24 horas; defina um RTO com o responsável pelo serviço.
+
+> Não execute uma restauração sobre produção sem uma janela aprovada e um backup atual verificado. Um restore pode substituir dados existentes.
+
 ## Limpeza de disco
 
 Cada build deixa layers no nó onde rodou.
@@ -161,13 +195,14 @@ imagens em uso: são as dos containers rodando.
 
 ## Manutenção
 
-| Ação                            | Frequência                   |
-| ------------------------------- | ---------------------------- |
-| `docker system df` para ver uso | quando o disco apertar       |
-| Prune de imagens dangling       | mensal                       |
-| Backup do volume do Postgres    | conforme a política de dados |
-| Conferir o token do registry    | a cada 90 dias               |
-| Conferir `docker node ls`       | quando o cluster mudar       |
+| Ação                            | Frequência                 |
+| ------------------------------- | -------------------------- |
+| `docker system df` para ver uso | quando o disco apertar     |
+| Prune de imagens dangling       | mensal                     |
+| Verificar backup criptografado  | diariamente após 02:00 UTC |
+| Testar restauração isolada      | mensalmente                |
+| Conferir o token do registry    | a cada 90 dias             |
+| Conferir `docker node ls`       | quando o cluster mudar     |
 
 ### O volume do Postgres é um ponto único
 
