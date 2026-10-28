@@ -32,8 +32,8 @@ services:
         order: stop-first
         failure_action: pause
 
-  core:
-    image: ${OMNIA_CORE_IMAGE:-registry.cloud.grupopw2c.com.br/chat-core:latest}
+  backend:
+    image: ${OMNIA_BACKEND_IMAGE:-registry.cloud.grupopw2c.com.br/chat-back:latest}
     healthcheck:
       test:
         [

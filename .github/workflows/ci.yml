@@ -58,7 +58,7 @@ jobs:
           fi
 
   core:
-    name: Core (chat-core)
+    name: Backend (chat-back)
     runs-on: ubuntu-latest
     steps:
       - name: Baixar código
@@ -69,22 +69,22 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: apps/chat-core/package-lock.json
+          cache-dependency-path: apps/chat-back/package-lock.json
 
       - name: Instalar dependências
-        working-directory: apps/chat-core
+        working-directory: apps/chat-back
         run: npm ci
 
       - name: Verificar TypeScript
-        working-directory: apps/chat-core
+        working-directory: apps/chat-back
         run: npm run typecheck
 
       - name: Rodar testes
-        working-directory: apps/chat-core
+        working-directory: apps/chat-back
         run: npm test
 
       - name: Gerar build
-        working-directory: apps/chat-core
+        working-directory: apps/chat-back
         run: npm run build
 
   format:
