@@ -5,7 +5,7 @@ import { Hono } from 'hono';
 
 import { suggestionRoutes } from '../../src/routes/suggestions.js';
 import { conversationRoutes } from '../../src/routes/conversations.js';
-import { USER_ID_HEADER } from '../../src/middleware/identity.js';
+import { authorizationHeaders } from '../helpers/identity.js';
 
 // Identidade e validação de corpo, sem tocar o banco. O caminho de sucesso
 // fica para o smoke test (`npm run smoke`).
@@ -18,18 +18,18 @@ function app() {
   return instance;
 }
 
-// `userId: null` sai sem o header, que é o caso a exercitar.
-function send(
+// `subject: null` omite o token Bearer, que é o caso a exercitar.
+async function send(
   path: string,
-  init: RequestInit & { userId?: string | null } = {},
+  init: RequestInit & { subject?: string | null } = {},
 ) {
-  const { userId = 'ana', ...rest } = init;
+  const { subject = 'ana', ...rest } = init;
 
   return app().request(path, {
     ...rest,
     headers: {
       'Content-Type': 'application/json',
-      ...(userId === null ? {} : { [USER_ID_HEADER]: userId }),
+      ...(subject === null ? {} : await authorizationHeaders(subject)),
       ...(rest.headers as Record<string, string>),
     },
   });
@@ -46,10 +46,10 @@ describe('rotas exigem identidade antes de qualquer acesso ao banco', () => {
   ];
 
   for (const [method, path] of rotas) {
-    it(`${method} ${path} responde 401 sem X-User-Id`, async () => {
+    it(`${method} ${path} responde 401 sem token Bearer`, async () => {
       const response = await send(path, {
         method,
-        userId: null,
+        subject: null,
         ...(method === 'POST' ? { body: JSON.stringify({ text: 'abc' }) } : {}),
       });
 
@@ -58,7 +58,7 @@ describe('rotas exigem identidade antes de qualquer acesso ao banco', () => {
       const body = await response.json();
 
       assert.equal(body.success, false);
-      assert.match(body.error, new RegExp(USER_ID_HEADER));
+      assert.match(body.error, /Bearer/);
     });
   }
 });

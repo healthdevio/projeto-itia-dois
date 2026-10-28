@@ -25,7 +25,9 @@ WORKDIR /app
 
 # pg_isready vem do postgresql-client e serve ao entrypoint esperar o banco.
 # Sem isso o entrypoint morre antes de tentar a conexao.
-RUN apk add --no-cache postgresql-client
+# O runtime nao usa npm; removemos o pacote global e seus executaveis da imagem.
+RUN apk add --no-cache postgresql-client \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 ENV NODE_ENV=production \
     CORE_PORT=80
