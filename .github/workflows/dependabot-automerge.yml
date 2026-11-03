@@ -1,0 +1,31 @@
+name: Dependabot Auto-merge
+
+on:
+  pull_request:
+    branches: [develop]
+
+permissions: {}
+
+jobs:
+  automerge:
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@08eff52bf64351f401fb50d4972fa95b9f2c2d1b # v2.4.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Enable auto-merge for development and Actions minor/patch groups
+        if: ${{ steps.metadata.outputs.dependency-group == 'development-minor-patch' || steps.metadata.outputs.dependency-group == 'actions-minor-patch' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --squash "$PR_URL"
+
+# This is safe only when Allow auto-merge is enabled and branch protection
+# requires the CI OK check. Otherwise the merge can happen without waiting for CI.
