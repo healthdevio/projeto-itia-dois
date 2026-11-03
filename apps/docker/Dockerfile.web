@@ -6,7 +6,7 @@
 # VITE_CORE_URL é ARG e não ENV de runtime: o Vite embute o valor no bundle
 # durante a compilação.
 
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 
 WORKDIR /app
 
