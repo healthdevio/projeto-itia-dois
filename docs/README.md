@@ -39,7 +39,6 @@
 | [ci_cd/](ci_cd/README.md)                                     | Pipeline, publicação, stack, operação e diagnóstico          |
 | [comparação de CI/CD](ci_cd/diferencas-ci-cd-main-develop.md) | Diferenças entre os workflows de `main` e `develop`          |
 | [estrutura/](estrutura/README.md)                             | CI, Docker, ambientes, testes e versionamento                |
-| [dependabot/](dependabot/README.md)                           | Funcionamento geral e configuração do Dependabot             |
 | [core/](core/README.md)                                       | Contratos e comportamento da API                             |
 | [interface/](interface/README.md)                             | Componentes e estado da interface                            |
 | [contexto/](contexto/contexto-ia.md)                          | Contexto de manutenção e limitações atuais                   |
