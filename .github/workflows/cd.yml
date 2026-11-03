@@ -36,7 +36,7 @@ jobs:
           password: ${{ secrets.PW2C_REGISTRY_PASSWORD }}
 
       - name: Build and Push Backend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/docker/Dockerfile.back
@@ -52,7 +52,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and Push Web
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/docker/Dockerfile.web
