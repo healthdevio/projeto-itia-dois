@@ -1,13 +1,13 @@
 name: CD (Continuous Delivery)
 
 on:
+  # zizmor: ignore[dangerous-triggers] because publication only accepts a successful CI run on main and checks out that run's commit.
   workflow_run:
     workflows: ['CI (Continuous Integration)']
     types: [completed]
     branches: [main]
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: cd-${{ github.event.workflow_run.head_branch }}
@@ -18,28 +18,45 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
     name: Build and Push approved commit
     runs-on: ubuntu-latest
-
+    timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - name: Checkout commit approved by CI
-        uses: actions/checkout@v7
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-
+          persist-credentials: false
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
       - name: Login to PW2C Private Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: registry.cloud.grupopw2c.com.br
           username: ${{ secrets.PW2C_REGISTRY_USERNAME }}
           password: ${{ secrets.PW2C_REGISTRY_PASSWORD }}
-
-      - name: Build and Push Backend
-        uses: docker/build-push-action@v7
+      - name: Build backend candidate for security scan
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
-          file: apps/docker/Dockerfile.back
+          file: apps/docker/Dockerfile.core
+          platforms: linux/amd64
+          load: true
+          tags: local/chat-back:${{ github.event.workflow_run.head_sha }}
+          cache-from: type=gha
+      - name: Scan backend candidate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: local/chat-back:${{ github.event.workflow_run.head_sha }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Build and Push Backend
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          file: apps/docker/Dockerfile.core
           platforms: linux/amd64
           push: true
           sbom: true
@@ -50,9 +67,25 @@ jobs:
             registry.cloud.grupopw2c.com.br/chat-back:${{ github.event.workflow_run.head_branch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
+      - name: Build web candidate for security scan
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          file: apps/docker/Dockerfile.web
+          platforms: linux/amd64
+          load: true
+          tags: local/chat-web:${{ github.event.workflow_run.head_sha }}
+          cache-from: type=gha
+      - name: Scan web candidate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: local/chat-web:${{ github.event.workflow_run.head_sha }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
       - name: Build and Push Web
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
           file: apps/docker/Dockerfile.web
@@ -66,7 +99,6 @@ jobs:
             registry.cloud.grupopw2c.com.br/chat-web:${{ github.event.workflow_run.head_branch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
       - name: Publication summary
         env:
           SHA: ${{ github.event.workflow_run.head_sha }}
@@ -80,5 +112,35 @@ jobs:
             echo "- chat-back: \`registry.cloud.grupopw2c.com.br/chat-back:${BRANCH}\`"
             echo "- chat-web: \`registry.cloud.grupopw2c.com.br/chat-web:${BRANCH}\`"
             echo
-            echo "Images are published with SBOM and provenance. Update the Portainer stack manually using these immutable SHA tags."
+            echo "Images are published with SBOM and provenance. Portainer stack deployment remains opt-in."
           } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Deploy Portainer stack
+    needs: build-and-push
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    permissions: {}
+    steps:
+      - name: Trigger Portainer service webhooks
+        env:
+          PORTAINER_CORE_WEBHOOK_URL: ${{ secrets.PORTAINER_CORE_WEBHOOK_URL }}
+          PORTAINER_WEB_WEBHOOK_URL: ${{ secrets.PORTAINER_WEB_WEBHOOK_URL }}
+        run: |
+          curl -fsS --retry 3 -X POST "$PORTAINER_CORE_WEBHOOK_URL"
+          curl -fsS --retry 3 -X POST "$PORTAINER_WEB_WEBHOOK_URL"
+      - name: Deployment summary
+        run: |
+          {
+            echo "### Portainer redeploy triggered"
+            echo
+            echo "The Portainer webhooks for the core and web services were called. The database service was not redeployed."
+            echo "Each service uses its current image tag; with :latest, Portainer pulls the new image. If the service uses a SHA tag, update that tag before triggering this workflow."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+# Portainer CE can use individual service webhooks. This deploys core and web;
+# the database is left alone because its image is not built or updated here.
+# Each webhook redeploys its service with the configured image tag. A :latest
+# reference pulls the new image; a SHA reference must be updated beforehand.

@@ -1,43 +1,65 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: /
+    directories:
+      - /
+      - /apps/chat-back
+      - /apps/chat-omnia
+      - /apps/packages/knowledge
+    # target-branch: develop   # DESCOMENTE se o fluxo for develop -> main (confira a branch padrão do repo)
     schedule:
       interval: cron
-      cronjob: '0 9 1,15 * *'
+      cronjob: '0 9 * * 1'
       timezone: America/Sao_Paulo
-
-  - package-ecosystem: npm
-    directory: /apps/chat-back
-    schedule:
-      interval: cron
-      cronjob: '0 9 1,15 * *'
-      timezone: America/Sao_Paulo
-
-  - package-ecosystem: npm
-    directory: /apps/chat-omnia
-    schedule:
-      interval: cron
-      cronjob: '0 9 1,15 * *'
-      timezone: America/Sao_Paulo
-
-  - package-ecosystem: npm
-    directory: /apps/packages/knowledge
-    schedule:
-      interval: cron
-      cronjob: '0 9 1,15 * *'
-      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    labels: [dependencies, npm]
+    commit-message:
+      prefix: 'chore(deps)'
+      prefix-development: 'chore(deps-dev)'
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+    groups:
+      production-minor-patch:
+        dependency-type: production
+        update-types: [minor, patch]
+      development-minor-patch:
+        dependency-type: development
+        update-types: [minor, patch]
 
   - package-ecosystem: docker
     directory: /apps/docker
     schedule:
       interval: cron
-      cronjob: '0 9 1,15 * *'
+      cronjob: '0 9 * * 1'
       timezone: America/Sao_Paulo
+    open-pull-requests-limit: 3
+    labels: [dependencies, docker]
+    commit-message:
+      prefix: 'chore(docker)'
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    groups:
+      docker-minor-patch:
+        update-types: [minor, patch]
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: cron
-      cronjob: '0 9 1,15 * *'
+      cronjob: '0 9 * * 1'
       timezone: America/Sao_Paulo
+    open-pull-requests-limit: 3
+    labels: [dependencies, github-actions]
+    commit-message:
+      prefix: 'ci(deps)'
+    cooldown:
+      default-days: 7
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]
+
+# Dockerfiles use node:24-alpine (major pinned); Dependabot tracks this tag.
