@@ -12,4 +12,6 @@ COPY apps/packages/knowledge/drizzle.config.ts ./
 COPY apps/packages/knowledge/drizzle ./drizzle
 COPY apps/packages/knowledge/src ./src
 
+USER node
+
 CMD ["npx", "drizzle-kit", "migrate"]

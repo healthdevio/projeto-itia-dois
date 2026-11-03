@@ -1,6 +1,7 @@
 name: CD (Continuous Delivery)
 
 on:
+  # zizmor: ignore[dangerous-triggers] because publication only accepts a successful CI run on main and checks out that run's commit.
   workflow_run:
     workflows: ['CI (Continuous Integration)']
     types: [completed]

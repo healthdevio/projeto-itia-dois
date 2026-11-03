@@ -81,7 +81,7 @@ services:
   web:
     image: ${OMNIA_WEB_IMAGE:-registry.cloud.grupopw2c.com.br/chat-web:latest}
     ports:
-      - target: 80
+      - target: 8080
         published: ${OMNIA_WEB_PORT:-8080}
         protocol: tcp
         mode: host
