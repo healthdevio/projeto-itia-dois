@@ -23,7 +23,7 @@
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.45.3",
     "hono": "^4.13.14",
-    "jose": "^6.2.13",
+    "jose": "^6.2.14",
     "pg": "^8.23.1"
   },
   "devDependencies": {
