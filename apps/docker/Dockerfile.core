@@ -1,4 +1,4 @@
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY apps/chat-back/src ./src
 
 RUN npm run build
 
-FROM node:24-alpine AS deps
+FROM node:26-alpine AS deps
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ COPY apps/chat-back/package.json apps/chat-back/package-lock.json ./
 
 RUN npm ci --omit=dev && npm cache clean --force
 
-FROM node:24-alpine AS runtime
+FROM node:26-alpine AS runtime
 
 WORKDIR /app
 
