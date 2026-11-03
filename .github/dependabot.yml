@@ -6,7 +6,7 @@ updates:
       - /apps/chat-back
       - /apps/chat-omnia
       - /apps/packages/knowledge
-    # target-branch: develop   # DESCOMENTE se o fluxo for develop -> main (confira a branch padrão do repo)
+    target-branch: develop
     schedule:
       interval: cron
       cronjob: '0 9 * * 1'
@@ -48,6 +48,7 @@ updates:
 
   - package-ecosystem: github-actions
     directory: /
+    target-branch: develop
     schedule:
       interval: cron
       cronjob: '0 9 * * 1'
