@@ -9,7 +9,7 @@
 #
 # Sai depois de aplicar as migrations (restart: no) e nunca recebe tráfego.
 
-FROM node:24-alpine
+FROM node:26-alpine
 
 WORKDIR /app
 
