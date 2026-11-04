@@ -13,7 +13,7 @@ Contrato da API, para quem consome.
 
 | Método   | Rota                         | Quem chama   |
 | -------- | ---------------------------- | ------------ |
-| `GET`    | `/`                          | health check |
+| `GET`    | `/health`                    | health check |
 | `GET`    | `/api/conversations/current` | interface    |
 | `GET`    | `/api/conversations/active`  | interface    |
 | `POST`   | `/api/conversations/rotate`  | interface    |
@@ -43,3 +43,7 @@ O tenant opcional vem do claim configurado em `OIDC_TENANT_CLAIM` (padrão
 
 O contrato completo está no `README.md` de `apps/chat-back`. Esta pasta tem a
 especificação por modelo; o README tem o ponto de entrada prático.
+
+O processo de migração da camada HTTP de Hono para NestJS (causas, mudanças,
+verificação e rollback) está em
+[refatoracao-hono-para-nest.md](refatoracao-hono-para-nest.md).
