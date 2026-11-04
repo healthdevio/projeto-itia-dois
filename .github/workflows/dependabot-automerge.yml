@@ -1,31 +1,86 @@
 name: Dependabot Auto-merge
 
 on:
-  pull_request:
-    branches: [develop]
+  # zizmor: ignore[dangerous-triggers] Safe here because this workflow does not check out or execute PR code; it reads PR/check metadata through GitHub's API and merges only after revalidating the exact head SHA.
+  workflow_run:
+    workflows: ['CI (Continuous Integration)']
+    types: [completed]
 
 permissions: {}
 
+concurrency:
+  group: dependabot-automerge-${{ github.event.workflow_run.pull_requests[0].number || github.run_id }}
+  cancel-in-progress: false
+
 jobs:
   automerge:
-    if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == github.event.pull_request.head.repo.full_name }}
+    if: >-
+      vars.AUTOMERGE_ENABLED == 'true' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.actor.login == 'dependabot[bot]' &&
+      github.event.workflow_run.pull_requests[0].number != null &&
+      (contains(github.event.workflow_run.head_branch, 'development-minor-patch') ||
+       contains(github.event.workflow_run.head_branch, 'actions-minor-patch'))
+    name: Validate and merge eligible Dependabot PR
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     permissions:
       contents: write
       pull-requests: write
+      checks: read
     steps:
-      - name: Fetch Dependabot metadata
-        id: metadata
-        uses: dependabot/fetch-metadata@08eff52bf64351f401fb50d4972fa95b9f2c2d1b # v2.4.0
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Enable auto-merge for development and Actions minor/patch groups
-        if: ${{ steps.metadata.outputs.dependency-group == 'development-minor-patch' || steps.metadata.outputs.dependency-group == 'actions-minor-patch' }}
+      - name: Validate PR, files, and CI OK for the exact commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge --auto --squash "$PR_URL"
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
 
-# This is safe only when Allow auto-merge is enabled and branch protection
-# requires the CI OK check. Otherwise the merge can happen without waiting for CI.
+          if [[ "$HEAD_BRANCH" == *development-minor-patch* ]]; then
+            ALLOWED_GROUP=development-minor-patch
+          elif [[ "$HEAD_BRANCH" == *actions-minor-patch* ]]; then
+            ALLOWED_GROUP=actions-minor-patch
+          else
+            echo "Branch fora dos grupos permitidos; nenhum merge será feito."
+            exit 0
+          fi
+
+          PR_JSON="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json author,baseRefName,headRefName,headRefOid,isDraft,mergeable,statusCheckRollup,files)"
+
+          if ! jq -e \
+            --arg head_sha "$HEAD_SHA" \
+            --arg head_branch "$HEAD_BRANCH" \
+            --arg group "$ALLOWED_GROUP" \
+            '
+              .author.login == "dependabot[bot]" and
+              .baseRefName == "develop" and
+              .headRefName == $head_branch and
+              .headRefOid == $head_sha and
+              .isDraft == false and
+              .mergeable == "MERGEABLE" and
+              (.files | length) > 0 and
+              (if $group == "development-minor-patch" then
+                 all(.files[].path;
+                   . == "package.json" or
+                   endswith("/package.json") or
+                   test("(^|/)(package-lock\\.json|npm-shrinkwrap\\.json|yarn\\.lock|pnpm-lock\\.yaml)$"))
+               else
+                 all(.files[].path; startswith(".github/workflows/"))
+               end)
+            ' <<< "$PR_JSON" >/dev/null; then
+            echo "PR fora das condições seguras; nenhum merge será feito."
+            exit 0
+          fi
+
+          CI_OK="$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs" --jq '[.check_runs[] | select(.name == "CI OK")] | sort_by(.started_at) | last | select(.status == "completed" and .conclusion == "success") | .conclusion')"
+          if [[ "$CI_OK" != "success" ]]; then
+            echo "CI OK não está verde no head SHA do PR; nenhum merge será feito."
+            exit 0
+          fi
+
+          echo "PR #$PR_NUMBER validado: autor Dependabot, destino develop, grupo $ALLOWED_GROUP, arquivos permitidos e CI OK verde em $HEAD_SHA."
+          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --squash

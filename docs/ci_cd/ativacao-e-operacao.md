@@ -1,96 +1,109 @@
 # Ativação e operação do CI/CD
 
-Este guia registra o estado atual dos workflows e os passos para concluir a configuração no GitHub e no Portainer.
+Este guia registra a configuração confirmada e as ações necessárias para operar CI/CD, Dependabot e deploy no Portainer Community Edition.
 
-## Estado atual
+## Estado confirmado
 
-- Os workflows estão em `.github/workflows`: CI, CD, Security, Workflow Lint e Dependabot Auto-merge.
-- O check final obrigatório da CI se chama **CI OK**. Ele depende de `frontend`, `backend`, `format` e `images`.
-- A publicação do CD ocorre depois de uma CI concluída com sucesso em `main`. Ela publica `chat-back` e `chat-web` com as tags `latest`, SHA do commit e branch, além de SBOM e provenance.
-- O deploy é opcional e chama dois webhooks individuais do Portainer: core e web. O banco não é redeployado.
-- Os secrets `PORTAINER_CORE_WEBHOOK_URL` e `PORTAINER_WEB_WEBHOOK_URL` já foram adicionados ao environment `production`, conforme informado pelo responsável pelo repositório.
-- O Trivy encontrou dependências vulneráveis no lockfile do frontend e Dockerfiles sem usuário não-root. O lockfile foi atualizado e os Dockerfiles foram ajustados; a próxima execução do CI deve confirmar que os alertas foram resolvidos.
-- A imagem web agora escuta na porta interna `8080` para poder executar como usuário não-root. O arquivo `apps/docker/pw2c/docker-stack.yml` já usa `target: 8080`.
+- O repositório é privado e a organização está no plano gratuito. O ruleset `proteger-main-develop` existe, mas está inativo; hoje o GitHub não aplica a exigência de `CI OK` nem bloqueia pushes diretos.
+- **Allow auto-merge** não está disponível. O workflow do Dependabot faz merge direto somente depois de validar o PR e o check `CI OK` no SHA exato.
+- A CI verifica frontend, backend, formatação e imagens. `CI OK` agrega esses quatro jobs.
+- O workflow Security sempre executa Trivy e `npm audit`. Sem GHAS, Dependency review e CodeQL ficam pulados. Semgrep CE executa como SAST informativo nas primeiras execuções.
+- O Portainer é Community Edition 2.45.3 LTS. O deploy usa webhooks individuais dos serviços `core` e `web`; não usa webhook de stack.
+- A stack versionada está em `apps/docker/pw2c/docker-stack.yml`. Ela deve consumir `registry.cloud.grupopw2c.com.br/chat-core:latest` e `registry.cloud.grupopw2c.com.br/chat-web:latest`.
 
-## Checklist para concluir a configuração
+## Configuração manual no GitHub
 
-### 1. Conferir configuração da stack no Portainer
+### Variáveis de Actions
 
-Antes de habilitar o deploy automático:
+Abra **Settings → Secrets and variables → Actions → Variables** e configure estas repository variables:
 
-1. Abra a stack e confirme que os serviços `core` e `web` usam as imagens publicadas pelo CD.
-2. Confirme que ambos usam `:latest`, ou atualize a tag manualmente antes do redeploy. O CD também publica tags de SHA e branch, mas os webhooks de serviço reutilizam a tag configurada no serviço.
-3. Atualize o serviço web para escutar na porta interna `8080`. Mantenha a porta publicada que seus usuários já acessam, se ela continuar adequada. A mudança no arquivo Compose do repositório não altera automaticamente uma stack gerenciada manualmente no Portainer.
-4. Confirme que os webhooks individuais do core e do web estão ativos. O serviço do banco não precisa de webhook para uma publicação que altera somente core e web.
+| Nome                | Valor                                          | Efeito                                                                                                                |
+| ------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `AUTOMERGE_ENABLED` | `true`                                         | Habilita a tentativa de merge direto para PRs Dependabot elegíveis. Deixe ausente ou diferente de `true` para pausar. |
+| `DEPLOY_ENABLED`    | `true`                                         | Habilita o job de deploy depois da publicação bem-sucedida em `main`.                                                 |
+| `GHAS_ENABLED`      | `true` somente após upgrade/licença compatível | Habilita Dependency review e CodeQL. No plano atual, mantenha ausente ou diferente de `true`.                         |
 
-O endpoint dos webhooks precisa estar acessível pelo runner hospedado do GitHub Actions. Trate cada URL como segredo: quem tiver o link pode acionar o redeploy.
+São repository variables porque as condições dos jobs as consultam antes da execução. `GHAS_ENABLED` é opcional; os outros dois também funcionam como interruptores.
 
-### 2. Conferir secrets do repositório e do environment
+### Secrets e environment
 
-Em **Settings → Secrets and variables → Actions → Secrets**, confirme que existem:
+Confirme os secrets de registry em **Settings → Secrets and variables → Actions → Secrets**:
 
 - `PW2C_REGISTRY_USERNAME`
 - `PW2C_REGISTRY_PASSWORD`
 
-Em **Settings → Environments → production → Environment secrets**, confirme:
+Em **Settings → Environments → production → Environment secrets**, cadastre os links de serviço do Portainer:
 
-- `PORTAINER_CORE_WEBHOOK_URL`
-- `PORTAINER_WEB_WEBHOOK_URL`
+- `PORTAINER_WEBHOOK_CORE`
+- `PORTAINER_WEBHOOK_WEB`
 
-O job `deploy` declara `environment: production`, então os dois webhooks precisam estar como secrets desse environment.
+O job de deploy usa `environment: production`. Os links de webhook são credenciais de acionamento e não devem ser colocados em arquivos do repositório.
 
-### 3. Executar a CI e cadastrar `CI OK` como check
+Em **Settings → General → Pull Requests**, confirme que **Allow squash merging** está habilitado. O workflow usa `gh pr merge --squash` e não depende de auto-merge nativo.
 
-1. Faça merge das alterações dos workflows na branch `main` seguindo o fluxo normal do repositório.
-2. Abra **Actions → CI (Continuous Integration)** e aguarde a execução em `main` terminar.
-3. Confirme que o job **CI OK** terminou com sucesso. Se falhar, corrija o job apontado antes de torná-lo obrigatório.
-4. Abra **Settings → Branches** (ou a regra equivalente em **Rules → Rulesets**) e edite as regras para `main` e `develop`.
-5. Habilite a exigência de checks e selecione somente **CI OK** como check obrigatório desta CI.
+## Configuração manual no Portainer
 
-O GitHub só lista um check depois que ele já foi publicado por uma execução recente. Os três jobs pulados na execução anterior não impedem `CI OK` de aparecer:
+1. Abra **Stacks → projeto-itia-2** e confira a imagem do serviço `core`. A configuração versionada usa `OMNIA_CORE_IMAGE` com padrão `registry.cloud.grupopw2c.com.br/chat-core:latest`.
+2. Se o `.Env` da stack ainda definir `OMNIA_BACKEND_IMAGE` ou outra tag de backend, remova essa variável antiga e use `OMNIA_CORE_IMAGE=registry.cloud.grupopw2c.com.br/chat-core:latest` (ou remova a variável para usar o padrão do compose).
+3. Confirme que o serviço `web` usa `registry.cloud.grupopw2c.com.br/chat-web:latest`.
+4. Atualize a configuração da stack para o serviço `web` receber tráfego na porta interna `8080`. A imagem web roda como não-root e o Nginx escuta nessa porta; a porta publicada externa pode continuar igual.
+5. Em **Services → core → Service webhook** e **Services → web → Service webhook**, habilite e copie os dois links. O webhook de serviço redeploya o serviço com a tag já configurada; ele não aplica alterações novas no Compose da stack.
+6. Armazene os links como os dois Environment secrets `PORTAINER_WEBHOOK_CORE` e `PORTAINER_WEBHOOK_WEB` em `production`.
 
-- **CodeQL** e **Dependency review** são condicionados a `GHAS_ENABLED=true`.
-- **Automerge** só executa para PR criado pelo Dependabot, direcionado a `develop` e pertencente ao mesmo repositório.
+O banco não recebe webhook: o CD não constrói nem publica imagem do banco. Com `:latest`, cada webhook puxa a imagem recém-publicada e reinicia o serviço. Se a stack usa tags SHA, atualize as tags na stack antes do redeploy.
 
-### 4. Habilitar ou deixar desligado o deploy automático
+## Como funciona o auto-merge do Dependabot
 
-Depois de verificar as portas, tags, secrets do registry e webhooks, abra **Settings → Secrets and variables → Actions → Variables** e crie a variável **do repositório**:
+O workflow não faz checkout e não executa arquivos do PR. Após uma execução concluída da CI em um evento `pull_request`, ele consulta GitHub via API e só prossegue quando:
 
-| Nome             | Valor  |
-| ---------------- | ------ |
-| `DEPLOY_ENABLED` | `true` |
+- `AUTOMERGE_ENABLED` é `true`;
+- a execução foi bem-sucedida, é de um PR e foi iniciada pelo Dependabot;
+- há PR associado, criado pelo Dependabot, não draft, direcionado a `develop`, sem conflito e ainda no mesmo `head SHA` que a CI verificou;
+- a branch contém `development-minor-patch` ou `actions-minor-patch`;
+- os arquivos alterados são apenas manifests/lockfiles permitidos para o grupo ou arquivos em `.github/workflows/**` para o grupo de Actions;
+- o check `CI OK` mais recente para aquele `head SHA` está concluído com sucesso.
 
-Use uma repository variable: a condição do job de deploy consulta `vars.DEPLOY_ENABLED` no nível do job. Se a variável não existir ou não for `true`, o deploy fica _skipped_ e o CD apenas publica as imagens.
+O Dependabot está configurado para abrir PRs npm e GitHub Actions para `develop`, que é o destino observado pela automação. O workflow nunca faz merge de PR para `main`, grupos de produção, Docker ou atualizações major. Qualquer arquivo fora da lista permitida cancela a tentativa de merge.
 
-Quando o deploy estiver habilitado, um novo CI bem-sucedido em `main` dispara o CD. Ativar a variável depois de uma execução não dispara retroativamente o CD; será necessária uma nova mudança em `main` que rode a CI.
+Para ativar essa automação, crie a repository variable `AUTOMERGE_ENABLED=true`. O ruleset continua inativo, então o GitHub não impõe os checks entre a validação da automação e o merge direto.
 
-O job chama os webhooks de core e web em sequência. Se o primeiro falhar, o step para e não chama o segundo; consulte o log do job `Deploy Portainer stack` para ver o resultado.
+O merge usa `GITHUB_TOKEN`. O GitHub não inicia workflows de `push` disparados por eventos criados com esse token. Portanto, a CI não rodará novamente em `develop` depois do merge. Isso é aceitável para este desenho porque o workflow valida explicitamente `CI OK` no `head SHA` antes do merge. A CI de um PR posterior de `develop` para `main` também roda normalmente.
 
-### 5. Dependabot Auto-merge (opcional)
+Se for necessário disparar CI pós-merge em `develop`, a alternativa é autenticar a operação de merge com um GitHub App token ou PAT fine-grained. Essa mudança exige criar a credencial com permissões de pull request/contents, armazená-la como secret e substituir o token do passo de merge; ela não está implementada.
 
-O job **Automerge** só tenta habilitar merge automático para os grupos `development-minor-patch` e `actions-minor-patch`. Ele não inclui atualizações de produção, Docker ou major.
+## Checks: informativos e bloqueio por convenção
 
-Para usá-lo:
+Como o ruleset está inativo, **nenhum check impede tecnicamente o merge**. Checks vermelhos devem ser tratados como bloqueio por convenção pela equipe até que o enforcement esteja disponível.
 
-1. Primeiro faça `CI OK` aparecer e exija esse check na proteção da branch `develop`.
-2. Em **Settings → General → Pull Requests**, habilite **Allow auto-merge**, se a opção estiver disponível para o repositório e plano do GitHub.
-3. Em `.github/dependabot.yml`, descomente `target-branch: develop` na configuração npm se a intenção for receber esses PRs em `develop`.
-4. Para auto-merge de atualizações de GitHub Actions em `develop`, configure também o destino `develop` para esse ecossistema. A configuração atual mantém esse destino comentado/ausente.
+| Check/job                                    | Resultado esperado              | Papel                                                                                                                |
+| -------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| CI `frontend`, `backend`, `format`, `images` | Verde                           | Alimentam o agregado `CI OK`.                                                                                        |
+| CI `CI OK`                                   | Verde                           | Check agregado principal; não é imposto enquanto o ruleset estiver inativo.                                          |
+| Security `Trivy filesystem scan`             | Verde                           | Bloqueante por convenção para HIGH/CRITICAL em CVEs, segredos e misconfiguração.                                     |
+| Security `npm audit`                         | Verde                           | Bloqueante por convenção para advisories npm HIGH/CRITICAL em cada lockfile. Complementa o Trivy com o audit de npm. |
+| Security `Semgrep CE SAST`                   | Pode reportar achados           | Informativo durante a implantação inicial (`continue-on-error: true`); não deve bloquear merge.                      |
+| Security `Dependency review` e `CodeQL`      | Pulados no plano atual          | Só executam quando `GHAS_ENABLED=true` e a licença permitir.                                                         |
+| Workflow Lint                                | Verde quando `.github/**` muda  | Check separado; valide seus erros antes do merge.                                                                    |
+| Dependabot Auto-merge                        | Normalmente pulado em PR humano | Só executa no evento CI de PR Dependabot elegível para `develop`.                                                    |
+| CD `Deploy Portainer stack`                  | Pulado até habilitar            | Executa depois da publicação se `DEPLOY_ENABLED=true`.                                                               |
 
-Se **Allow auto-merge** não estiver disponível, mantenha os PRs do Dependabot em merge manual. O workflow não pode habilitar essa opção global do repositório por conta própria.
+`CI OK` cobre somente os quatro jobs da CI. Os checks separados de Security e Workflow Lint não alteram o resultado do agregado.
 
-### 6. CodeQL e Dependency review (opcionais)
+## Imagens e Dockerfiles
 
-Em **Settings → Secrets and variables → Actions → Variables**, crie `GHAS_ENABLED=true` somente se GitHub Advanced Security/Code Security estiver habilitado e disponível para este repositório privado. Essa variável libera os jobs CodeQL e Dependency review. Sem ela, esses dois jobs aparecem como _skipped_ por desenho; o job Trivy filesystem continua rodando.
+- `apps/docker/Dockerfile.core` existe e constrói o backend de `apps/chat-back`.
+- `apps/docker/Dockerfile.back` não existe no repositório.
+- A stack Swarm versionada consome `chat-core`, então CI e CD constroem/escaneiam `Dockerfile.core` e publicam o resultado como `chat-core`.
+- A imagem web é construída por `apps/docker/Dockerfile.web` e publicada como `chat-web`.
 
-## O que verificar em cada execução
+O nome da imagem backend foi alinhado explicitamente de `chat-back` para `chat-core`, para corresponder à stack Portainer informada. Antes de ativar o deploy, confirme que o serviço `core` implantado também usa `chat-core`; a publicação antiga `chat-back` não atualiza automaticamente esse serviço.
 
-1. **CI (Continuous Integration):** `frontend`, `backend`, `format`, `images` e `CI OK` devem concluir com sucesso.
-2. **Security:** Trivy deve concluir sem achados HIGH/CRITICAL que bloqueiem a execução. A execução após a atualização do lockfile e dos Dockerfiles é a confirmação definitiva.
-3. **CD (Continuous Delivery), em `main`:** confirme build, scan Trivy e publicação de `chat-back` e `chat-web`.
-4. **Deploy Portainer:** se habilitado, confirme no summary que os webhooks foram chamados e verifique os serviços no Portainer.
-5. **Workflow Lint:** confirme que `actionlint` e `zizmor` passam após as correções do instalador, da condição Dependabot e da justificativa para o trigger `workflow_run`.
+## Proteção detectiva de pushes diretos (proposta, não implementada)
 
-## Observações sobre os skips
+Uma opção é um workflow em `push` para `main`/`develop` que consulte a API de PRs associados ao SHA. Se não encontrar PR, ele pode gravar aviso no summary e abrir uma issue com SHA, branch e autor.
 
-Um job `skipped` não significa falha automaticamente. Os skips esperados são CodeQL/Dependency review quando `GHAS_ENABLED` não é `true`, Automerge em PR que não é do Dependabot para `develop`, e Deploy quando `DEPLOY_ENABLED` não é `true` ou quando a publicação anterior não foi concluída com sucesso.
+Isso não bloqueia o push; apenas cria trilha de auditoria enquanto o ruleset não é aplicado. Vale a pena se pushes diretos forem exceção. Para reduzir ruído, deduplicar a issue por SHA e deixar pushes diretos intencionais registrados como exceções. A implementação foi deixada para depois.
+
+## Alternativa agendada para Dependabot (opcional, não implementada)
+
+Um workflow semanal poderia procurar PRs Dependabot elegíveis que já tenham CI verde e mesclá-los em lote. Não é necessário no fluxo atual, pois a conclusão da CI de cada PR já dispara a validação e tentativa de merge. O agendamento adicionaria API polling e logs sem benefício enquanto os eventos `workflow_run` estiverem chegando normalmente.
