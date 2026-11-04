@@ -7,7 +7,8 @@ import {
   type ChatConfigInput,
 } from '../models/chat-config.js';
 import type { ConversationState } from '../models/conversation.js';
-import type { ApiResponse, Message } from '../models/message.js';
+import type { ApiResponse } from '../models/api-response.js';
+import type { Message } from '../models/message.js';
 import type { Suggestion } from '../models/suggestion.js';
 import { IdentityGuard, type IdentityRequest } from '../middleware/identity.js';
 import {

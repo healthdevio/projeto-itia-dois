@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
-import type { ApiResponse } from '../models/message.js';
+import type { ApiResponse } from '../models/api-response.js';
 import type { Conversation, ConversationView } from '../models/conversation.js';
 import {
   getConversationView,
