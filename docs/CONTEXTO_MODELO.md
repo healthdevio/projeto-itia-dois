@@ -17,13 +17,13 @@ Atualizado em 27 de outubro de 2026.
 
 ## Visão do sistema
 
-| Caminho                   | Responsabilidade                                                          | Estado conhecido                                                                                       |
-| ------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `apps/chat-omnia`         | React, Vite, Tailwind e interface do chat                                 | Ainda usa estado/resposta local; o transporte HTTP/SSE não está conectado ao backend.                  |
-| `apps/chat-back`          | API Hono, TypeScript, Drizzle, PostgreSQL e integração com provider de IA | Backend atual; inclui testes e rotas de health check.                                                  |
-| `apps/packages/knowledge` | Schema e migrations de conhecimento                                       | Ainda não integrado ao fluxo principal.                                                                |
-| `apps/docker`             | Dockerfiles, nginx, compose local, stack Swarm e scripts operacionais     | Configuração alinhada nesta revisão; mudanças devem manter os nomes de serviço e imagem sincronizados. |
-| `.github/workflows`       | CI e publicação das imagens                                               | CD publica somente após CI de `main` passar; a atualização da stack segue manual no Portainer.         |
+| Caminho                   | Responsabilidade                                                            | Estado conhecido                                                                                       |
+| ------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `apps/chat-omnia`         | React, Vite, Tailwind e interface do chat                                   | Ainda usa estado/resposta local; o transporte HTTP/SSE não está conectado ao backend.                  |
+| `apps/chat-back`          | API NestJS, TypeScript, Drizzle, PostgreSQL e integração com provider de IA | Backend atual; inclui testes e rotas de health check.                                                  |
+| `apps/packages/knowledge` | Schema e migrations de conhecimento                                         | Ainda não integrado ao fluxo principal.                                                                |
+| `apps/docker`             | Dockerfiles, nginx, compose local, stack Swarm e scripts operacionais       | Configuração alinhada nesta revisão; mudanças devem manter os nomes de serviço e imagem sincronizados. |
+| `.github/workflows`       | CI e publicação das imagens                                                 | CD publica somente após CI de `main` passar; a atualização da stack segue manual no Portainer.         |
 
 ### Caminho de uma requisição
 
@@ -39,7 +39,7 @@ Credenciais de banco, registry, Portainer e provider de IA devem ficar em secret
 
 ```text
 apps/chat-omnia/                 interface React/Vite
-apps/chat-back/                  API Hono e persistência
+apps/chat-back/                  API NestJS e persistência
 apps/packages/knowledge/         schema/migrations não integrado
 apps/docker/Dockerfile.core      imagem da API
 apps/docker/Dockerfile.web       imagem da interface/nginx

@@ -1,6 +1,6 @@
 # Chat Omnia
 
-Monorepo para um chat de IA com interface React, API Node.js/Hono e persistência
+Monorepo para um chat de IA com interface React, API Node.js/NestJS e persistência
 PostgreSQL. O repositório também contém migrations de uma futura base de
 conhecimento e workflows de CI/CD.
 
@@ -20,13 +20,13 @@ conhecimento e workflows de CI/CD.
 
 ## Componentes
 
-| Caminho                    | Função                                          | Estado                                               |
-| -------------------------- | ----------------------------------------------- | ---------------------------------------------------- |
-| `apps/chat-omnia/`         | Interface React, Vite e Tailwind                | Protótipo local; ainda não chama a API               |
-| `apps/chat-back/`          | API Hono, Drizzle, PostgreSQL e providers de AI | Implementada; endpoints protegidos por JWT OIDC      |
-| `apps/packages/knowledge/` | Schema e migrations da base de conhecimento     | Ainda não integrada ao fluxo do chat                 |
-| `apps/docker/`             | Compose local, Dockerfiles, nginx e stack Swarm | Em evolução; consulte a ressalva de CD abaixo        |
-| `.github/workflows/`       | CI e publicação de imagens                      | CI em `develop` e `main`; CD configurado para `main` |
+| Caminho                    | Função                                            | Estado                                               |
+| -------------------------- | ------------------------------------------------- | ---------------------------------------------------- |
+| `apps/chat-omnia/`         | Interface React, Vite e Tailwind                  | Protótipo local; ainda não chama a API               |
+| `apps/chat-back/`          | API NestJS, Drizzle, PostgreSQL e providers de AI | Implementada; endpoints protegidos por JWT OIDC      |
+| `apps/packages/knowledge/` | Schema e migrations da base de conhecimento       | Ainda não integrada ao fluxo do chat                 |
+| `apps/docker/`             | Compose local, Dockerfiles, nginx e stack Swarm   | Em evolução; consulte a ressalva de CD abaixo        |
+| `.github/workflows/`       | CI e publicação de imagens                        | CI em `develop` e `main`; CD configurado para `main` |
 
 ## Executar localmente
 

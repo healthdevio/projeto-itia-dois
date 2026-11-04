@@ -128,7 +128,7 @@ until pg_isready -h "${PG_HOST}" -p "${PG_PORT}" -q; do sleep 2; done
 # Aplica migrations
 node dist/db/migrate.js
 # Sobe servidor
-exec node dist/index.js
+exec node dist/main.js
 ```
 
 ### `docker-stack.yml` (stack Swarm)

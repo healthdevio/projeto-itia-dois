@@ -6,7 +6,7 @@ COPY apps/chat-back/package.json apps/chat-back/package-lock.json ./
 
 RUN npm ci
 
-COPY apps/chat-back/tsconfig.json ./
+COPY apps/chat-back/tsconfig.json apps/chat-back/tsconfig.build.json apps/chat-back/nest-cli.json ./
 COPY apps/chat-back/src ./src
 
 RUN npm run build
