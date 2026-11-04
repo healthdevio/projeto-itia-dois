@@ -41,7 +41,6 @@ updates:
       prefix: 'chore(docker)'
     cooldown:
       default-days: 7
-      semver-major-days: 30
     groups:
       docker-minor-patch:
         update-types: [minor, patch]
