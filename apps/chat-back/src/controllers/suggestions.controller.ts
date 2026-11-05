@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import type { ApiResponse } from '../models/message.js';
+import type { ApiResponse } from '../models/api-response.js';
 import { validateSuggestions, type Suggestion } from '../models/suggestion.js';
 import { IdentityGuard, type IdentityRequest } from '../middleware/identity.js';
 import {
