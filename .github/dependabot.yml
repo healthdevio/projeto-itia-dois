@@ -22,6 +22,12 @@ updates:
       semver-minor-days: 7
       semver-patch-days: 3
     groups:
+      # Precisa vir antes de development-minor-patch: o primeiro grupo que casa vence.
+      # Mantém vitest e @vitest/* na mesma versão (o coverage exige peer exato).
+      vitest:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
       production-minor-patch:
         dependency-type: production
         update-types: [minor, patch]

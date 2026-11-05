@@ -18,9 +18,11 @@ jobs:
       vars.AUTOMERGE_ENABLED == 'true' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.actor.login == 'dependabot[bot]' &&
+      (github.event.workflow_run.actor.login == 'dependabot[bot]' ||
+       github.event.workflow_run.actor.login == 'app/dependabot') &&
       github.event.workflow_run.pull_requests[0].number != null &&
       (contains(github.event.workflow_run.head_branch, 'development-minor-patch') ||
+       contains(github.event.workflow_run.head_branch, 'production-minor-patch') ||
        contains(github.event.workflow_run.head_branch, 'actions-minor-patch'))
     name: Validate and merge eligible Dependabot PR
     runs-on: ubuntu-latest
@@ -42,6 +44,8 @@ jobs:
 
           if [[ "$HEAD_BRANCH" == *development-minor-patch* ]]; then
             ALLOWED_GROUP=development-minor-patch
+          elif [[ "$HEAD_BRANCH" == *production-minor-patch* ]]; then
+            ALLOWED_GROUP=production-minor-patch
           elif [[ "$HEAD_BRANCH" == *actions-minor-patch* ]]; then
             ALLOWED_GROUP=actions-minor-patch
           else
@@ -49,21 +53,21 @@ jobs:
             exit 0
           fi
 
-          PR_JSON="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json author,baseRefName,headRefName,headRefOid,isDraft,mergeable,statusCheckRollup,files)"
+          PR_JSON="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json author,baseRefName,headRefName,headRefOid,isDraft,mergeable,files)"
 
           if ! jq -e \
             --arg head_sha "$HEAD_SHA" \
             --arg head_branch "$HEAD_BRANCH" \
             --arg group "$ALLOWED_GROUP" \
             '
-              .author.login == "dependabot[bot]" and
+              (.author.login == "dependabot[bot]" or .author.login == "app/dependabot") and
               .baseRefName == "develop" and
               .headRefName == $head_branch and
               .headRefOid == $head_sha and
               .isDraft == false and
               .mergeable == "MERGEABLE" and
               (.files | length) > 0 and
-              (if $group == "development-minor-patch" then
+              (if ($group == "development-minor-patch" or $group == "production-minor-patch") then
                  all(.files[].path;
                    . == "package.json" or
                    endswith("/package.json") or
