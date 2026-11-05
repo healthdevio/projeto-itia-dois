@@ -121,12 +121,12 @@ jobs:
           context: .
           file: apps/docker/Dockerfile.core
           load: true
-          tags: local/chat-back:${{ github.sha }}
+          tags: local/chat-core:${{ github.sha }}
       - name: Verificar vulnerabilidades da imagem do Backend
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
-          image-ref: local/chat-back:${{ github.sha }}
+          image-ref: local/chat-core:${{ github.sha }}
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: '1'
@@ -168,3 +168,9 @@ jobs:
             echo "Um ou mais jobs obrigatórios falharam ou foram cancelados."
             exit 1
           fi
+          {
+            echo "### CI OK"
+            echo "Este check cobre frontend, backend, formatação e imagens Docker. Security e Workflow Lint são checks separados."
+            echo "Security / Trivy e Security / npm audit são checks separados com falha bloqueante por convenção; Semgrep é informativo."
+            echo "Com o ruleset inativo, nenhum check bloqueia o merge no GitHub, mesmo quando falha."
+          } >> "$GITHUB_STEP_SUMMARY"

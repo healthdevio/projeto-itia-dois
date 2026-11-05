@@ -28,4 +28,4 @@ echo "[entrypoint] aplicando migrations"
 node dist/db/migrate.js
 
 echo "[entrypoint] iniciando o servidor na porta ${CORE_PORT}"
-exec node dist/index.js
+exec node dist/main.js

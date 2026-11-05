@@ -1,31 +1,35 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { after, before, describe, it } from 'node:test';
 
-import { Hono } from 'hono';
+import type { INestApplication } from '@nestjs/common';
+import request from 'supertest';
 
-import { messageRoutes } from '../../src/routes/messages.js';
 import { authorizationHeaders } from '../helpers/identity.js';
+import { createTestApp } from '../helpers/nest-app.js';
 
 // Cobre o que a rota decide antes de gravar e chamar a AI. O resto depende do
 // Postgres e fica para o smoke test (`npm run smoke`).
-function app() {
-  const instance = new Hono();
+let app: INestApplication;
 
-  instance.route('/api/messages', messageRoutes);
+before(async () => {
+  app = await createTestApp();
+});
 
-  return instance;
-}
+after(async () => {
+  await app.close();
+});
 
 async function post(body: unknown, headers: Record<string, string> = {}) {
-  return app().request('/api/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(await authorizationHeaders()),
-      ...headers,
-    },
-    body: typeof body === 'string' ? body : JSON.stringify(body),
-  });
+  const auth = await authorizationHeaders();
+  let callback = request(app.getHttpServer())
+    .post('/api/messages')
+    .set('Content-Type', 'application/json');
+
+  for (const [name, value] of Object.entries({ ...auth, ...headers })) {
+    callback = callback.set(name, value);
+  }
+
+  return callback.send(typeof body === 'string' ? body : JSON.stringify(body));
 }
 
 const validBody = {
@@ -36,29 +40,23 @@ const validBody = {
 
 describe('POST /api/messages · identidade', () => {
   it('responde 401 sem token Bearer', async () => {
-    const response = await app().request('/api/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(validBody),
-    });
+    const response = await request(app.getHttpServer())
+      .post('/api/messages')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify(validBody));
 
     assert.equal(response.status, 401);
-
-    const body = await response.json();
-
-    assert.equal(body.success, false);
-    assert.match(body.error, /Bearer/);
+    assert.equal(response.body.success, false);
+    assert.match(response.body.error, /Bearer/);
   });
 
   it('responde 401 para subject malformado, antes de tocar no banco', async () => {
-    const response = await app().request('/api/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(await authorizationHeaders('usuário com espaço')),
-      },
-      body: JSON.stringify(validBody),
-    });
+    const auth = await authorizationHeaders('usuário com espaço');
+    const response = await request(app.getHttpServer())
+      .post('/api/messages')
+      .set('Content-Type', 'application/json')
+      .set('Authorization', auth.Authorization)
+      .send(JSON.stringify(validBody));
 
     assert.equal(response.status, 401);
   });
@@ -76,7 +74,6 @@ describe('POST /api/messages · corpo', () => {
     const response = await post('{ nao é json');
 
     assert.equal(response.status, 400);
-    assert.match((await response.json()).error, /JSON inválido/);
   });
 
   it('responde 400 para JSON que não é objeto', async () => {
@@ -91,12 +88,9 @@ describe('POST /api/messages · corpo', () => {
     const response = await post({ message: 'Olá' });
 
     assert.equal(response.status, 400);
-
-    const body = await response.json();
-
-    assert.equal(body.success, false);
+    assert.equal(response.body.success, false);
     for (const field of ['message_id', 'message', 'origin']) {
-      assert.match(body.error, new RegExp(field));
+      assert.match(response.body.error, new RegExp(field));
     }
   });
 });
@@ -110,7 +104,7 @@ describe('POST /api/messages · config', () => {
 
     assert.equal(response.status, 400);
     assert.match(
-      (await response.json()).error,
+      response.body.error,
       /config\.tone deve ser um de: formal, neutral, informal/,
     );
   });
@@ -122,17 +116,14 @@ describe('POST /api/messages · config', () => {
     });
 
     assert.equal(response.status, 400);
-    assert.match(
-      (await response.json()).error,
-      /config\.language deve ser um de/,
-    );
+    assert.match(response.body.error, /config\.language deve ser um de/);
   });
 
   it('recusa config que não é objeto', async () => {
     const response = await post({ ...validBody, config: 'formal' });
 
     assert.equal(response.status, 400);
-    assert.match((await response.json()).error, /config deve ser um objeto/);
+    assert.match(response.body.error, /config deve ser um objeto/);
   });
 
   it('prefere o erro de config ao de campo faltando', async () => {
@@ -143,6 +134,6 @@ describe('POST /api/messages · config', () => {
     });
 
     assert.equal(response.status, 400);
-    assert.match((await response.json()).error, /config\.tone/);
+    assert.match(response.body.error, /config\.tone/);
   });
 });

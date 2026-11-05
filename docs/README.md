@@ -18,7 +18,7 @@
 | Caminho                   | Conteúdo                                                                            |
 | ------------------------- | ----------------------------------------------------------------------------------- |
 | `apps/chat-omnia`         | Interface React e Vite; atualmente ainda usa estado/resposta local.                 |
-| `apps/chat-back`          | API Hono, persistência PostgreSQL, migrations e testes.                             |
+| `apps/chat-back`          | API NestJS, persistência PostgreSQL, migrations e testes.                           |
 | `apps/packages/knowledge` | Schema e migrations da base de conhecimento; não está integrado ao fluxo principal. |
 | `apps/docker`             | Dockerfiles, nginx, compose local e stack Swarm.                                    |
 | `.github/workflows`       | Workflows de CI e publicação de imagens.                                            |
