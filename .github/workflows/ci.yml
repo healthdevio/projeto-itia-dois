@@ -101,7 +101,7 @@ jobs:
       - name: Instalar dependências
         run: npm ci
       - name: Aplicar formatação Prettier (--write)
-        run: npm run format:write
+        run: npm run format
       - name: Commit das correções
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
