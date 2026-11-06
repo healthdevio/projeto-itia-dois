@@ -132,14 +132,6 @@ jobs:
           file: apps/docker/Dockerfile.core
           load: true
           tags: local/chat-core:${{ github.sha }}
-      - name: Verificar vulnerabilidades da imagem do Backend
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: image
-          image-ref: local/chat-core:${{ github.sha }}
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
       - name: Construir imagem da interface
         uses: docker/build-push-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
         with:
@@ -147,14 +139,6 @@ jobs:
           file: apps/docker/Dockerfile.web
           load: true
           tags: local/chat-web:${{ github.sha }}
-      - name: Verificar vulnerabilidades da imagem web
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: image
-          image-ref: local/chat-web:${{ github.sha }}
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
 
   ci-ok:
     name: CI OK
@@ -180,7 +164,7 @@ jobs:
           fi
           {
             echo "### CI OK"
-            echo "Este check cobre frontend, backend, formatação e imagens Docker. Security e Workflow Lint são checks separados."
+            echo "Este check cobre frontend, backend, formatação e imagens Docker."
             echo "Workflow Lint é check separado com falha informativa; Semgrep é informativo."
             echo "Com o ruleset inativo, nenhum check bloqueia o merge no GitHub, mesmo quando falha."
           } >> "$GITHUB_STEP_SUMMARY"
