@@ -83,7 +83,7 @@ jobs:
     name: Formatação (Prettier)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     permissions:
       contents: read
     steps:
