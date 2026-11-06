@@ -12,15 +12,15 @@ O modelo define apenas o formato dos dados. Ele não busca informações do usu�
 
 ## Campos
 
-| Campo | Tipo | Descrição |
-|---|---|---|
-| `user` | `Record<string, unknown>` | Informações relacionadas ao usuário. |
-| `profile` | `Record<string, unknown>` | Dados complementares sobre o perfil do usuário. |
-| `preferences` | `ChatConfig` | Preferências de atendimento, como idioma, tom e tamanho da resposta. |
-| `session` | `Record<string, unknown>` | Informações relacionadas à sessão atual. |
-| `current_page` | `string` | Página ou área atual em que o chat está sendo utilizado. |
-| `permissions` | `string[]` | Lista de permissões disponíveis no contexto. |
-| `system_context` | `string` | Informações adicionais sobre o contexto do sistema. |
+| Campo            | Tipo                      | Descrição                                                            |
+| ---------------- | ------------------------- | -------------------------------------------------------------------- |
+| `user`           | `Record<string, unknown>` | Informações relacionadas ao usuário.                                 |
+| `profile`        | `Record<string, unknown>` | Dados complementares sobre o perfil do usuário.                      |
+| `preferences`    | `ChatConfig`              | Preferências de atendimento, como idioma, tom e tamanho da resposta. |
+| `session`        | `Record<string, unknown>` | Informações relacionadas à sessão atual.                             |
+| `current_page`   | `string`                  | Página ou área atual em que o chat está sendo utilizado.             |
+| `permissions`    | `string[]`                | Lista de permissões disponíveis no contexto.                         |
+| `system_context` | `string`                  | Informações adicionais sobre o contexto do sistema.                  |
 
 Todos os campos são opcionais. Isso permite que o contexto seja construído gradualmente, conforme as informações estiverem disponíveis.
 
