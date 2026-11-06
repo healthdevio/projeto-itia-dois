@@ -13,7 +13,7 @@ import {
   canTransition,
   normalizeConversationState,
   InvalidStateTransitionError,
-} from '../models/conversation.js';
+} from '../models/conversation-state.js';
 import type { Message } from '../models/message.js';
 const HISTORY_LIMIT = 20;
 const LEGACY_USER_ID = 'legacy';
