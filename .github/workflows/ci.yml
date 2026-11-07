@@ -92,12 +92,17 @@ jobs:
         run: npm run build
 
   format:
+    if: github.event_name == 'pull_request'
     name: Formatação (Prettier)
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write  # necessário para o git push automático
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true  # necessário para autenticar o git push
+          ref: ${{ github.head_ref }}  # garante checkout na branch do PR
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -112,6 +117,20 @@ jobs:
       - name: Verificar formatação
         run: npm run format:check
 
+      - name: Aplicar formatação Prettier (--write)
+        run: npm run format
+      - name: Commit das correções
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          if [ -n "$(git diff --stat)" ]; then
+            git add -A
+            git commit -m "style: auto-format by Prettier [skip ci]"
+            git push
+          else
+            echo "Nenhuma correção de formatação necessária."
+          fi
+
   images:
     name: Imagens Docker
     runs-on: ubuntu-latest
@@ -125,7 +144,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Construir imagem do Core
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
           file: apps/docker/Dockerfile.core
@@ -142,7 +161,7 @@ jobs:
           exit-code: '1'
 
       - name: Construir imagem da interface
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
           file: apps/docker/Dockerfile.web
