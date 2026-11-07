@@ -13,6 +13,7 @@ Foram identificados e corrigidos dois problemas no workflow de CI que impediam o
 O job `Imagens Docker` usava o mesmo hash do `docker/setup-buildx-action` para o `docker/build-push-action`. Como são actions diferentes, o hash não existia nessa action e o GitHub não conseguia resolver o repositório.
 
 **Erro exibido no CI:**
+
 ```
 Unable to resolve action `docker/build-push-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2`, repository or version not found
 ```
@@ -41,13 +42,13 @@ O job `Formatação (Prettier)` estava configurado sem permissão de escrita e s
 
 ### Causas identificadas
 
-| Configuração | Antes (quebrado) | Depois (correto) | Motivo |
-|---|---|---|---|
-| `persist-credentials` | `false` | `true` | Necessário para autenticar o `git push` |
-| `permissions.contents` | `read` | `write` | Sem `write` o push é bloqueado pelo GitHub |
-| `ref` | ausente | `${{ github.head_ref }}` | Garante checkout na branch do PR, não no merge commit |
-| `git add -A` | ausente | presente | Sem `add` os arquivos modificados não entram no commit |
-| `if` | `pull_request \|\| push` | apenas `pull_request` | O auto-commit só faz sentido em PRs, não em pushes diretos |
+| Configuração           | Antes (quebrado)         | Depois (correto)         | Motivo                                                     |
+| ---------------------- | ------------------------ | ------------------------ | ---------------------------------------------------------- |
+| `persist-credentials`  | `false`                  | `true`                   | Necessário para autenticar o `git push`                    |
+| `permissions.contents` | `read`                   | `write`                  | Sem `write` o push é bloqueado pelo GitHub                 |
+| `ref`                  | ausente                  | `${{ github.head_ref }}` | Garante checkout na branch do PR, não no merge commit      |
+| `git add -A`           | ausente                  | presente                 | Sem `add` os arquivos modificados não entram no commit     |
+| `if`                   | `pull_request \|\| push` | apenas `pull_request`    | O auto-commit só faz sentido em PRs, não em pushes diretos |
 
 ### Antes
 
