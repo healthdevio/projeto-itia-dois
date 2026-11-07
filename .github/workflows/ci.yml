@@ -80,18 +80,19 @@ jobs:
         run: npm run build
 
   format:
+    if: github.event_name == 'pull_request'
     name: Formatação (Prettier)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.event_name == 'pull_request'
     permissions:
-      contents: read
+      contents: write
     steps:
       - name: Baixar código
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          persist-credentials: false
+          persist-credentials: true
           fetch-depth: 0
+          ref: ${{ github.head_ref }}
       - name: Configurar Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v7.1.0
         with:
@@ -106,9 +107,40 @@ jobs:
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          if [ -n "$(git diff --stat)" ]; then
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
             git commit -m "style: auto-format by Prettier [skip ci]"
             git push
+          else
+            echo "Nenhuma correção de formatação necessária."
+          fi
+
+      - name: Aplicar formatação Prettier (--write)
+        run: npm run format
+      - name: Commit das correções
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          if [ -n "$(git diff --stat)" ]; then
+            git add -A
+            git commit -m "style: auto-format by Prettier [skip ci]"
+            git push
+          else
+            echo "Nenhuma correção de formatação necessária."
+          fi
+
+      - name: Aplicar formatação Prettier (--write)
+        run: npm run format
+      - name: Commit das correções
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          if [ -n "$(git diff --stat)" ]; then
+            git add -A
+            git commit -m "style: auto-format by Prettier [skip ci]"
+            git push
+          else
+            echo "Nenhuma correção de formatação necessária."
           fi
 
   images:
@@ -126,14 +158,14 @@ jobs:
       - name: Configurar Buildx
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
       - name: Construir imagem do Backend
-        uses: docker/build-push-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
           file: apps/docker/Dockerfile.core
           load: true
           tags: local/chat-core:${{ github.sha }}
       - name: Construir imagem da interface
-        uses: docker/build-push-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 
         with:
           context: .
           file: apps/docker/Dockerfile.web
@@ -165,6 +197,4 @@ jobs:
           {
             echo "### CI OK"
             echo "Este check cobre frontend, backend, formatação e imagens Docker."
-            echo "Workflow Lint é check separado com falha informativa; Semgrep é informativo."
-            echo "Com o ruleset inativo, nenhum check bloqueia o merge no GitHub, mesmo quando falha."
           } >> "$GITHUB_STEP_SUMMARY"

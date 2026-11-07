@@ -2,12 +2,13 @@
 
 Contrato da API, para quem consome.
 
-| Documento                          | Assunto                                          |
-| ---------------------------------- | ------------------------------------------------ |
-| [Conversation.md](Conversation.md) | Conversa, estados, persistência e contexto da AI |
-| [Message.md](Message.md)           | Modelo de mensagem e endpoint de envio           |
-| [Suggestion.md](Suggestion.md)     | Sugestões, endpoints e limites                   |
-| [ChatConfig.md](ChatConfig.md)     | Configuração e o repasse para a AI               |
+| Documento                          | Assunto                                                       |
+| ---------------------------------- | ------------------------------------------------------------- |
+| [Conversation.md](Conversation.md) | Conversa, estados, persistência e contexto da AI              |
+| [Message.md](Message.md)           | Modelo de mensagem e endpoint de envio                        |
+| [Suggestion.md](Suggestion.md)     | Sugestões, endpoints e limites                                |
+| [ChatConfig.md](ChatConfig.md)     | Configuração e o repasse para a AI                            |
+| [ChatContext.md](ChatContext.md)   | Estrutura de contexto adicional para a Omnia IA e integrações |
 
 ## Resumo dos endpoints
 

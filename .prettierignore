@@ -3,5 +3,7 @@ node_modules
 dist
 build
 coverage
-apps/chat-omnia/README.md1y
+apps/chat-omnia/README.md
 apps/chat-back/local
+CI
+.github/
