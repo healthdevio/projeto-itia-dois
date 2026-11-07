@@ -5,3 +5,5 @@ build
 coverage
 apps/chat-omnia/README.md1y
 apps/chat-back/local
+CI
+.github/
