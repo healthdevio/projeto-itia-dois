@@ -34,7 +34,7 @@ jobs:
         working-directory: apps/chat-omnia
         run: npm ci
       - name: Verificar TypeScript
-        working-directory: apps/chat-omnia
+        working-directory: apps/chat-omniaqa
         run: npm run typecheck
       - name: Verificar ESLint
         working-directory: apps/chat-omnia
@@ -80,6 +80,7 @@ jobs:
         run: npm run build
 
   format:
+    if: github.event_name == 'pull_request'
     name: Formatação (Prettier)
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -108,6 +109,34 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "style: auto-format by Prettier [skip ci]"
+            git push
+          else
+            echo "Nenhuma correção de formatação necessária."
+          fi
+
+      - name: Aplicar formatação Prettier (--write)
+        run: npm run format
+      - name: Commit das correções
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          if [ -n "$(git diff --stat)" ]; then
+            git add -A
+            git commit -m "style: auto-format by Prettier [skip ci]"
+            git push
+          else
+            echo "Nenhuma correção de formatação necessária."
+          fi
+
+      - name: Aplicar formatação Prettier (--write)
+        run: npm run format
+      - name: Commit das correções
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          if [ -n "$(git diff --stat)" ]; then
             git add -A
             git commit -m "style: auto-format by Prettier [skip ci]"
             git push
