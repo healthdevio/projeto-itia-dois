@@ -2,18 +2,19 @@
 
 Contrato da API, para quem consome.
 
-| Documento                          | Assunto                                          |
-| ---------------------------------- | ------------------------------------------------ |
-| [Conversation.md](Conversation.md) | Conversa, estados, persistência e contexto da AI |
-| [Message.md](Message.md)           | Modelo de mensagem e endpoint de envio           |
-| [Suggestion.md](Suggestion.md)     | Sugestões, endpoints e limites                   |
-| [ChatConfig.md](ChatConfig.md)     | Configuração e o repasse para a AI               |
+| Documento                          | Assunto                                                       |
+| ---------------------------------- | ------------------------------------------------------------- |
+| [Conversation.md](Conversation.md) | Conversa, estados, persistência e contexto da AI              |
+| [Message.md](Message.md)           | Modelo de mensagem e endpoint de envio                        |
+| [Suggestion.md](Suggestion.md)     | Sugestões, endpoints e limites                                |
+| [ChatConfig.md](ChatConfig.md)     | Configuração e o repasse para a AI                            |
+| [ChatContext.md](ChatContext.md)   | Estrutura de contexto adicional para a Omnia IA e integrações |
 
 ## Resumo dos endpoints
 
 | Método   | Rota                         | Quem chama   |
 | -------- | ---------------------------- | ------------ |
-| `GET`    | `/`                          | health check |
+| `GET`    | `/health`                    | health check |
 | `GET`    | `/api/conversations/current` | interface    |
 | `GET`    | `/api/conversations/active`  | interface    |
 | `POST`   | `/api/conversations/rotate`  | interface    |
@@ -43,3 +44,7 @@ O tenant opcional vem do claim configurado em `OIDC_TENANT_CLAIM` (padrão
 
 O contrato completo está no `README.md` de `apps/chat-back`. Esta pasta tem a
 especificação por modelo; o README tem o ponto de entrada prático.
+
+O processo de migração da camada HTTP de Hono para NestJS (causas, mudanças,
+verificação e rollback) está em
+[refatoracao-hono-para-nest.md](refatoracao-hono-para-nest.md).
