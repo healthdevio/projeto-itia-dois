@@ -1,6 +1,6 @@
 # Health Check no nginx → Core
 
-> **Registro de implementação:** este documento descreve a alteração original do proxy de health check. Para o comportamento atual das rotas, consulte [health-check-core.md](core/health-check-core.md) e `apps/docker/nginx.conf`.
+> **Registro de implementação:** este documento descreve a alteração original do proxy de health check. Para o comportamento atual das rotas, consulte [health-check-core.md](../core/health-check-core.md) e `apps/docker/nginx.conf`.
 
 **Data:** 2026-10-20
 **Arquivo alterado:** `apps/docker/nginx.conf`

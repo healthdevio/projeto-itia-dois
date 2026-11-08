@@ -83,11 +83,8 @@ Como o ruleset está inativo, **nenhum check impede tecnicamente o merge**. Chec
 | Security `npm audit`                         | Verde                           | Bloqueante por convenção para advisories npm HIGH/CRITICAL em cada lockfile. Complementa o Trivy com o audit de npm. |
 | Security `Semgrep CE SAST`                   | Pode reportar achados           | Informativo durante a implantação inicial (`continue-on-error: true`); não deve bloquear merge.                      |
 | Security `Dependency review` e `CodeQL`      | Pulados no plano atual          | Só executam quando `GHAS_ENABLED=true` e a licença permitir.                                                         |
-| Workflow Lint                                | Verde quando `.github/**` muda  | Check separado; valide seus erros antes do merge.                                                                    |
 | Dependabot Auto-merge                        | Normalmente pulado em PR humano | Só executa no evento CI de PR Dependabot elegível para `develop`.                                                    |
 | CD `Deploy Portainer stack`                  | Pulado até habilitar            | Executa depois da publicação se `DEPLOY_ENABLED=true`.                                                               |
-
-`CI OK` cobre somente os quatro jobs da CI. Os checks separados de Security e Workflow Lint não alteram o resultado do agregado.
 
 ## Imagens e Dockerfiles
 

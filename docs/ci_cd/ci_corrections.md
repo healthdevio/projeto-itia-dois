@@ -1,5 +1,7 @@
 # Correções no CI — `ci.yml`
 
+> **Registro histórico:** este documento descreve a proposta antiga de auto-commit do Prettier. A configuração atual usa `npm run format:check` e não altera nem envia commits automaticamente; consulte `.github/workflows/ci.yml` e `../implementacao-nova-seguranca/README.md`.
+
 ## Resumo
 
 Foram identificados e corrigidos dois problemas no workflow de CI que impediam o funcionamento correto das etapas de build Docker e formatação automática.
