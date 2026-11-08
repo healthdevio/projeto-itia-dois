@@ -10,7 +10,8 @@ Inconsistências confirmadas no repositório:
 
 - `Dockerfile.core` compila `apps/chat-back`; o serviço Swarm e o upstream nginx usam `core`.
 - O CD publica `chat-core`, nome configurado na stack.
-- A CI agora executa `npm run format:check` sem alterar arquivos.
+- Em PRs do próprio repositório, a CI executa `npm run format` e envia um commit automático quando encontra diferenças. O job que aplica o formato não tem permissão de escrita; um job separado, sem executar npm, aplica o patch e envia o commit.
+- PRs abertos a partir de forks não recebem commits automáticos por segurança. Se a formatação mudar arquivos nesse caso, o check informa que a pessoa autora precisa aplicar as alterações.
 - O Postgres tem health check; a inicialização do backend também aguarda conexão antes das migrations.
 
 ## Documentos

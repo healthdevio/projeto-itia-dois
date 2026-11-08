@@ -1,6 +1,6 @@
 # Documentação das Mudanças: Remoção de Workflows de Segurança e Auto-merge
 
-> **Registro histórico:** este documento descreve o estado de uma branch anterior, não a configuração atual do repositório. Os workflows de segurança existem novamente, e a CI atual apenas verifica a formatação, sem auto-commit; confira `.github/workflows/` e `../implementacao-nova-seguranca/README.md` para o estado vigente.
+> **Registro histórico:** este documento descreve o estado de uma branch anterior, não a configuração atual do repositório. Os workflows de segurança existem novamente, e a CI atual aplica a formatação automaticamente em PRs do próprio repositório; confira `.github/workflows/` e `../seguranca-workflows/README.md` para o estado vigente.
 
 ## Resumo
 

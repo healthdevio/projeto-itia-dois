@@ -28,14 +28,14 @@ O workflow `.github/workflows/gitleaks.yml` examina as alterações de Git com a
 
 ### Formatação na CI
 
-O workflow de CI executa `npm run format:check` em PRs para `develop` ou `main`. Esse comando verifica a formatação sem modificar os arquivos. A CI não executa `npm run format` nem faz auto-commit; caso a verificação falhe, corrija a formatação localmente e envie outro commit.
+Em PRs para `develop` ou `main`, o job de formatação executa `npm run format`. Se houver mudanças, ele gera um patch sem permissão de escrita. Um job separado, sem executar npm ou código do PR, aplica o patch e cria um commit na branch de origem. O commit automático é limitado a PRs abertos a partir de branches do próprio repositório; PRs de forks precisam aplicar a formatação manualmente.
 
 ## Como validar após alterar as configurações
 
 1. Abra um PR direcionado a `develop` ou `main` para disparar CI, CodeQL, Dependency Review e Gitleaks.
 2. Confirme que CI e Gitleaks passaram, CodeQL concluiu e Dependency Review foi executado (não apenas ignorado).
 3. Se CodeQL ou Dependency Review falhar, leia o log da execução e confirme que os recursos correspondentes estão disponíveis nas configurações de segurança do repositório.
-4. Não execute `npm run format` como substituto do teste da CI. A verificação automatizada é somente leitura e deve validar o commit do PR.
+4. Confirme se o job de formatação terminou e se um commit automático foi enviado quando necessário. Em PRs de forks, aplique as mudanças manualmente.
 
 ## Ações de segurança pendentes
 
