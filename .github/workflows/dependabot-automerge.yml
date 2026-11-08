@@ -1,7 +1,6 @@
 name: Dependabot Auto-merge
 
 on:
-  # zizmor: ignore[dangerous-triggers] Safe here because this workflow does not check out or execute PR code; it reads PR/check metadata through GitHub's API and merges only after revalidating the exact head SHA.
   workflow_run:
     workflows: ['CI (Continuous Integration)']
     types: [completed]
