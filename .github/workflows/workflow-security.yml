@@ -1,0 +1,71 @@
+name: Workflow Security Audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * 1'  # Every Monday at 02:00 UTC
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: workflow-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Audit Workflow Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: List workflow files
+        run: |
+          echo "Workflows directory:"
+          ls -la .github/workflows/
+          echo ""
+
+      - name: Require actions pinned to full commit SHAs
+        run: |
+          awk '
+            /^[[:space:]]*uses:[[:space:]]*/ {
+              action = $0
+              sub(/^[[:space:]]*uses:[[:space:]]*/, "", action)
+              sub(/[[:space:]]+#.*/, "", action)
+              count = split(action, reference, "@")
+              if (count != 2 || length(reference[2]) != 40 || reference[2] !~ /^[0-9a-fA-F]+$/) {
+                printf "%s:%d: action must be pinned to a full commit SHA: %s\n", FILENAME, FNR, action
+                failed = 1
+              }
+            }
+            END { exit failed }
+          ' .github/workflows/*.yml
+
+      - name: Check workflow permissions
+        run: |
+          echo "Checking workflow permissions..."
+          for f in .github/workflows/*.yml; do
+            echo "=== $(basename $f) ==="
+            grep "permissions:" "$f" 2>/dev/null || echo "No permissions defined"
+          done
+
+      - name: Validate workflow syntax with actionlint
+        uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2.2.0
+        with:
+          version: 1.7.12
+          files: .github/workflows/*.yml
+          fail-on-error: true
+
+      - name: Summary
+        run: |
+          echo "Workflow security audit completed."
+          echo "Review the above checks and update workflows as needed."
