@@ -31,9 +31,22 @@ jobs:
       - name: Run Gitleaks
         env:
           GITLEAKS_IMAGE: zricethezav/gitleaks@sha256:b109bc5f8f76a38196a3e413704fc5b9e3c32360bce4e4b603bd6f45b3721dbb
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
         run: |
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            log_opts="${PR_BASE_SHA}..${PR_HEAD_SHA}"
+          elif [[ "$EVENT_NAME" == "push" && "$PUSH_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            log_opts="${PUSH_BEFORE_SHA}..${CURRENT_SHA}"
+          else
+            log_opts="-1"
+          fi
+
           docker run --rm \
             --volume "$GITHUB_WORKSPACE:/repo" \
             --workdir /repo \
             "$GITLEAKS_IMAGE" \
-            git --redact --no-banner .
+            git --redact --no-banner --log-opts="$log_opts" .
