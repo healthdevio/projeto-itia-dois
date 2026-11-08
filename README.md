@@ -1,57 +1,47 @@
 # Chat Omnia
 
-Monorepo para um chat de IA com interface React, API Node.js/NestJS e persistência
-PostgreSQL. O repositório também contém migrations de uma futura base de
-conhecimento e workflows de CI/CD.
+Chat Omnia é um projeto de chat com interface web, API própria, persistência de
+conversas e integração configurável com provedores de IA. O repositório reúne
+aplicações, infraestrutura Docker e workflows de CI/CD.
 
-> **Estado atual:** a interface é um protótipo visual com respostas locais. A
-> API do chat existe separadamente, exige autenticação OIDC e ainda não está
-> conectada à interface.
-
-## Conteúdo
-
-- [Componentes](#componentes)
-- [Executar localmente](#executar-localmente)
-- [API e autenticação](#api-e-autenticação)
-- [AI providers](#ai-providers)
-- [Comandos de desenvolvimento](#comandos-de-desenvolvimento)
-- [CI/CD](#cicd)
-- [Documentação](#documentação)
+> **Estado atual:** a API do chat está implementada, mas a interface web ainda
+> usa uma resposta local de demonstração e não está conectada à API. A base de
+> conhecimento também está em desenvolvimento e não participa do fluxo atual.
 
 ## Componentes
 
-| Caminho                    | Função                                            | Estado                                               |
-| -------------------------- | ------------------------------------------------- | ---------------------------------------------------- |
-| `apps/chat-omnia/`         | Interface React, Vite e Tailwind                  | Protótipo local; ainda não chama a API               |
-| `apps/chat-back/`          | API NestJS, Drizzle, PostgreSQL e providers de AI | Implementada; endpoints protegidos por JWT OIDC      |
-| `apps/packages/knowledge/` | Schema e migrations da base de conhecimento       | Ainda não integrada ao fluxo do chat                 |
-| `apps/docker/`             | Compose local, Dockerfiles, nginx e stack Swarm   | Em evolução; consulte a ressalva de CD abaixo        |
-| `.github/workflows/`       | CI e publicação de imagens                        | CI em `develop` e `main`; CD configurado para `main` |
+| Caminho                    | Responsabilidade                                                       |
+| -------------------------- | ---------------------------------------------------------------------- |
+| `apps/chat-omnia/`         | Interface React, TypeScript, Vite e Tailwind.                          |
+| `apps/chat-back/`          | API NestJS, autenticação OIDC, conversas, mensagens e sugestões.       |
+| `apps/packages/knowledge/` | Schema e migrations preliminares para uma base de conhecimento.        |
+| `apps/docker/`             | Dockerfiles, Compose local, Nginx, stack Swarm e scripts operacionais. |
+| `.github/workflows/`       | CI, publicação de imagens e verificações de segurança.                 |
+| `docs/`                    | Documentação de arquitetura, interface, API e operação.                |
 
-## Executar localmente
+## Começar localmente
 
 ### Requisitos
 
-- Node.js 24 ou compatível com os lockfiles do projeto.
-- npm.
-- Docker Engine com Docker Compose.
+- Node.js 24 para reproduzir a configuração do CI e npm. Os Dockerfiles atuais
+  usam Node.js 26.
+- Docker Engine com Docker Compose para executar PostgreSQL localmente.
 
-### 1. Iniciar o PostgreSQL
+### 1. Iniciar o banco
 
-Crie `apps/docker/.env` com uma senha local:
+Crie `apps/docker/.env` localmente com uma senha de desenvolvimento:
 
 ```dotenv
-POSTGRES_PASSWORD=uma-senha-local
+POSTGRES_PASSWORD=use-uma-senha-local
 ```
 
-Suba o serviço de banco a partir da raiz do repositório:
+Inicie o PostgreSQL a partir da raiz:
 
 ```bash
 docker compose --env-file apps/docker/.env -f apps/docker/docker-compose.yml up -d postgres
 ```
 
-O banco fica disponível em `localhost:5433`. O Compose persiste os dados no
-volume `omnia_postgres_data`.
+O banco fica disponível em `localhost:5433`.
 
 ### 2. Iniciar a API
 
@@ -60,25 +50,25 @@ Em outro terminal:
 ```bash
 cd apps/chat-back
 npm ci
-cp .env.example .env
 ```
 
-Confirme que `DATABASE_URL` em `.env` usa a senha informada acima. A URL padrão
-do exemplo aponta para `localhost:5433`.
+Crie `apps/chat-back/.env` com base em `.env.example` e configure a conexão
+local do banco. Para a primeira execução, use o provider de demonstração `echo`.
+Depois execute:
 
 ```bash
-npm run migrate
-npm run dev
+npm run db:migrate
+npm run start:dev
 ```
 
-O Core inicia em <http://localhost:3001>. O exemplo configura `AI_PROVIDER=echo`
-e deixa os valores OIDC vazios. O health check funciona; os endpoints protegidos
-respondem `401` até que `OIDC_ISSUER`, `OIDC_AUDIENCE` e `OIDC_JWKS_URL` sejam
-configurados para um provedor OIDC válido.
+A API fica em <http://localhost:3001>. O health check público é
+<http://localhost:3001/health/live>. As rotas de conversa, mensagem e sugestão
+exigem autenticação OIDC; configure `OIDC_ISSUER`, `OIDC_AUDIENCE` e
+`OIDC_JWKS_URL` para usar essas rotas.
 
 ### 3. Iniciar a interface
 
-Em um terceiro terminal:
+Em outro terminal:
 
 ```bash
 cd apps/chat-omnia
@@ -86,107 +76,99 @@ npm ci
 npm run dev
 ```
 
-Abra <http://localhost:5173>. A interface usa uma resposta local de demonstração;
-ela não chama a API do Core neste momento.
+Abra <http://localhost:5173>. A interface atualmente mostra uma resposta local
+de demonstração; iniciar a API não a conecta automaticamente ao backend.
 
-### Endereços locais
+## API e IA
 
-| Serviço      | Endereço                            | Observação                       |
-| ------------ | ----------------------------------- | -------------------------------- |
-| Interface    | <http://localhost:5173>             | Servidor de desenvolvimento Vite |
-| API          | <http://localhost:3001>             | `CORE_PORT` no `.env` do backend |
-| Health check | <http://localhost:3001/health/live> | Não exige autenticação           |
-| PostgreSQL   | `localhost:5433`                    | Porta local do Compose           |
+As rotas principais do backend incluem:
 
-## API e autenticação
+| Método   | Rota                         | Descrição                                |
+| -------- | ---------------------------- | ---------------------------------------- |
+| `GET`    | `/health`                    | Estado da API e dependências.            |
+| `GET`    | `/health/ready`              | Readiness, incluindo o banco.            |
+| `GET`    | `/health/live`               | Liveness da API.                         |
+| `POST`   | `/api/messages`              | Envia uma mensagem ao provider de IA.    |
+| `GET`    | `/api/conversations/current` | Consulta conversa e histórico atuais.    |
+| `GET`    | `/api/conversations/active`  | Consulta a conversa ativa.               |
+| `POST`   | `/api/conversations/rotate`  | Encerra a conversa atual e inicia outra. |
+| `GET`    | `/api/suggestions`           | Consulta sugestões ativas.               |
+| `POST`   | `/api/suggestions`           | Registra sugestões validadas.            |
+| `DELETE` | `/api/suggestions`           | Limpa sugestões ativas.                  |
 
-A API deriva o usuário do claim `sub` de um JWT OIDC assinado. Ela valida
-assinatura, issuer, audience e expiração através da JWKS configurada. Headers
-`X-User-Id` e `X-Tenant-Id` não substituem a autenticação Bearer.
+As rotas protegidas validam JWT OIDC (assinatura, issuer, audience e expiração)
+por meio de JWKS. O identificador do usuário vem do claim `sub`; headers
+arbitrários de identidade enviados pelo cliente não substituem o token.
 
-Endpoints principais:
+O backend oferece:
 
-| Método   | Caminho                      | Uso                                                      |
-| -------- | ---------------------------- | -------------------------------------------------------- |
-| `GET`    | `/health`                    | Estado da API e do banco                                 |
-| `GET`    | `/health/ready`              | Prontidão; retorna `503` se o banco estiver indisponível |
-| `GET`    | `/health/live`               | Liveness da API                                          |
-| `POST`   | `/api/messages`              | Envia mensagem e recebe resposta e sugestões             |
-| `GET`    | `/api/conversations/current` | Conversa ativa e histórico do usuário autenticado        |
-| `GET`    | `/api/conversations/active`  | Conversa ativa do usuário autenticado                    |
-| `POST`   | `/api/conversations/rotate`  | Encerra a conversa atual e inicia outra                  |
-| `GET`    | `/api/suggestions`           | Sugestões ativas do usuário autenticado                  |
-| `POST`   | `/api/suggestions`           | Registra sugestões validadas                             |
-| `DELETE` | `/api/suggestions`           | Limpa sugestões ativas                                   |
+- `echo`: provider local de demonstração, sem chamada a modelo externo.
+- `nvidia`: integração com NVIDIA NIM; requer `NVIDIA_API_KEY`.
 
-Consulte [apps/chat-back/README.md](apps/chat-back/README.md) para os contratos,
-configurações e detalhes dos endpoints.
+As conversas, mensagens e sugestões são persistidas em PostgreSQL via Drizzle.
+Os valores de ambiente estão descritos em `apps/chat-back/.env.example`; use
+secrets locais ou do ambiente de deploy, nunca inclua credenciais no código.
 
-## AI providers
+## Desenvolvimento, testes e formatação
 
-O backend inclui dois providers:
-
-- `echo`: resposta de demonstração sem chamada a um modelo externo; é o padrão
-  do `.env.example`.
-- `nvidia`: NVIDIA NIM, compatível com a API da OpenAI; requer `NVIDIA_API_KEY`.
-
-Configurações adicionais, como modelo, timeout e limite de tokens, estão em
-`apps/chat-back/.env.example`. `AI_IGNORE_CONFIG=1` ignora a configuração de
-idioma, tom e tamanho; `AI_NO_SUGGESTIONS=1` desativa sugestões.
-
-## Comandos de desenvolvimento
-
-Os comandos de cada app devem ser executados no diretório indicado.
+Execute os comandos dentro da aplicação correspondente:
 
 ```bash
-# API — apps/chat-back
-npm run dev
+# Backend — apps/chat-back
+npm ci
 npm run typecheck
 npm test
+npm run test:e2e
 npm run build
-npm run migrate
 
 # Interface — apps/chat-omnia
-npm run dev
+npm ci
 npm run typecheck
 npm run lint
 npm run build
+```
 
-# Raiz do repositório
+Na raiz do repositório:
+
+```bash
 npm ci
 npm run format:check
 npm run format
 ```
 
-`npm run format` altera arquivos. `npm run format:check` apenas verifica a
-formatação e é o comando usado pela CI.
+`npm run format` **altera arquivos** usando Prettier; use `npm run format:check`
+para apenas verificar. Em Pull Requests para `develop` e `main`, a CI executa a
+verificação sem escrita. Se falhar, rode `npm run format` localmente e envie um
+novo commit. A CI não cria commits de formatação.
 
-## CI/CD
+O script `npm test` na raiz é apenas um placeholder; execute os testes do
+backend em `apps/chat-back`. A pasta `apps/packages/knowledge` possui lockfile,
+schema e migrations próprios, mas ainda não é um workspace npm integrado ao
+fluxo principal.
 
-### CI
+## Docker e CI/CD
 
-O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em push e
-Pull Request para `develop` e `main`. Ele valida a interface, o backend, a
-formatação Prettier e as imagens Docker, incluindo scan Trivy para vulnerabilidades
-`HIGH` e `CRITICAL`.
+O Compose em `apps/docker/docker-compose.yml` inicia o PostgreSQL para
+desenvolvimento. A stack `apps/docker/pw2c/docker-stack.yml` descreve o ambiente
+Swarm com PostgreSQL, API e interface servida por Nginx. O Nginx encaminha
+`/api` para o serviço `core`.
 
-### CD
+O CI roda em Pull Requests e pushes para `develop` e `main`; valida interface e
+backend, roda testes, verifica a formatação e constrói imagens Docker. O CD é
+acionado após uma CI bem-sucedida em `main`, publica imagens e executa scan de
+vulnerabilidades. O redeploy via webhooks do Portainer depende da configuração
+explícita de `DEPLOY_ENABLED`.
 
-O workflow [`.github/workflows/cd.yml`](.github/workflows/cd.yml) publica imagens
-no registry PW2C depois de uma CI bem-sucedida em `main`. A atualização da stack
-do Portainer continua manual.
-
-Há diferenças entre os arquivos de CI de `main` e `develop`, e uma inconsistência
-no caminho do Dockerfile de backend usado pelo CD. Veja
-[comparação de CI/CD entre main e develop](docs/ci_cd/diferencas-ci-cd-main-develop.md)
-antes de depender da publicação automática.
+Os workflows também incluem varredura de segredos, CodeQL, revisão de
+dependências e validação de workflows. A configuração presente no checkout
+local pode ainda não estar publicada no GitHub; confirme o branch e os checks
+ativos antes de depender de uma execução.
 
 ## Documentação
 
 - [Índice da documentação](docs/README.md)
-- [Fluxo Git: branch, commit, push e PR](docs/estrutura/fluxo-de-commits-e-push.md)
-- [Comparação de CI/CD entre `main` e `develop`](docs/ci_cd/diferencas-ci-cd-main-develop.md)
-- [Diagnóstico de problemas de CI/CD](docs/ci_cd/problemas/README.md)
-- [Resolução das falhas recentes do CI do chat-back](docs/ci_cd/problemas/resolucao-ci-chat-back-oidc-trivy.md)
-- [Documentação da interface](docs/interface/README.md)
-- [Documentação da API](apps/chat-back/README.md)
+- [Contratos e rotas do Core](docs/core/README.md)
+- [Interface e componentes](docs/interface/README.md)
+- [CI/CD e operação](docs/ci_cd/README.md)
+- [Estrutura, testes e versionamento](docs/estrutura/README.md)
+- [Implementação de segurança nos workflows](docs/implementacao-nova-seguranca/README.md)
