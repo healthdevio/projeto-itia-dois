@@ -4,13 +4,13 @@ O workflow `.github/workflows/ci.yml` roda em pull requests e pushes para `devel
 
 ## Jobs atuais
 
-| Job        | Valida                                                               |
-| ---------- | -------------------------------------------------------------------- |
-| `frontend` | Instala dependências de `apps/chat-omnia`, typecheck, lint e build.  |
-| `core`     | Instala dependências de `apps/chat-back`, typecheck, testes e build. |
-| `format`   | Executa Prettier na raiz em PRs e prepara um patch se houver mudanças. |
+| Job             | Valida                                                                 |
+| --------------- | ---------------------------------------------------------------------- |
+| `frontend`      | Instala dependências de `apps/chat-omnia`, typecheck, lint e build.    |
+| `core`          | Instala dependências de `apps/chat-back`, typecheck, testes e build.   |
+| `format`        | Executa Prettier na raiz em PRs e prepara um patch se houver mudanças. |
 | `format-commit` | Aplica e envia o patch ao branch de origem do PR do mesmo repositório. |
-| `images`   | Build das imagens do backend e da interface após os outros jobs.     |
+| `images`        | Build das imagens do backend e da interface após os outros jobs.       |
 
 ## Ajustes necessários
 
