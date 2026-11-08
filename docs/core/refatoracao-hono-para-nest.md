@@ -313,7 +313,7 @@ Em produção, o rollback operacional é voltar a imagem anterior no Portainer
 
 1. Revisar e mesclar a PR #97.
 2. Após o merge, confirmar que as menções a Hono em `docs/README.md`,
-   `docs/CONTEXTO_MODELO.md` e `README.md` refletem o Nest (a PR #97 já inclui
+   `docs/contexto/CONTEXTO_MODELO.md` e `README.md` refletem o Nest (a PR #97 já inclui
    essas atualizações).
 3. Avaliar a adoção de `@nestjs/terminus` para health checks, se o projeto
    passar a usar probes do Kubernetes/Swarm.

@@ -6,7 +6,7 @@
 
 | Objetivo                                     | Documento                                                                      |
 | -------------------------------------------- | ------------------------------------------------------------------------------ |
-| Entender o estado e as limitações conhecidas | [contexto do projeto](contexto/contexto-ia.md)                                 |
+| Entender o estado e as limitações conhecidas | [contexto do projeto](contexto/CONTEXTO_MODELO.md)                             |
 | Executar e revisar CI/CD                     | [CI/CD](ci_cd/README.md)                                                       |
 | Operar a stack e investigar falhas           | [operação](ci_cd/operacao.md) e [problemas](ci_cd/problemas/README.md)         |
 | Entender a API atual                         | [README do backend](../apps/chat-back/README.md) e [contratos](core/README.md) |
@@ -34,17 +34,17 @@
 
 ## Índice
 
-| Pasta/arquivo                                                 | Assunto                                                      |
-| ------------------------------------------------------------- | ------------------------------------------------------------ |
-| [ci_cd/](ci_cd/README.md)                                     | Pipeline, publicação, stack, operação e diagnóstico          |
-| [comparação de CI/CD](ci_cd/diferencas-ci-cd-main-develop.md) | Diferenças entre os workflows de `main` e `develop`          |
-| [estrutura/](estrutura/README.md)                             | CI, Docker, ambientes, testes e versionamento                |
-| [dependabot/](dependabot/README.md)                           | Funcionamento geral e configuração do Dependabot             |
-| [core/](core/README.md)                                       | Contratos e comportamento da API                             |
-| [interface/](interface/README.md)                             | Componentes e estado da interface                            |
-| [contexto/](contexto/contexto-ia.md)                          | Contexto de manutenção e limitações atuais                   |
-| [PROCESSO_MIGRACAO.md](PROCESSO_MIGRACAO.md)                  | Registro histórico da migração da VM para Swarm              |
-| [CONTEXTO_MODELO.md](CONTEXTO_MODELO.md)                      | Contexto inicial e regras de trabalho para assistentes de IA |
-| [RESUMO_PRIORIDADES_DEVOPS.md](RESUMO_PRIORIDADES_DEVOPS.md)  | Mudanças aplicadas, limitações e decisões pendentes          |
-| [nginx-health-check.md](nginx-health-check.md)                | Registro histórico do health check nginx/Core                |
-| [changelog/](changelog/CHANGELOG.md)                          | Registros históricos de alterações                           |
+| Pasta/arquivo                                                        | Assunto                                                      |
+| -------------------------------------------------------------------- | ------------------------------------------------------------ |
+| [ci_cd/](ci_cd/README.md)                                            | Pipeline, publicação, stack, operação e diagnóstico          |
+| [comparação de CI/CD](ci_cd/diferencas-ci-cd-main-develop.md)        | Diferenças entre os workflows de `main` e `develop`          |
+| [estrutura/](estrutura/README.md)                                    | CI, Docker, ambientes, testes e versionamento                |
+| [dependabot/](dependabot/README.md)                                  | Funcionamento geral e configuração do Dependabot             |
+| [core/](core/README.md)                                              | Contratos e comportamento da API                             |
+| [interface/](interface/README.md)                                    | Componentes e estado da interface                            |
+| [contexto/](contexto/CONTEXTO_MODELO.md)                             | Contexto de manutenção e limitações atuais                   |
+| [PROCESSO_MIGRACAO.md](ci_cd/troca-de-servidor/PROCESSO_MIGRACAO.md) | Registro histórico da migração da VM para Swarm              |
+| [CONTEXTO_MODELO.md](contexto/CONTEXTO_MODELO.md)                    | Contexto inicial e regras de trabalho para assistentes de IA |
+| [RESUMO_PRIORIDADES_DEVOPS.md](ci_cd/RESUMO_PRIORIDADES_DEVOPS.md)   | Mudanças aplicadas, limitações e decisões pendentes          |
+| [nginx-health-check.md](ci_cd/nginx-health-check.md)                 | Registro histórico do health check nginx/Core                |
+| [changelog/](changelog/CHANGELOG.md)                                 | Registros históricos de alterações                           |

@@ -85,13 +85,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      contents: write
+      contents: read
     steps:
       - name: Baixar código
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          persist-credentials: true
-          fetch-depth: 0
+          persist-credentials: false
           ref: ${{ github.head_ref }}
       - name: Configurar Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v7.1.0
@@ -101,25 +100,14 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Instalar dependências
         run: npm ci
-      - name: Aplicar formatação Prettier (--write)
-        run: npm run format
-      - name: Commit das correções
-        run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          if [ -n "$(git status --porcelain)" ]; then
-            git add -A
-            git commit -m "style: auto-format by Prettier [skip ci]"
-            git push
-          else
-            echo "Nenhuma correção de formatação necessária."
-          fi
+      - name: Verificar formatação Prettier
+        run: npm run format:check
 
   images:
     name: Imagens Docker
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [frontend, backend, format]
+    needs: [frontend, backend]
     permissions:
       contents: read
     steps:
@@ -128,7 +116,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Configurar Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v4.4.1
       - name: Construir imagem do Backend
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
@@ -158,15 +146,19 @@ jobs:
           BACKEND_RESULT: ${{ needs.backend.result }}
           FORMAT_RESULT: ${{ needs.format.result }}
           IMAGES_RESULT: ${{ needs.images.result }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [[ "$FRONTEND_RESULT" == failure || "$FRONTEND_RESULT" == cancelled || \
-                "$BACKEND_RESULT" == failure || "$BACKEND_RESULT" == cancelled || \
-                "$FORMAT_RESULT" == failure || "$FORMAT_RESULT" == cancelled || \
-                "$IMAGES_RESULT" == failure || "$IMAGES_RESULT" == cancelled ]]; then
+          if [[ "$FRONTEND_RESULT" != success || \
+                "$BACKEND_RESULT" != success || \
+                "$IMAGES_RESULT" != success ]]; then
             echo "Um ou mais jobs obrigatórios falharam ou foram cancelados."
+            exit 1
+          fi
+          if [[ "$EVENT_NAME" == "pull_request" && "$FORMAT_RESULT" != success ]]; then
+            echo "A verificação de formatação do pull request não foi concluída com sucesso."
             exit 1
           fi
           {
             echo "### CI OK"
-            echo "Este check cobre frontend, backend, formatação e imagens Docker."
+            echo "Este check cobre frontend, backend e imagens Docker; em pull requests, também exige formatação."
           } >> "$GITHUB_STEP_SUMMARY"
