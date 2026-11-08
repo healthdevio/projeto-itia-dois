@@ -43,7 +43,8 @@
 | [core/](core/README.md)                                              | Contratos e comportamento da API                             |
 | [interface/](interface/README.md)                                    | Componentes e estado da interface                            |
 | [contexto/](contexto/CONTEXTO_MODELO.md)                             | Contexto de manutenção e limitações atuais                   |
-| [PROCESSO_MIGRACAO.md](ci_cd/troca-de-servidor/PROCESSO_MIGRACAO.md) | Registro histórico da migração da VM para Swarm              |
+| [seguranca-workflows/](seguranca-workflows/README.md)                          | Estado atual de CodeQL, Dependency Review, Gitleaks e CI      |
+| [PROCESSO_MIGRACAO.md](ci_cd/troca-de-servidor/PROCESSO_MIGRACAO.md)           | Registro histórico da migração da VM para Swarm              |
 | [CONTEXTO_MODELO.md](contexto/CONTEXTO_MODELO.md)                    | Contexto inicial e regras de trabalho para assistentes de IA |
 | [RESUMO_PRIORIDADES_DEVOPS.md](ci_cd/RESUMO_PRIORIDADES_DEVOPS.md)   | Mudanças aplicadas, limitações e decisões pendentes          |
 | [nginx-health-check.md](ci_cd/nginx-health-check.md)                 | Registro histórico do health check nginx/Core                |
