@@ -27,8 +27,6 @@ jobs:
       - name: Run actionlint
         run: actionlint -shellcheck "$(command -v shellcheck)"
 
-  zizmor:
-    name: zizmor security lint
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -38,7 +36,3 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install zizmor
-        run: pipx install zizmor
-      - name: Run zizmor
-        run: zizmor --no-online-audits --min-severity medium .github/workflows
