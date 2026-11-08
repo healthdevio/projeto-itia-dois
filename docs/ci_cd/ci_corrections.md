@@ -1,6 +1,6 @@
 # Correções no CI — `ci.yml`
 
-> **Registro histórico:** este documento descreve a proposta antiga de auto-commit do Prettier. A configuração atual usa `npm run format:check` e não altera nem envia commits automaticamente; consulte `.github/workflows/ci.yml` e `../implementacao-nova-seguranca/README.md`.
+> **Registro histórico:** este documento descreve a proposta inicial de auto-commit do Prettier. O fluxo atual aplica a formatação em um job sem escrita e envia um patch em um job separado; consulte `.github/workflows/ci.yml` e `../seguranca-workflows/README.md`.
 
 ## Resumo
 

@@ -1,5 +1,7 @@
 # Segurança e validação dos workflows
 
+> Registro da implementação original. Para o estado atual do repositório, disponibilidade dos recursos e últimas execuções, consulte [seguranca-workflows](../seguranca-workflows/README.md).
+
 ## Objetivo
 
 Este documento descreve as correções dos workflows em `.github/workflows/` e os requisitos para executá-los. A documentação corresponde aos arquivos desta cópia de trabalho; não significa que as mudanças já foram publicadas no GitHub.
