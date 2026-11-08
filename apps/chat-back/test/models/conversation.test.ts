@@ -6,7 +6,7 @@ import {
   isConversationState,
   normalizeConversationState,
   type ConversationState,
-} from '../../src/models/conversation.js';
+} from '../../src/models/conversation-state.js';
 
 describe('canTransition', () => {
   it('permite a troca que o ciclo do chat faz', () => {

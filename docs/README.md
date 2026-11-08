@@ -18,7 +18,7 @@
 | Caminho                   | Conteúdo                                                                            |
 | ------------------------- | ----------------------------------------------------------------------------------- |
 | `apps/chat-omnia`         | Interface React e Vite; atualmente ainda usa estado/resposta local.                 |
-| `apps/chat-back`          | API Hono, persistência PostgreSQL, migrations e testes.                             |
+| `apps/chat-back`          | API NestJS, persistência PostgreSQL, migrations e testes.                           |
 | `apps/packages/knowledge` | Schema e migrations da base de conhecimento; não está integrado ao fluxo principal. |
 | `apps/docker`             | Dockerfiles, nginx, compose local e stack Swarm.                                    |
 | `.github/workflows`       | Workflows de CI e publicação de imagens.                                            |
@@ -39,6 +39,7 @@
 | [ci_cd/](ci_cd/README.md)                                     | Pipeline, publicação, stack, operação e diagnóstico          |
 | [comparação de CI/CD](ci_cd/diferencas-ci-cd-main-develop.md) | Diferenças entre os workflows de `main` e `develop`          |
 | [estrutura/](estrutura/README.md)                             | CI, Docker, ambientes, testes e versionamento                |
+| [dependabot/](dependabot/README.md)                           | Funcionamento geral e configuração do Dependabot             |
 | [core/](core/README.md)                                       | Contratos e comportamento da API                             |
 | [interface/](interface/README.md)                             | Componentes e estado da interface                            |
 | [contexto/](contexto/contexto-ia.md)                          | Contexto de manutenção e limitações atuais                   |

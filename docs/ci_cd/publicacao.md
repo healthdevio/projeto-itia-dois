@@ -11,7 +11,7 @@ O workflow `.github/workflows/cd.yml` inicia após CI aprovada em `main`. Ele fa
 
 ## Bloqueio conhecido
 
-`Dockerfile.core` compila `apps/chat-back`; a imagem `chat-core` corresponde à stack. O build ainda precisa ser validado pela CI após a mudança.
+`Dockerfile.core` compila `apps/chat-back`; a imagem `chat-core` corresponde à stack Swarm e é construída e escaneada pelo CI antes da publicação.
 
 ## Deploy
 

@@ -5,8 +5,3 @@ export interface Message {
   metadata?: string;
   origin: string;
 }
-export interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}

@@ -53,7 +53,7 @@ git push -u itia feat/nome-da-tarefa
 
 ### Stack e Arquitetura
 
-- **Monorepo** com dois apps principais: `chat-core` (backend Hono/TypeScript) e `chat-omnia` (frontend React)
+- **Monorepo** com dois apps principais: `chat-core` (backend NestJS/TypeScript) e `chat-omnia` (frontend React)
 - **Banco de Dados**: PostgreSQL 16 com pgvector, gerenciado por Docker Swarm
 - **Infraestrutura**: Docker Swarm (Portainer), registry privado `registry.cloud.grupopw2c.com.br`
 - **API Gateway**: Nginx (proxy para o Core na porta 80)

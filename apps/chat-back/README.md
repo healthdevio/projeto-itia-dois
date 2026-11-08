@@ -1,464 +1,132 @@
-# Chat Core
+<p align="center">
+  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+</p>
 
-O Core do chat é responsável por:
+[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
+[circleci-url]: https://circleci.com/gh/nestjs/nest
 
-- Receber mensagens da interface e repassá-las para a AI.
-- Repassar para a AI a configuração que a interface escolheu (idioma, tom,
-  tamanho da resposta), preenchendo o que faltar com o default.
-- Entregar a conversa atual para a interface.
-- Entregar e registrar as sugestões da conversa atual.
-- Guardar a conversa internamente, no Postgres.
+  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
+    <p align="center">
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
+<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
+<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
+<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
+<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
+  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
+    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
+  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+</p>
+  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
+  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-> **A conversa nunca é enviada para a AI.** Ela é estado interno do Core.
-> Apenas as mensagens saem do Core — e cada envio carrega o contexto do diálogo
-> para que a AI tenha consciência do histórico.
->
-> A AI roda **dentro do Core**, atrás da interface `AIProvider`. O provider
-> em uso é um substituto temporário de teste. Ver [AI](#ai).
+## Description
 
-## Multi-usuário
+[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
-Cada usuário tem a sua própria conversa ativa e o seu próprio histórico. Tudo
-é escopado por `user_id`, resolvido a partir do `sub` de um JWT OIDC validado.
-
-```
-curl -H 'Authorization: Bearer <access-token>' http://localhost:3001/api/conversations/current
-```
-
-Sem token válido ou sem configuração OIDC, os endpoints protegidos respondem `401`.
-
-> O Core valida assinatura, issuer, audience e expiração do JWT via JWKS. Configure
-> `OIDC_ISSUER`, `OIDC_AUDIENCE` e `OIDC_JWKS_URL`. O `sub` assinado determina o
-> usuário; headers `X-User-Id` e `X-Tenant-Id` enviados pelo cliente são ignorados.
-
-## Estrutura
-
-```
-src/
-├── index.ts                    # Servidor principal com o wiring dos endpoints
-├── db/
-│   ├── client.ts               # Pool Postgres + cliente Drizzle (conexão preguiçosa)
-│   └── schema.ts               # Tabelas conversations, messages e suggestions
-├── middleware/
-│   └── identity.ts             # Valida JWT OIDC e resolve sub → contexto
-├── models/
-│   ├── message.ts              # Modelo de mensagem (entrada da interface)
-│   ├── conversation.ts         # Modelo de conversa + máquina de estados
-│   ├── suggestion.ts           # Modelo de sugestão + leitura/validação
-│   └── chat-config.ts          # Modelo de configuração + defaults/validação
-├── repositories/
-│   ├── conversation-repository.ts  # Único acesso às conversas, sempre por usuário
-│   └── suggestion-repository.ts    # Único acesso às sugestões, sempre por usuário
-├── routes/
-│   ├── messages.ts             # POST /api/messages
-│   ├── conversations.ts        # Endpoints de conversa
-│   └── suggestions.ts          # GET|POST|DELETE /api/suggestions
-└── services/
-    └── ai/
-        ├── index.ts            # API pública (buildContext, sendToAI)
-        ├── context.ts          # Montagem do contexto da conversa
-        ├── provider.ts         # Interface AIProvider + registro
-        ├── prompt.ts           # config → prompt de chat
-        └── providers/
-            ├── nvidia.ts       # Substituto de teste (Nvidia)
-            └── echo.ts         # Texto fixo, sem chamar modelo
-
-local/                         # Harness de teste (git-ignored, ver abaixo)
-drizzle/                        # Migrations geradas
-drizzle.config.ts
-.env.example
-```
-
-## Instalação
+## Project setup
 
 ```bash
-npm install
-cp .env.example .env   # ajuste a DATABASE_URL
+$ npm install
 ```
 
-## Banco de dados
-
-A conversa é storeada no Postgres via Drizzle ORM.
+## Compile and run the project
 
 ```bash
-npm run db:migrate    # aplica as migrations
-npm run db:generate   # gera migration a partir de src/db/schema.ts
-npm run db:push       # sincroniza o schema direto, sem migration
-npm run db:studio     # abre o Drizzle Studio
+# development
+$ npm run start
+
+# watch mode
+$ npm run start:dev
+
+# production mode
+$ npm run start:prod
 ```
 
-## Execução
+## Run tests
 
 ```bash
-# Modo desenvolvimento (com hot reload)
-npm run dev
+# unit tests
+$ npm run test
 
-# Build para produção
-npm run build
+# e2e tests
+$ npm run test:e2e
 
-# Executar versão de produção
-npm start
+# test coverage
+$ npm run test:cov
 ```
 
-O servidor inicia na porta `3001` por padrão. Para alterar, defina a variável de ambiente `CORE_PORT`.
+## Deployment
 
-## Endpoints
+When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
 
-### Health Check
-
-```
-GET /
-```
-
-```json
-{
-  "status": "ok",
-  "service": "chat-ai-core",
-  "database": "up"
-}
-```
-
-Com o Postgres fora do ar o servidor continua no ar e responde `status: "degraded"`, `database: "down"` — o pool de conexões é preguiçoso. O health check não exige identidade.
-
-### Conversa atual
-
-```
-GET /api/conversations/current
-```
-
-Entrega a conversa em andamento, seu estado e o histórico **daquele usuário**. Cria a conversa automaticamente na primeira chamada, então a interface nunca recebe `404`.
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "9f1c2a44-...",
-    "state": "idle",
-    "messages": ["..."],
-    "active_conversation": { "...": "..." },
-    "history": ["..."]
-  }
-}
-```
-
-Otros endpoints de conversa:
-
-| Método | Rota                         | Descrição                             |
-| ------ | ---------------------------- | ------------------------------------- |
-| `GET`  | `/api/conversations/current` | Conversa atual + histórico do usuário |
-| `GET`  | `/api/conversations/active`  | Só a conversa ativa, sem histórico    |
-| `POST` | `/api/conversations/rotate`  | Encerra a atual e inicia outra        |
-
-Formato completo em [`docs/core/Conversation.md`](../../docs/core/Conversation.md).
-
-### Enviar Mensagem
-
-```
-POST /api/messages
-```
-
-Exige JWT Bearer válido. A mensagem entra na conversa ativa **de quem enviou**, e o
-contexto montado para a AI é o daquele usuário.
-
-**Request Body:**
-
-```json
-{
-  "message_id": "msg-123",
-  "message": "Olá, como vai?",
-  "date": "2026-09-18T10:30:00.000Z",
-  "metadata": "info adicional",
-  "origin": "frontend",
-  "config": {
-    "language": "pt-BR",
-    "tone": "informal",
-    "response_length": "short"
-  }
-}
-```
-
-`config` é opcional: é a configuração que a interface escolheu na tela (idioma,
-tom, tamanho da resposta) e que o Core repassa para a AI sem interpretar.
-
-**Response (200):**
-
-```json
-{
-  "success": true,
-  "data": {
-    "message_id": "msg-123",
-    "ai_response": "[AI] Mensagem msg-123 recebida.",
-    "state": "success",
-    "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meus detalhes" }],
-    "config": {
-      "language": "pt-BR",
-      "tone": "informal",
-      "response_length": "short"
-    }
-  }
-}
-```
-
-`suggestions` vem junto para a interface renderizar as chips sem uma segunda
-chamada. São as sugestões que a AI devolveu com a resposta, já gravadas na
-conversa — quando ela não devolve nenhuma, o campo traz o que já estava lá.
-
-`config` é a configuração **efetiva**: a que foi repassada, com o que faltava
-preenchido pelo default. A interface mostra o que vale sem precisar reproduzir
-os defaults.
-
-**Response (400/500/502):**
-
-```json
-{
-  "success": false,
-  "error": "Campos obrigatórios faltando: message_id, message, origin"
-}
-```
-
-`config` inválido também é `400`, dizendo o campo e os valores aceitos — e sem
-gravar a mensagem nem chamar a AI:
-
-```json
-{
-  "success": false,
-  "error": "config.tone deve ser um de: formal, neutral, informal"
-}
-```
-
-Formato completo em [`docs/core/Message.md`](../../docs/core/Message.md) e
-[`docs/core/ChatConfig.md`](../../docs/core/ChatConfig.md).
-
-### Sugestões
-
-```
-GET    /api/suggestions
-POST   /api/suggestions
-DELETE /api/suggestions
-```
-
-Sugestão é a ação que a interface oferece abaixo da última resposta da AI:
-clicar envia o `text` como mensagem. São só dois campos, `suggestion_id` e
-`text`.
-
-Quem **escreve** é a AI (repassada por `POST /api/messages`, que já conhece a
-conversa) e a interface, via `POST`. Quem **lê** é a interface, via `GET`.
-
-```json
-{
-  "success": true,
-  "data": {
-    "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meus detalhes" }]
-  }
-}
-```
-
-A cada resposta da AI as sugestões são substituídas pelas novas — o contexto
-mudou, e uma chip desatualizada levaria o usuário a pedir algo que a AI já
-respondeu. `POST` é o contrário: acrescenta ao fim, sem apagar o que já estava.
-
-Tudo é escopado pelo `sub` autenticado, como a conversa. Rotacionar a conversa
-(`POST /api/conversations/rotate`) começa uma lista nova, e a antiga vai embora
-junto com a conversa.
-
-Formato completo em [`docs/core/Suggestion.md`](../../docs/core/Suggestion.md).
-
-## AI
-
-> **O Core não sabe o que é um modelo de linguagem.** Provider, modelo, prompt,
-> temperatura e o formato de requisição de qualquer API de IA vivem atrás da
-> interface `AIProvider`, em `src/services/ai/providers/`.
->
-> A consequência prática: rotas, conversa, sugestões e persistência não importam
-> nada de provider. Trocar de provider é um arquivo novo e uma linha no registro.
-
-A AI roda **dentro do Core**, no mesmo processo. O provider em uso é um
-substituto temporário de teste (`nvidia`), que fala com o backend da Nvidia.
-
-```
-Core monta o contexto → AIProvider.respond() → { response, suggestions }
-```
-
-### Estrutura
-
-```
-src/services/ai/
-├── index.ts          API pública: buildContext, sendToAI, AIError
-├── context.ts        AIContext e a montagem do contexto
-├── provider.ts       interface AIProvider + registro dos providers
-├── prompt.ts         { message, context, config } → mensagens de chat
-└── providers/
-    ├── nvidia.ts     substituto de teste: backend da Nvidia
-    └── echo.ts       texto fixo, sem chamar modelo
-```
-
-A modularidade aqui é o que torna o provider descartável: ele está confinado a
-`providers/`, e nada fora desse diretório importa `nvidia` nem `echo`. Trocá-lo
-ou apagá-lo não toca rotas, modelos, repositórios ou banco.
-
-### Contrato
-
-O que o Core entrega ao provider:
-
-```json
-{
-  "message": { "message_id": "m1", "message": "Olá", "origin": "frontend" },
-  "context": {
-    "conversation_id": "9f1c2a44-...",
-    "state": "idle",
-    "previous_messages": [
-      { "message_id": "m0", "message": "oi", "role": "user" }
-    ],
-    "history_ids": ["8ad9f590-..."],
-    "max_context_messages": 20
-  },
-  "config": {
-    "language": "pt-BR",
-    "tone": "neutral",
-    "response_length": "standard"
-  }
-}
-```
-
-E o que volta:
-
-```json
-{
-  "response": "Olá! Como posso ajudar?",
-  "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meus detalhes" }]
-}
-```
-
-A conversa não é enviada. `suggestions` é **opcional**, e o `suggestion_id`
-também: quando falta, o Core gera. Uma resposta sem o campo preserva as
-sugestões que já estavam na conversa; `suggestions: []` limpa. Ver
-[Suggestion.md](../../docs/core/Suggestion.md#substituição-vs-preservação).
-
-`config` é a configuração que a interface pediu para esta mensagem — idioma, tom
-e tamanho da resposta. Vai no topo, e não dentro do `context`, porque não é
-estado da conversa: é o que a tela mandou agora. O Core repassa sem interpretar,
-preenchendo o que faltar com o default; quem decide o que fazer com as etiquetas
-é o provider, e um provider que não conhece o campo pode ignorá-lo. Ver
-[ChatConfig.md](../../docs/core/ChatConfig.md).
-
-### O contexto é o que dá consciência
-
-A mensagem atual **não** entra em `previous_messages`: o contexto é montado
-antes de a mensagem ser persistida, para que ela não apareça como histórico de
-si mesma.
-
-Em conversas longas só as `max_context_messages` mais recentes vão — o histórico
-completo estouraria a janela de contexto da IA. Os ids de conversas anteriores
-vêm em `history_ids`: o provider fica ciente de que houve diálogos antes, sem
-receber o conteúdo deles.
-
-O log do servidor mostra o que foi anexado a cada envio, que é a forma mais
-rápida de conferir que a consciência de contexto está funcionando:
-
-```
-[Nvidia] 6e0cbf75-... · 2 mensagens de contexto · 1 conversas anteriores · config pt-BR · neutral · standard · 4210ms · 2 sugestões
-```
-
-O tempo em ms aparece porque é ele que explica a demora: uma resposta `detailed`
-com histórico leva segundos, e isso é o modelo escrevendo, não o Core travado.
-
-### Tempo de espera
-
-A Nvidia **não devolve a resposta pronta**: ela escreve token a token. Uma
-resposta longa passa dos 60 s sem que nada esteja errado — e o teto de 60 s que
-existia cortava a geração no meio da digitação, devolvendo um erro em vez da
-resposta que estava a caminho.
-
-O padrão agora é `NVIDIA_TIMEOUT_MS=300000` (5 min). Ele continua sendo um teto,
-porque um provider pendurado precisa virar erro em algum momento, e continua
-configurável, porque em teste local um teto menor é melhor que esperar cinco
-minutos por um provider que morreu.
-
-### Quando a AI falha
-
-O Core não sabe se a causa foi chave inválida, limite de taxa ou modelo fora de
-ciclo de vida — ele só sabe que o provider não respondeu. O que ele faz é
-preservar a causa e devolvê-la, para que a interface possa oferecer retry com
-sentido:
-
-```json
-HTTP 502
-{ "success": false, "error": "NVIDIA 401: {\"detail\":\"invalid api key\"}" }
-```
-
-`502` significa que o Core funcionou e o provider do qual ele depende não. Um
-`500` continua significando falha no próprio Core.
-
-Perder as sugestões não derruba a conversa: se a segunda chamada ao modelo
-falhar, a resposta da primeira volta normalmente e as sugestões anteriores
-seguem valendo.
-
-## Máquina de estados
-
-O `state` da conversa governa o que a interface renderiza.
-
-| Estado      | Significado                                                                       |
-| ----------- | --------------------------------------------------------------------------------- |
-| `idle`      | Pronta para uma nova mensagem. Sem mensagens, é recém-criada: mostrar a abertura. |
-| `streaming` | Mensagem enviada, resposta a caminho. Mostrar carregamento.                       |
-| `success`   | A última troca terminou bem. Mostrar a resposta.                                  |
-| `error`     | A última operação falhou. Oferecer retry.                                         |
-
-O Core aplica as transições sozinho conforme o resultado do envio para a AI.
-
-## Variáveis de Ambiente
-
-| Variável            | Descrição                                    | Padrão                                |
-| ------------------- | -------------------------------------------- | ------------------------------------- |
-| `CORE_PORT`         | Porta do servidor                            | `3001`                                |
-| `DATABASE_URL`      | Conexão Postgres que storeia as conversas    | — (obrigatória)                       |
-| `AI_PROVIDER`       | Provider da AI: `nvidia` ou `echo`           | `nvidia`                              |
-| `NVIDIA_API_KEY`    | Chave do backend da Nvidia                   | — (com `nvidia`)                      |
-| `NVIDIA_MODEL`      | Modelo de chat do NIM                        | `meta/llama-3.3-70b-instruct`         |
-| `NVIDIA_BASE_URL`   | Base do NIM (compatível com a API da OpenAI) | `https://integrate.api.nvidia.com/v1` |
-| `NVIDIA_TIMEOUT_MS` | Teto de espera pelo modelo                   | `300000` (5 min)                      |
-| `NVIDIA_MAX_TOKENS` | Tokens máximos por resposta                  | `400`                                 |
-| `AI_IGNORE_CONFIG`  | `1` = ignora o `config` da interface         | — (opcional)                          |
-| `AI_NO_SUGGESTIONS` | `1` = não devolve `suggestions`              | — (opcional)                          |
-
-`NVIDIA_TIMEOUT_MS` é alto de propósito: o modelo escreve token a token, e uma
-resposta longa passa dos 60 s. Ver [Tempo de espera](#tempo-de-espera).
-
-## Testar sem a Nvidia
-
-Com `AI_PROVIDER=echo` o Core responde sem chamar modelo nenhum, o fluxo
-inteiro é testado e nada de cota é gasto. O eco mostra o `config` entre
-parênteses, então esse modo também é o jeito mais barato de conferir o repasse
-de configuração.
+If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
 
 ```bash
-AI_PROVIDER=echo npm run dev
+$ npm install -g @nestjs/mau
+$ mau deploy
 ```
 
-Com a Nvidia de verdade, é só ter `NVIDIA_API_KEY` no `.env`.
+With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
 
-## Harness local
+## Observability
 
-A pasta `local/` traz ferramentas de desenvolvimento **git-ignored**: um REPL de
-terminal e um smoke test. Elas exercitam o Core pela interface HTTP, sem
-depender do provider.
+In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+
+[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+
+- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
+- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
+- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
+- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
+- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
+- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
+- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
+- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+
+To add it to this project, run this and approve the code it prints at [observe.nestjs.com/link](https://observe.nestjs.com/link) - signing up for free if you have no account:
 
 ```bash
-npm run repl    # REPL de terminal contra o Core
-npm run smoke   # checagem ponta a ponta, sem interação
+$ npx @nestjs/observe link
 ```
 
-O `README.md` da pasta tem o passo a passo. O servidor da AI falsa que morava
-aqui foi para dentro do Core (`src/services/ai/providers/nvidia.ts`), então
-não há mais um processo a subir nem endpoint para apontar. A pasta segue
-fora do git porque guarda a `NVIDIA_API_KEY` do `local/.env` e porque é
-ferramenta de quem está mexendo no Core, não parte do produto.
+It installs `@nestjs/observe`, wires it into `AppModule` and `main.ts`, and writes the app key and secret into `.env`, which every `nest start` script (`start`, `start:dev`, `start:debug`) then loads. In production, set `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` in the environment instead.
 
-## Documentação
+Or do it by hand:
 
-| Documento                                                      | Conteúdo                                                     |
-| -------------------------------------------------------------- | ------------------------------------------------------------ |
-| [`docs/core/Conversation.md`](../../docs/core/Conversation.md) | Modelo de conversa, endpoints, persistência e contexto da AI |
-| [`docs/core/Message.md`](../../docs/core/Message.md)           | Modelo de mensagem e endpoint de envio                       |
-| [`docs/core/Suggestion.md`](../../docs/core/Suggestion.md)     | Modelo de sugestão, endpoints e limites                      |
-| [`docs/core/ChatConfig.md`](../../docs/core/ChatConfig.md)     | Modelo de configuração e o repasse para a AI                 |
+```bash
+$ npm install @nestjs/observe
+```
+
+Then follow the [setup guide](https://docs.nestjs.com/observability/sdk) - it takes a single import and an app key.
+
+The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
+
+## Resources
+
+Check out a few resources that may come in handy when working with NestJS:
+
+- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
+- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
+- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
+- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
+- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
+- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
+- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
+- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
+- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+
+## Support
+
+Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+
+## Stay in touch
+
+- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
+- Website - [https://nestjs.com](https://nestjs.com/)
+- Twitter - [@nestframework](https://twitter.com/nestframework)
+
+## License
+
+Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
