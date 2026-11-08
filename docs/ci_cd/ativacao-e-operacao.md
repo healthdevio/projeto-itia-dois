@@ -83,7 +83,7 @@ Como o ruleset está inativo, **nenhum check impede tecnicamente o merge**. Chec
 | Security `npm audit`                         | Verde                           | Bloqueante por convenção para advisories npm HIGH/CRITICAL em cada lockfile. Complementa o Trivy com o audit de npm. |
 | Security `Semgrep CE SAST`                   | Pode reportar achados           | Informativo durante a implantação inicial (`continue-on-error: true`); não deve bloquear merge.                      |
 | Security `Dependency review`                 | Pulado no plano atual           | Só executa quando `GHAS_ENABLED=true` e Dependency Graph/GHAS estiver disponível.                                    |
-| Security `CodeQL`                            | Executa em PR/push              | Requer `actions: read`, `security-events: write` e code scanning disponível para o repositório.                      |
+| Security `CodeQL`                            | Pulado no plano atual           | Só executa quando `GHAS_ENABLED=true` e Advanced Security/code scanning estiver disponível.                          |
 | Dependabot Auto-merge                        | Normalmente pulado em PR humano | Só executa no evento CI de PR Dependabot elegível para `develop`.                                                    |
 | CD `Deploy Portainer stack`                  | Pulado até habilitar            | Executa depois da publicação se `DEPLOY_ENABLED=true`.                                                               |
 

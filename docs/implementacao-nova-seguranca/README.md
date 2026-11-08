@@ -25,6 +25,7 @@ O workflow usa a imagem `zricethezav/gitleaks` na versão 8.30.1, com digest par
 - Removido o upload de `/.codeql`: esse caminho não era produzido pelo workflow. O próprio CodeQL publica os resultados na área de code scanning.
 - Desativadas as credenciais persistentes do checkout.
 - Incluída `actions: read` nas permissões do job. Como o job declara permissões próprias, ele não herdava essa permissão do nível do workflow, necessária para consultar a execução via API.
+- O job só executa quando a variável de repositório `GHAS_ENABLED` é `true`; Advanced Security/code scanning precisa estar habilitado para o repositório privado.
 
 Para publicar resultados em um repositório privado, a funcionalidade de code scanning precisa estar habilitada e disponível para a organização.
 
@@ -63,7 +64,7 @@ A política continua bloqueando dependências com severidade `critical`. O Depen
 
 ## Operação e acompanhamento
 
-1. Após publicar, conferir os checks de Gitleaks, CodeQL, Dependency Review, CI e Workflow Security em um PR e em um push para `develop`. Dependency Review ficará ignorado enquanto `GHAS_ENABLED` não for `true`.
+1. Após publicar, conferir os checks de Gitleaks, CodeQL, Dependency Review, CI e Workflow Security em um PR e em um push para `develop`. CodeQL e Dependency Review ficam ignorados enquanto `GHAS_ENABLED` não for `true`.
 2. Se Gitleaks encontrar um segredo, não copie seu valor para issues, comentários ou documentação. Revogue e rotacione a credencial exposta e trate o histórico de acordo com o processo do projeto.
 3. Confirmar no GitHub se Code Scanning e Dependency Graph estão habilitados para o repositório privado. Sem essas configurações, os respectivos jobs podem não conseguir publicar ou comparar resultados.
 4. Atualizar os SHAs das actions e o digest da imagem deliberadamente, registrando a versão upstream correspondente.
