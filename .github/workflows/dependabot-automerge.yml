@@ -2,7 +2,12 @@ name: Dependabot Auto-merge
 
 on:
   workflow_run:
-    workflows: ['CI (Continuous Integration)']
+    workflows:
+      - 'CI (Continuous Integration)'
+      - 'Workflow Security Audit'
+      - 'CodeQL Analysis'
+      - 'Dependency Review'
+      - 'Gitleaks - Secret Scanning'
     types: [completed]
 
 permissions: {}
@@ -20,9 +25,8 @@ jobs:
       (github.event.workflow_run.actor.login == 'dependabot[bot]' ||
        github.event.workflow_run.actor.login == 'app/dependabot') &&
       github.event.workflow_run.pull_requests[0].number != null &&
-      (contains(github.event.workflow_run.head_branch, 'development-minor-patch') ||
-       contains(github.event.workflow_run.head_branch, 'production-minor-patch') ||
-       contains(github.event.workflow_run.head_branch, 'actions-minor-patch'))
+      (startsWith(github.event.workflow_run.head_branch, 'dependabot/npm_and_yarn/') ||
+       startsWith(github.event.workflow_run.head_branch, 'dependabot/github_actions/'))
     name: Validate and merge eligible Dependabot PR
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -31,7 +35,7 @@ jobs:
       pull-requests: write
       checks: read
     steps:
-      - name: Validate PR, files, and CI OK for the exact commit
+      - name: Validate PR, files, and required checks for the exact commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -41,12 +45,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "$HEAD_BRANCH" == *development-minor-patch* ]]; then
-            ALLOWED_GROUP=development-minor-patch
-          elif [[ "$HEAD_BRANCH" == *production-minor-patch* ]]; then
-            ALLOWED_GROUP=production-minor-patch
-          elif [[ "$HEAD_BRANCH" == *actions-minor-patch* ]]; then
-            ALLOWED_GROUP=actions-minor-patch
+          if [[ "$HEAD_BRANCH" == dependabot/npm_and_yarn/* ]]; then
+            ALLOWED_GROUP=npm
+          elif [[ "$HEAD_BRANCH" == dependabot/github_actions/* ]]; then
+            ALLOWED_GROUP=github-actions
           else
             echo "Branch fora dos grupos permitidos; nenhum merge será feito."
             exit 0
@@ -66,7 +68,7 @@ jobs:
               .isDraft == false and
               .mergeable == "MERGEABLE" and
               (.files | length) > 0 and
-              (if ($group == "development-minor-patch" or $group == "production-minor-patch") then
+              (if ($group == "npm") then
                  all(.files[].path;
                    . == "package.json" or
                    endswith("/package.json") or
@@ -79,11 +81,29 @@ jobs:
             exit 0
           fi
 
-          CI_OK="$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs" --jq '[.check_runs[] | select(.name == "CI OK")] | sort_by(.started_at) | last | select(.status == "completed" and .conclusion == "success") | .conclusion')"
-          if [[ "$CI_OK" != "success" ]]; then
-            echo "CI OK não está verde no head SHA do PR; nenhum merge será feito."
+          require_successful_check() {
+            local check_name="$1"
+            local result
+            if ! result="$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs" --jq "[.check_runs[] | select(.name == \"$check_name\")] | sort_by(.started_at) | last | select(.status == \"completed\" and .conclusion == \"success\") | .conclusion")"; then
+              echo "Falha ao consultar o check $check_name."
+              return 2
+            fi
+            if [[ "$result" != "success" ]]; then
+              echo "$check_name não está verde no head SHA do PR; nenhum merge será feito."
+              return 1
+            fi
+          }
+
+          for CHECK in "CI OK" "Dependency Review" "Gitleaks Scan" "CodeQL Analysis (javascript-typescript)"; do
+            if ! require_successful_check "$CHECK"; then
+              exit 0
+            fi
+          done
+
+          if [[ "$ALLOWED_GROUP" == "github-actions" ]] &&
+             ! require_successful_check "Audit Workflow Security"; then
             exit 0
           fi
 
-          echo "PR #$PR_NUMBER validado: autor Dependabot, destino develop, grupo $ALLOWED_GROUP, arquivos permitidos e CI OK verde em $HEAD_SHA."
+          echo "PR #$PR_NUMBER validado: autor Dependabot, destino develop, grupo $ALLOWED_GROUP, arquivos permitidos e checks obrigatórios verdes em $HEAD_SHA."
           gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --squash

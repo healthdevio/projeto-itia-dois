@@ -99,7 +99,7 @@ Para operação Docker e backup, leia `docs/ci_cd/operacao.md` e `docs/estrutura
 - `docs/ci_cd/`: pipeline, publicação, operação e diagnóstico.
 - `docs/estrutura/`: CI, Docker, ambientes e testes.
 - `docs/interface/`: componentes e estado da interface.
-- `docs/PROCESSO_MIGRACAO.md` e `docs/changelog/`: registros históricos; não os trate como descrição automática do estado atual.
+- `docs/ci_cd/troca-de-servidor/PROCESSO_MIGRACAO.md` e `docs/changelog/`: registros históricos; não os trate como descrição automática do estado atual.
 
 ## Limites e decisões
 
