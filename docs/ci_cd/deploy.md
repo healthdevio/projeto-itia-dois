@@ -1,8 +1,10 @@
-# Deploy
+# Deploy (referência da stack)
 
-O que a stack Swarm pretende executar. Confira os arquivos atuais antes de usar este documento como procedimento.
+Este documento descreve a arquitetura da stack Swarm. Para o fluxo atual de publicação e redeploy, consulte [visão geral da CI/CD](visao-geral.md) e [ativação e operação](ativacao-e-operacao.md).
 
-> **Estado:** os nomes de serviço e imagem foram alinhados no repositório. A configuração ainda precisa passar pelo build e ser conferida no cluster. O CD publica as imagens aprovadas, mas a atualização da stack permanece manual no Portainer.
+> **Estado do deploy:** após uma CI bem-sucedida em `main`, o CD publica as imagens. Com `DEPLOY_ENABLED=true`, aciona os webhooks Portainer dos serviços `core` e `web`. Isso redeploya os serviços; não altera o arquivo/configuração da stack.
+
+> **Nota histórica:** o procedimento abaixo descreve uma proposta anterior baseada na API do Portainer e não é implementado pelo workflow atual. Use as instruções de [publicação](publicacao.md) e [ativação e operação](ativacao-e-operacao.md) para o fluxo vigente.
 
 ## Entrada pela API do Portainer
 

@@ -1,5 +1,7 @@
 # Diferenças de CI e CD entre `main` e `develop`
 
+> **Registro histórico:** esta comparação usa referências de 28 de outubro de 2026 e não representa necessariamente os workflows atuais. Confira [visão geral da CI/CD](visao-geral.md) e os arquivos em `.github/workflows/` antes de usar como procedimento.
+
 Comparação dos workflows versionados nas referências remotas verificadas em
 **28 de outubro de 2026**:
 
