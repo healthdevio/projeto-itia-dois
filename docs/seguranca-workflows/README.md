@@ -2,21 +2,21 @@
 
 Este documento registra o estado atual dos controles de segurança e CI do repositório. As configurações do GitHub podem mudar fora do código; confirme-as em **Settings → Security and analysis** e **Settings → Secrets and variables → Actions**.
 
-## Estado confirmado em 8 de novembro de 2026
+## Estado confirmado em 9 de novembro de 2026
 
 - O repositório está público.
 - A variável de Actions `GHAS_ENABLED` está `true`. Ela permite executar os jobs condicionados a essa variável, mas não habilita recursos do GitHub por si só.
 - Dependency Graph, Dependabot alerts e Dependabot security updates estão habilitados.
-- Secret scanning está habilitado. Push protection e detecção de padrões não associados a provedores estão desabilitados.
+- Secret scanning está habilitado. Push protection e detecção de padrões não associados a provedores estão desabilitados. Push protection pode ser habilitado sem custo para este repositório público em **Settings → Advanced Security → Secret scanning → Push protection**.
 - CodeQL foi executado manualmente em `develop` e concluiu com sucesso na execução [42485141471](https://github.com/healthdevio/projeto-itia-dois/actions/runs/42485141471).
-- Ainda não foi confirmada uma execução bem-sucedida de Dependency Review depois de tornar o repositório público e definir `GHAS_ENABLED=true`. O job deve ser confirmado em um PR novo.
+- CodeQL e Dependency Review estão executando nos PRs recentes; ambos concluíram com sucesso em PRs de Dependabot em 9 de novembro de 2026.
 - Gitleaks passou na varredura dos commits recentes da PR #141. Uma varredura anterior do histórico completo encontrou um segredo antigo. O valor não está reproduzido aqui; confirme sua rotação/revogação e não trate a alteração do workflow como remoção desse segredo do histórico.
 
 ## O que cada workflow verifica
 
 ### CodeQL
 
-O workflow `.github/workflows/codeql-analysis.yml` analisa JavaScript e TypeScript com as consultas `security-and-quality` e publica os resultados de code scanning no GitHub. É acionado em pushes e PRs direcionados a `develop` ou `main`, além de permitir execução manual. O job é ignorado se `GHAS_ENABLED` não for `true`.
+O workflow `.github/workflows/codeql-analysis.yml` analisa JavaScript e TypeScript com as consultas `security-and-quality` e publica os resultados de code scanning no GitHub. É acionado em pushes e PRs direcionados a `develop` ou `main`, além de permitir execução manual. As etapas init, autobuild e analyze usam a mesma versão v4 fixada por SHA. O job é ignorado se `GHAS_ENABLED` não for `true`.
 
 ### Dependency Review
 
@@ -25,6 +25,10 @@ O workflow `.github/workflows/dependency-review.yml` compara dependências adici
 ### Gitleaks
 
 O workflow `.github/workflows/gitleaks.yml` examina as alterações de Git com as regras padrão do Gitleaks. Em PRs e pushes para `develop` ou `main`, verifica os commits introduzidos pelo evento; uma execução manual verifica o commit atual. O escopo incremental evita que um segredo legado bloqueie automaticamente cada alteração, mas não elimina nem resolve exposições históricas.
+
+### Workflow Security
+
+O workflow `.github/workflows/workflow-security.yml` valida que as actions estejam fixadas por SHA e executa actionlint nos arquivos de workflow. É acionado em PRs que alteram `.github/workflows/**`, semanalmente e sob demanda. O auto-merge do Dependabot aguarda `Audit Workflow Security` nos PRs de GitHub Actions e exige CI, CodeQL, Dependency Review e Gitleaks verdes para todos os PRs Dependabot elegíveis.
 
 ### Formatação na CI
 
@@ -42,4 +46,4 @@ Em PRs para `develop` ou `main`, o job de formatação executa `npm run format`.
 - Confirmar que qualquer credencial sinalizada na varredura histórica foi revogada ou rotacionada.
 - Avaliar a exposição de arquivos e do histórico Git agora que o repositório é público. Remover um segredo do estado atual não o apaga dos commits antigos.
 - Avaliar a ativação de Push protection e da detecção de padrões não associados a provedores em **Settings → Security and analysis**.
-- Atualizar CodeQL Action v3 para v4 antes da descontinuação anunciada para dezembro de 2026; validar os SHAs das actions e o workflow antes de mudar a versão.
+- Manter o grupo Dependabot `codeql-action` atualizado para que todas as etapas CodeQL avancem juntas; exigir CI e CodeQL verdes antes do auto-merge de atualizações de workflows.

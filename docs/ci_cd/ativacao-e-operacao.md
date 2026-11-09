@@ -4,10 +4,11 @@ Este guia registra a configuração confirmada e as ações necessárias para op
 
 ## Estado confirmado
 
-- O repositório é privado e a organização está no plano gratuito. O ruleset `proteger-main-develop` existe, mas está inativo; hoje o GitHub não aplica a exigência de `CI OK` nem bloqueia pushes diretos.
+- O repositório é público. CodeQL e Dependency Review estão habilitados por `GHAS_ENABLED=true` e podem ser usados sem contratar GitHub Code Security para este repositório público.
+- O ruleset `proteger-main-develop` existe, mas está inativo; hoje o GitHub não aplica a exigência de `CI OK` nem bloqueia pushes diretos.
 - **Allow auto-merge** não está disponível. O workflow do Dependabot faz merge direto somente depois de validar o PR e o check `CI OK` no SHA exato.
 - A CI verifica frontend, backend, formatação e imagens. `CI OK` agrega esses quatro jobs.
-- O workflow Security sempre executa Trivy e `npm audit`. Sem GHAS, Dependency review e CodeQL ficam pulados. Semgrep CE executa como SAST informativo nas primeiras execuções.
+- Gitleaks verifica os commits de PRs e pushes; Dependency Review e CodeQL executam porque `GHAS_ENABLED=true`; Workflow Security audita a sintaxe e os pins das actions em PRs que alteram workflows, além de execuções manuais e semanais.
 - O Portainer é Community Edition 2.45.3 LTS. O deploy usa webhooks individuais dos serviços `core` e `web`; não usa webhook de stack.
 - A stack versionada está em `apps/docker/pw2c/docker-stack.yml`. Ela deve consumir `registry.cloud.grupopw2c.com.br/chat-core:latest` e `registry.cloud.grupopw2c.com.br/chat-web:latest`.
 
@@ -17,11 +18,11 @@ Este guia registra a configuração confirmada e as ações necessárias para op
 
 Abra **Settings → Secrets and variables → Actions → Variables** e configure estas repository variables:
 
-| Nome                | Valor                                          | Efeito                                                                                                                |
-| ------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `AUTOMERGE_ENABLED` | `true`                                         | Habilita a tentativa de merge direto para PRs Dependabot elegíveis. Deixe ausente ou diferente de `true` para pausar. |
-| `DEPLOY_ENABLED`    | `true`                                         | Habilita o job de deploy depois da publicação bem-sucedida em `main`.                                                 |
-| `GHAS_ENABLED`      | `true` somente após upgrade/licença compatível | Habilita Dependency review e CodeQL. No plano atual, mantenha ausente ou diferente de `true`.                         |
+| Nome                | Valor  | Efeito                                                                                                                  |
+| ------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `AUTOMERGE_ENABLED` | `true` | Habilita a tentativa de merge direto para PRs Dependabot elegíveis. Deixe ausente ou diferente de `true` para pausar.   |
+| `DEPLOY_ENABLED`    | `true` | Habilita o job de deploy depois da publicação bem-sucedida em `main`.                                                   |
+| `GHAS_ENABLED`      | `true` | Permite que os workflows de Dependency Review e CodeQL executem. Para este repositório público, não exige upgrade pago. |
 
 São repository variables porque as condições dos jobs as consultam antes da execução. `GHAS_ENABLED` é opcional; os outros dois também funcionam como interruptores.
 
@@ -59,11 +60,14 @@ O workflow não faz checkout e não executa arquivos do PR. Após uma execução
 - `AUTOMERGE_ENABLED` é `true`;
 - a execução foi bem-sucedida, é de um PR e foi iniciada pelo Dependabot;
 - há PR associado, criado pelo Dependabot, não draft, direcionado a `develop`, sem conflito e ainda no mesmo `head SHA` que a CI verificou;
-- a branch contém `development-minor-patch` ou `actions-minor-patch`;
-- os arquivos alterados são apenas manifests/lockfiles permitidos para o grupo ou arquivos em `.github/workflows/**` para o grupo de Actions;
-- o check `CI OK` mais recente para aquele `head SHA` está concluído com sucesso.
+- o PR npm ou GitHub Actions é direcionado a `develop`; atualizações major também podem ser mescladas, mas somente após os checks obrigatórios passarem;
+- os arquivos alterados são apenas manifests/lockfiles para PRs npm, ou arquivos em `.github/workflows/**` para PRs de Actions;
+- os checks `CI OK`, `Dependency Review`, `Gitleaks Scan` e `CodeQL Analysis (javascript-typescript)` mais recentes para aquele `head SHA` estão concluídos com sucesso;
+- em PRs de Actions, `Audit Workflow Security` também precisa passar.
 
-O Dependabot está configurado para abrir PRs npm e GitHub Actions para `develop`, que é o destino observado pela automação. O workflow nunca faz merge de PR para `main`, grupos de produção, Docker ou atualizações major. Qualquer arquivo fora da lista permitida cancela a tentativa de merge.
+O Dependabot está configurado para abrir PRs npm e GitHub Actions para `develop`, que é o destino observado pela automação. Atualizações major também são elegíveis, desde que os checks passem. O workflow nunca faz merge de PR para `main` ou de atualizações Docker. Qualquer arquivo fora da lista permitida cancela a tentativa de merge. Mudanças de código, aplicações e infraestrutura não são aceitas.
+
+Como o gatilho é `workflow_run`, a versão atualizada de `dependabot-automerge.yml` precisa estar na branch padrão `main` para que GitHub a execute. O auto-merge é reavaliado quando CI, Workflow Security, CodeQL, Dependency Review ou Gitleaks termina, para evitar que um check ainda em andamento impeça a tentativa. Até essa mudança chegar a `main`, o comportamento antigo continua valendo.
 
 Para ativar essa automação, crie a repository variable `AUTOMERGE_ENABLED=true`. O ruleset continua inativo, então o GitHub não impõe os checks entre a validação da automação e o merge direto.
 
@@ -75,17 +79,16 @@ Se for necessário disparar CI pós-merge em `develop`, a alternativa é autenti
 
 Como o ruleset está inativo, **nenhum check impede tecnicamente o merge**. Checks vermelhos devem ser tratados como bloqueio por convenção pela equipe até que o enforcement esteja disponível.
 
-| Check/job                                    | Resultado esperado              | Papel                                                                                                                |
-| -------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| CI `frontend`, `backend`, `format`, `images` | Verde                           | Alimentam o agregado `CI OK`.                                                                                        |
-| CI `CI OK`                                   | Verde                           | Check agregado principal; não é imposto enquanto o ruleset estiver inativo.                                          |
-| Security `Trivy filesystem scan`             | Verde                           | Bloqueante por convenção para HIGH/CRITICAL em CVEs, segredos e misconfiguração.                                     |
-| Security `npm audit`                         | Verde                           | Bloqueante por convenção para advisories npm HIGH/CRITICAL em cada lockfile. Complementa o Trivy com o audit de npm. |
-| Security `Semgrep CE SAST`                   | Pode reportar achados           | Informativo durante a implantação inicial (`continue-on-error: true`); não deve bloquear merge.                      |
-| Security `Dependency review`                 | Pulado no plano atual           | Só executa quando `GHAS_ENABLED=true` e Dependency Graph/GHAS estiver disponível.                                    |
-| Security `CodeQL`                            | Pulado no plano atual           | Só executa quando `GHAS_ENABLED=true` e Advanced Security/code scanning estiver disponível.                          |
-| Dependabot Auto-merge                        | Normalmente pulado em PR humano | Só executa no evento CI de PR Dependabot elegível para `develop`.                                                    |
-| CD `Deploy Portainer stack`                  | Pulado até habilitar            | Executa depois da publicação se `DEPLOY_ENABLED=true`.                                                               |
+| Check/job                                    | Resultado esperado              | Papel                                                                                                  |
+| -------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| CI `frontend`, `backend`, `format`, `images` | Verde                           | Alimentam o agregado `CI OK`.                                                                          |
+| CI `CI OK`                                   | Verde                           | Check agregado principal; não é imposto enquanto o ruleset estiver inativo.                            |
+| Gitleaks `Gitleaks Scan`                     | Verde                           | Verifica segredos nos commits introduzidos pelo PR/push.                                               |
+| Workflow Security                            | Verde                           | Valida sintaxe e pins SHA em PRs que alterem workflows; também executa semanalmente e sob demanda.     |
+| Security `Dependency review`                 | Verde quando acionado           | Executa em PRs para `develop`/`main` quando `GHAS_ENABLED=true`; o repositório é público.              |
+| Security `CodeQL`                            | Verde quando acionado           | Executa em pushes e PRs para `develop`/`main` quando `GHAS_ENABLED=true`; usa `javascript-typescript`. |
+| Dependabot Auto-merge                        | Normalmente pulado em PR humano | Só executa no evento CI de PR Dependabot elegível para `develop`.                                      |
+| CD `Deploy Portainer stack`                  | Pulado até habilitar            | Executa depois da publicação se `DEPLOY_ENABLED=true`.                                                 |
 
 ## Imagens e Dockerfiles
 
@@ -101,6 +104,12 @@ O nome da imagem backend foi alinhado explicitamente de `chat-back` para `chat-c
 Uma opção é um workflow em `push` para `main`/`develop` que consulte a API de PRs associados ao SHA. Se não encontrar PR, ele pode gravar aviso no summary e abrir uma issue com SHA, branch e autor.
 
 Isso não bloqueia o push; apenas cria trilha de auditoria enquanto o ruleset não é aplicado. Vale a pena se pushes diretos forem exceção. Para reduzir ruído, deduplicar a issue por SHA e deixar pushes diretos intencionais registrados como exceções. A implementação foi deixada para depois.
+
+## Ativar push protection
+
+No GitHub, abra o repositório e vá a **Settings → Advanced Security**. Na seção **Secret scanning**, ative **Push protection**. Confirme a alteração quando o GitHub solicitar. Depois, valide com um token de teste falso/não utilizável: o push deve ser bloqueado antes de chegar ao repositório. Não teste com credenciais reais.
+
+Como o repositório é público, a proteção está disponível sem a assinatura paga de GitHub Secret Protection. Se o controle não aparecer ou estiver bloqueado, confirme que você tem permissão de administrador e que a política da organização não desabilita o recurso.
 
 ## Alternativa agendada para Dependabot (opcional, não implementada)
 

@@ -2,6 +2,8 @@
 
 > Registro da implementação original. Para o estado atual do repositório, disponibilidade dos recursos e últimas execuções, consulte [seguranca-workflows](../seguranca-workflows/README.md).
 
+> Estado atual: o repositório é público, `GHAS_ENABLED=true`, e CodeQL/Dependency Review executam sem assinatura paga neste repositório.
+
 ## Objetivo
 
 Este documento descreve as correções dos workflows em `.github/workflows/` e os requisitos para executá-los. A documentação corresponde aos arquivos desta cópia de trabalho; não significa que as mudanças já foram publicadas no GitHub.
@@ -11,7 +13,7 @@ Este documento descreve as correções dos workflows em `.github/workflows/` e o
 ### Gitleaks — `gitleaks.yml`
 
 - Substituída a referência inexistente `gitleaks/gitleaks@...` por execução da imagem oficial do CLI Gitleaks, fixada por digest.
-- O repositório é privado e pertence a uma organização. A action `gitleaks/gitleaks-action` exige `GITLEAKS_LICENSE` para organizações; o CLI evita essa dependência.
+- À época da implementação, o repositório era privado e pertencia a uma organização. A action `gitleaks/gitleaks-action` exigia `GITLEAKS_LICENSE` para organizações; o CLI evita essa dependência.
 - Em PRs e pushes, `gitleaks git` analisa somente os commits introduzidos naquele evento; uma execução manual analisa o commit atual. O checkout completo disponibiliza os SHAs usados para delimitar o intervalo.
 - A execução do PR #141 encontrou um segredo em commits anteriores ao intervalo desse PR. O log não expôs o valor. Essa detecção histórica não é descartada como falso positivo: se a credencial ainda puder ser usada, ela deve ser revogada e rotacionada; qualquer limpeza do histórico precisa ser coordenada separadamente.
 - Removidos `config: /dev/null` e `args` passados como inputs de action. A action anterior não tinha esses inputs e `/dev/null` também impediria o uso das regras padrão.
@@ -21,15 +23,15 @@ O workflow usa a imagem `zricethezav/gitleaks` na versão 8.30.1, com digest par
 
 ### CodeQL — `codeql-analysis.yml`
 
-- Separadas as etapas `init`, `autobuild` e `analyze`, cada uma apontando para sua action correspondente na release v3, fixada por SHA.
+- Separadas as etapas `init`, `autobuild` e `analyze`, todas agora apontando para a release v4.39.1, fixada pelo mesmo SHA.
 - A linguagem passou a ser `javascript-typescript`, que cobre JavaScript e TypeScript em uma análise CodeQL.
 - Corrigido `pack_list` para `queries: security-and-quality`.
 - Removido o upload de `/.codeql`: esse caminho não era produzido pelo workflow. O próprio CodeQL publica os resultados na área de code scanning.
 - Desativadas as credenciais persistentes do checkout.
 - Incluída `actions: read` nas permissões do job. Como o job declara permissões próprias, ele não herdava essa permissão do nível do workflow, necessária para consultar a execução via API.
-- O job só executa quando a variável de repositório `GHAS_ENABLED` é `true`; Advanced Security/code scanning precisa estar habilitado para o repositório privado.
+- O job só executa quando a variável de repositório `GHAS_ENABLED` é `true`. Para o repositório público, CodeQL pode publicar alertas sem licença paga de GitHub Code Security.
 
-Para publicar resultados em um repositório privado, a funcionalidade de code scanning precisa estar habilitada e disponível para a organização.
+Para repositórios privados, a disponibilidade e cobrança do code scanning dependem do plano/licença da organização.
 
 ### Dependency Review — `dependency-review.yml`
 
@@ -38,7 +40,7 @@ Para publicar resultados em um repositório privado, a funcionalidade de code sc
 - Atualizada a action para v5, fixada por SHA.
 - Incluída `pull-requests: read` nas permissões do job; permissões no nível do job substituem as do workflow.
 - Removido `category`, que não é um input suportado pela action.
-- O job só executa quando a variável de repositório `GHAS_ENABLED` é `true`; sem Dependency Graph/GHAS disponível, o job fica ignorado em vez de falhar em todos os PRs.
+- O job só executa quando a variável de repositório `GHAS_ENABLED` é `true`; o Dependency Graph precisa estar habilitado.
 
 A política continua bloqueando dependências com severidade `critical`. O Dependency Graph do GitHub deve estar habilitado para o repositório.
 
@@ -59,7 +61,7 @@ A política continua bloqueando dependências com severidade `critical`. O Depen
 
 ## Validação realizada
 
-- **actionlint 1.7.12:** executado localmente sobre os workflows; nenhuma inconsistência foi reportada.
+- **actionlint 1.7.12:** passou na validação anterior dos workflows. As alterações atuais foram verificadas com Prettier; a validação actionlint delas ocorrerá no workflow `Workflow Security` após publicação.
 - **Referências:** os SHAs das actions alteradas foram conferidos com as tags correspondentes no GitHub; o digest da imagem Gitleaks foi conferido para Linux/amd64.
 - **Gitleaks:** o scanner não foi executado localmente porque o daemon Docker não estava disponível. A execução real ocorrerá no runner Ubuntu do GitHub Actions.
 - **Execução no GitHub:** ainda precisa ser confirmada após publicar as mudanças; os arquivos desta cópia de trabalho não foram commitados por esta tarefa.
@@ -68,7 +70,7 @@ A política continua bloqueando dependências com severidade `critical`. O Depen
 
 1. Após publicar, conferir os checks de Gitleaks, CodeQL, Dependency Review, CI e Workflow Security em um PR e em um push para `develop`. CodeQL e Dependency Review ficam ignorados enquanto `GHAS_ENABLED` não for `true`.
 2. Se Gitleaks encontrar um segredo, não copie seu valor para issues, comentários ou documentação. Revogue e rotacione a credencial exposta e trate o histórico de acordo com o processo do projeto.
-3. Confirmar no GitHub se Code Scanning e Dependency Graph estão habilitados para o repositório privado. Sem essas configurações, os respectivos jobs podem não conseguir publicar ou comparar resultados.
+3. Confirmar no GitHub se Code Scanning e Dependency Graph estão habilitados. Para repositórios privados, a disponibilidade depende do plano/licença; neste repositório público, os dois recursos estão em uso.
 4. Atualizar os SHAs das actions e o digest da imagem deliberadamente, registrando a versão upstream correspondente.
 
 ## Limite da análise local
