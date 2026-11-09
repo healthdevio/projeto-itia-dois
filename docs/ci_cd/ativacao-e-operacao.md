@@ -6,6 +6,7 @@ Este guia registra a configuração confirmada e as ações necessárias para op
 
 - O repositório é público. CodeQL e Dependency Review estão habilitados por `GHAS_ENABLED=true` e podem ser usados sem contratar GitHub Code Security para este repositório público.
 - O ruleset `proteger-main-develop` existe, mas está inativo; hoje o GitHub não aplica a exigência de `CI OK` nem bloqueia pushes diretos.
+- Secret scanning e push protection estão habilitados no repositório; a detecção de padrões não associados a provedores permanece desabilitada.
 - **Allow auto-merge** não está disponível. O workflow do Dependabot faz merge direto somente depois de validar o PR e o check `CI OK` no SHA exato.
 - A CI verifica frontend, backend, formatação e imagens. `CI OK` agrega esses quatro jobs.
 - Gitleaks verifica os commits de PRs e pushes; Dependency Review e CodeQL executam porque `GHAS_ENABLED=true`; Workflow Security audita a sintaxe e os pins das actions em PRs que alteram workflows, além de execuções manuais e semanais.
@@ -105,9 +106,9 @@ Uma opção é um workflow em `push` para `main`/`develop` que consulte a API de
 
 Isso não bloqueia o push; apenas cria trilha de auditoria enquanto o ruleset não é aplicado. Vale a pena se pushes diretos forem exceção. Para reduzir ruído, deduplicar a issue por SHA e deixar pushes diretos intencionais registrados como exceções. A implementação foi deixada para depois.
 
-## Ativar push protection
+## Push protection
 
-No GitHub, abra o repositório e vá a **Settings → Advanced Security**. Na seção **Secret scanning**, ative **Push protection**. Confirme a alteração quando o GitHub solicitar. Depois, valide com um token de teste falso/não utilizável: o push deve ser bloqueado antes de chegar ao repositório. Não teste com credenciais reais.
+Push protection está habilitado neste repositório. Para conferir ou alterar a configuração, abra **Settings → Security and analysis → Secret scanning**. Se precisar validar o bloqueio, use somente um padrão de teste falso/não utilizável; não teste com credenciais reais.
 
 Como o repositório é público, a proteção está disponível sem a assinatura paga de GitHub Secret Protection. Se o controle não aparecer ou estiver bloqueado, confirme que você tem permissão de administrador e que a política da organização não desabilita o recurso.
 

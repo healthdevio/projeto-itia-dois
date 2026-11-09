@@ -15,11 +15,9 @@ O workflow `.github/workflows/cd.yml` inicia após CI aprovada em `main`. Ele fa
 
 ## Deploy
 
-O workflow atual **não atualiza a stack**. Após a publicação, o resumo instrui uma atualização manual no Portainer. A API do Portainer descrita em versões anteriores da documentação não está implementada no `cd.yml` atual.
+Após publicação, o job de deploy aciona os webhooks individuais dos serviços `core` e `web` no Portainer quando `DEPLOY_ENABLED=true`. Como a stack normalmente usa `latest`, os serviços puxam as imagens recém-publicadas e reiniciam. O workflow não atualiza o conteúdo/configuração da stack; mudanças nessa configuração e rollbacks para tags SHA continuam manuais no Portainer.
 
 ## Próximas melhorias
 
-- Fazer o deploy depender do sucesso da CI para o mesmo commit.
-- Preferir digest ou tag imutável por SHA no serviço implantado.
-- Gerar SBOM e fazer varredura de vulnerabilidades antes da publicação.
-- Automatizar atualização da stack somente após corrigir as incompatibilidades e validar rollback.
+- Preferir digest ou tag imutável por SHA no serviço implantado, em vez de depender apenas de `latest`.
+- Validar o primeiro deploy após mudanças de configuração da stack e testar o procedimento de rollback.

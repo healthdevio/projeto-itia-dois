@@ -2,6 +2,8 @@
 
 Revisão e alterações realizadas em 27 de outubro de 2026. Nenhum deploy ou teste foi executado nesta tarefa.
 
+> **Registro histórico:** este relatório descreve o estado e as decisões daquela revisão. O deploy passou a acionar webhooks do Portainer quando `DEPLOY_ENABLED=true`, e a varredura Trivy ocorre no CD atual. Consulte [visão geral da CI/CD](visao-geral.md) e [ativação e operação](ativacao-e-operacao.md) para o fluxo vigente.
+
 ## P0 — Build, stack e configuração
 
 - `Dockerfile.core` agora compila `apps/chat-back`, usa Node 24 em todas as etapas, serve na porta 80 e verifica `/health/live`.

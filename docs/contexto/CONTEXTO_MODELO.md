@@ -2,7 +2,7 @@
 
 Use este documento como contexto inicial ao trabalhar neste repositório. Ele resume a arquitetura, as convenções e os riscos conhecidos. **O código e os arquivos de configuração são a fonte da verdade**: confira-os quando uma alteração puder ter mudado este resumo.
 
-Atualizado em 27 de outubro de 2026.
+Atualizado em 9 de novembro de 2026.
 
 ## Como trabalhar neste repositório
 
@@ -17,13 +17,13 @@ Atualizado em 27 de outubro de 2026.
 
 ## Visão do sistema
 
-| Caminho                   | Responsabilidade                                                            | Estado conhecido                                                                                       |
-| ------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `apps/chat-omnia`         | React, Vite, Tailwind e interface do chat                                   | Ainda usa estado/resposta local; o transporte HTTP/SSE não está conectado ao backend.                  |
-| `apps/chat-back`          | API NestJS, TypeScript, Drizzle, PostgreSQL e integração com provider de IA | Backend atual; inclui testes e rotas de health check.                                                  |
-| `apps/packages/knowledge` | Schema e migrations de conhecimento                                         | Ainda não integrado ao fluxo principal.                                                                |
-| `apps/docker`             | Dockerfiles, nginx, compose local, stack Swarm e scripts operacionais       | Configuração alinhada nesta revisão; mudanças devem manter os nomes de serviço e imagem sincronizados. |
-| `.github/workflows`       | CI e publicação das imagens                                                 | CD publica somente após CI de `main` passar; a atualização da stack segue manual no Portainer.         |
+| Caminho                   | Responsabilidade                                                            | Estado conhecido                                                                                                  |
+| ------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `apps/chat-omnia`         | React, Vite, Tailwind e interface do chat                                   | Ainda usa estado/resposta local; o transporte HTTP/SSE não está conectado ao backend.                             |
+| `apps/chat-back`          | API NestJS, TypeScript, Drizzle, PostgreSQL e integração com provider de IA | Backend atual; inclui testes e rotas de health check.                                                             |
+| `apps/packages/knowledge` | Schema e migrations de conhecimento                                         | Ainda não integrado ao fluxo principal.                                                                           |
+| `apps/docker`             | Dockerfiles, nginx, compose local, stack Swarm e scripts operacionais       | Configuração alinhada nesta revisão; mudanças devem manter os nomes de serviço e imagem sincronizados.            |
+| `.github/workflows`       | CI, CD, segurança e auto-merge do Dependabot                                | CD publica após CI aprovada em `main` e pode acionar webhooks Portainer; a configuração da stack continua manual. |
 
 ### Caminho de uma requisição
 
@@ -53,12 +53,14 @@ apps/docker/backup-postgres.sh   backup criptografado do Postgres
 ## CI/CD e convenções de release
 
 - CI roda em PRs e pushes para `develop` e `main`.
-- A CI valida frontend e backend, executa testes do backend, verifica Prettier sem alterar arquivos e constrói as imagens.
-- O CD é iniciado pela conclusão bem-sucedida da CI em `main` e publica as imagens `chat-core` e `chat-web` com tags por SHA e branch.
+- A CI valida frontend e backend, executa testes do backend e constrói as imagens. Em PRs, aplica Prettier; para branches do próprio repositório, um job separado pode enviar o patch formatado por commit.
+- CodeQL, Dependency Review, Gitleaks e Workflow Security rodam em workflows próprios. Push protection está habilitado nas configurações do repositório.
+- O auto-merge próprio do Dependabot pode mesclar PRs npm e GitHub Actions elegíveis para `develop` depois dos checks exigidos; PRs para `main` e atualizações Docker não entram nessa regra.
+- O CD é iniciado pela conclusão bem-sucedida da CI em `main`, constrói/escaneia e publica `chat-core` e `chat-web` com tags por SHA, branch e `latest`. Com `DEPLOY_ENABLED=true`, aciona webhooks Portainer dos serviços `core` e `web`; não altera o arquivo/configuração da stack.
 - A stack usa os serviços `postgres`, `core` e `web`, na rede overlay `omnia_net`.
 - A imagem do backend roda na porta 80 internamente; somente a porta pública da interface é publicada.
 - O Postgres fica preso ao nó `compute01` porque seu volume é local. A perda do nó exige restauração de backup.
-- O CD não atualiza automaticamente a stack. Aplique manualmente no Portainer as tags SHA publicadas depois de revisar o commit.
+- O redeploy por webhook é automático quando habilitado e a stack usa `latest`. Mudanças de configuração da stack e rollback por tags SHA ainda precisam ser aplicados manualmente no Portainer.
 - Proteja `main` com Pull Request, revisão e CI exigida: o workflow de publicação usa `workflow_run` e acessa as credenciais do registry.
 
 Não use tags móveis como única referência de rollback. Preserve o SHA exato que foi aprovado e publicado.
