@@ -83,7 +83,7 @@ Os workflows de segurança foram removidos/ajustados devido a:
 
 3. **Simplificação**: Remover workflows de segurança dedicados simplifica a configuração sem reduzir a segurança, já que as verificações já estão integradas à CI principal.
 
-### Status Atual dos Checks de Segurança
+### Status dos Checks de Segurança na época
 
 | Check                          | Status     | Descrição                      |
 | ------------------------------ | ---------- | ------------------------------ |

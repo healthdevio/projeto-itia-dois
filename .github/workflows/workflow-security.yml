@@ -4,6 +4,10 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 2 * * 1'  # Every Monday at 02:00 UTC
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - '.github/workflows/**'
 
 permissions:
   contents: read
@@ -54,7 +58,7 @@ jobs:
         run: |
           echo "Checking workflow permissions..."
           for f in .github/workflows/*.yml; do
-            echo "=== $(basename $f) ==="
+            echo "=== $(basename "$f") ==="
             grep "permissions:" "$f" 2>/dev/null || echo "No permissions defined"
           done
 
