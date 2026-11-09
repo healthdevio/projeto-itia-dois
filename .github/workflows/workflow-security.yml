@@ -58,7 +58,7 @@ jobs:
         run: |
           echo "Checking workflow permissions..."
           for f in .github/workflows/*.yml; do
-            echo "=== $(basename $f) ==="
+            echo "=== $(basename "$f") ==="
             grep "permissions:" "$f" 2>/dev/null || echo "No permissions defined"
           done
 
