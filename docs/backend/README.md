@@ -12,6 +12,12 @@ Contrato da API, para quem consome.
 | [ChatRequest](./ChatRequest.md)    | Contrato de entrada de uma solicitação de chat.               |
 | [ChatResponse](./ChatResponse.md)  | Contrato de saída de uma resposta do chat.                    |
 
+## Tasks de DevOps
+
+- [Task 01 — Modelo Tool](../tasks-devops/task-01/Tool.md)
+- [Task 02 — Modelo ToolCall](../tasks-devops/task-02/ToolCall.md)
+- [Task 03 — JSON Schema das ferramentas](../tasks-devops/task-03/JSON-Schema.md)
+
 ## Resumo dos endpoints
 
 | Método   | Rota                         | Quem chama   |
@@ -30,7 +36,7 @@ Contrato da API, para quem consome.
 Todos os endpoints de conversa, mensagem e sugestão exigem JWT OIDC válido no header `Authorization: Bearer`.
 
 ```bash
-curl -H "Authorization: Bearer <access-token>" http://localhost:3001/api/conversations/current
+curl -H "Authorization: ******" http://localhost:3001/api/conversations/current
 ```
 
 Sem token válido ou sem configuração OIDC, a resposta é `401`.
