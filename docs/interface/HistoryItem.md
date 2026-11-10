@@ -16,7 +16,7 @@ O documento original da Task 08 lista o histórico como parte do escopo, mas nã
 ## Responsabilidade esperada
 
 - Apresentar os dados de uma conversa anterior recebidos por props.
-- Manter a apresentação separada do carregamento e da comunicação com o Core.
+- Manter a apresentação separada do carregamento e da comunicação com o Backend.
 - Expor uma interação de seleção somente conforme o comportamento definido pela arquitetura atual.
 - Evitar inventar campos, datas ou identificadores que não estejam no contrato.
 

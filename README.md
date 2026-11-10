@@ -172,7 +172,7 @@ código; confirme-as no GitHub antes de depender de uma execução.
 ## Documentação
 
 - [Índice da documentação](docs/README.md)
-- [Contratos e rotas do Core](docs/core/README.md)
+- [Contratos e rotas do Backend](docs/backend/README.md)
 - [Interface e componentes](docs/interface/README.md)
 - [CI/CD e operação](docs/ci_cd/README.md)
 - [Estrutura, testes e versionamento](docs/estrutura/README.md)

@@ -19,7 +19,7 @@ Suggestion
 └── text
 ```
 
-O Core documentado disponibiliza `GET /api/suggestions`, `POST /api/suggestions` e `DELETE /api/suggestions`, com o header `X-User-Id`. Confirme os contratos atuais no Core antes de implementar ou alterar o consumo.
+O backend documentado disponibiliza `GET /api/suggestions`, `POST /api/suggestions` e `DELETE /api/suggestions`, com o header `X-User-Id`. Confirme os contratos atuais no backend antes de implementar ou alterar o consumo.
 
 ## Histórico do WIP
 
@@ -38,7 +38,7 @@ A documentação atribui o problema à ausência das props necessárias em `Sugg
 - Definir props e tipos de `SuggestionList`.
 - Definir se selecionar uma sugestão preenche o campo de entrada ou dispara o envio.
 - Definir estados de carregamento, lista vazia e erro.
-- Alinhar o modelo da Interface com o contrato do Core.
+- Alinhar o modelo da Interface com o contrato do Backend.
 
 ## Arquitetura esperada
 
@@ -49,7 +49,7 @@ Hook / camada de estado
        ↓
 Transport REST
        ↓
-Chat Core
+Chat Backend
 ```
 
 A comunicação HTTP não deve ficar diretamente dentro do componente visual.
@@ -60,7 +60,7 @@ A comunicação HTTP não deve ficar diretamente dentro do componente visual.
 - [ ] Sugestões renderizadas.
 - [ ] Seleção de sugestão funcionando.
 - [ ] Estados loading/empty/error tratados.
-- [ ] Contratos alinhados com o Core.
+- [ ] Contratos alinhados com o Backend.
 - [ ] Sem HTTP dentro dos componentes visuais.
 - [ ] Typecheck/build e testes apropriados aprovados.
 - [ ] PR aberto e integrado à `develop`.

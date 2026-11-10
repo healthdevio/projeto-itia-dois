@@ -40,7 +40,7 @@ Merge: `47540cd`
 
 | Arquivo                                    | Descrição                                    |
 | ------------------------------------------ | -------------------------------------------- |
-| `apps/docker/pw2c/docker-stack.yml`        | Stack do Swarm (Postgres, Core, Web)         |
+| `apps/docker/pw2c/docker-stack.yml`        | Stack do Swarm (Postgres, Backend, Web)      |
 | `apps/docker/pw2c/stack.env.example`       | Template das variáveis da stack              |
 | `apps/docker/entrypoint.sh`                | Espera Postgres → migration → server         |
 | `apps/docker/Dockerfile.core`              | Ganhou `postgresql-client` + `entrypoint.sh` |
@@ -69,7 +69,7 @@ Merge: `47540cd`
 | Arquivo                              | Mudança principal                                   |
 | ------------------------------------ | --------------------------------------------------- |
 | `apps/docker/Dockerfile.core`        | + `postgresql-client`; + `entrypoint.sh`            |
-| `apps/docker/pw2c/docker-stack.yml`  | Stack Swarm (Postgres + Core + Web)                 |
+| `apps/docker/pw2c/docker-stack.yml`  | Stack Swarm (Postgres + Backend + Web)              |
 | `apps/docker/pw2c/stack.env.example` | Template variáveis (sem secrets)                    |
 | `.github/workflows/cd.yml`           | Build + push apenas; sem deploy                     |
 | `.github/workflows/ci.yml`           | Inalterado                                          |
@@ -94,7 +94,7 @@ Merge: `47540cd`
 | `PUT` reenvia compose         | PUT substitui; corpo vazio apaga stack           |
 | `Env` vai inteiro             | Senha do Postgres vive no Env                    |
 | Postgres preso ao `compute01` | Volume local; banco que muda de nó sobe vazio    |
-| `replicas: 1` no Core         | Migration roda no start; 2 tasks = colisão       |
+| `replicas: 1` no Backend      | Migration roda no start; 2 tasks = colisão       |
 | Migration no `entrypoint.sh`  | Swarm: serviço perpétuo + sem `depends_on`       |
 | Sem healthcheck na stack      | Quem conta é o da imagem                         |
 | Senha como variável           | Uma fonte só; `:?` obriga preenchimento          |

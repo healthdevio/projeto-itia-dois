@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-`ChatRequest` representa o contrato utilizado para enviar uma solicitação de chat ao Core.
+`ChatRequest` representa o contrato utilizado para enviar uma solicitação de chat ao Back-end.
 
 O modelo reúne os dados de uma mensagem e permite o envio opcional de configurações para a resposta.
 
@@ -49,4 +49,4 @@ Os valores aceitos são definidos pelo modelo `ChatConfig`.
 
 - `Message`: fornece os campos básicos da mensagem.
 - `ChatConfigInput`: define as configurações opcionais da resposta.
-- `ChatContext`: representa o contexto utilizado internamente pelo Core e não faz parte deste contrato.
+- `ChatContext`: representa o contexto utilizado internamente pelo Back-end e não faz parte deste contrato.
