@@ -72,7 +72,7 @@ Ver [`README.md`](README.md) para o relato completo.
 | Código-fonte    | nenhum arquivo de `apps/` foi alterado pela migração |
 | Schema do banco | `conversations`, `messages`, `suggestions`           |
 | Contrato da API | rotas, header `X-User-Id`, formato de resposta       |
-| Validação       | os 4 jobs da CI, os 95 testes do Core                |
+| Validação       | os 4 jobs da CI, os 95 testes do Backend                |
 | Fluxo de branch | `develop` recebe PR, `main` recebe promoção          |
 
 A migração é de infraestrutura. O `Dockerfile.core` ganhou o `entrypoint.sh` como
@@ -96,10 +96,10 @@ core:
       condition: service_completed_successfully
 ```
 
-No Swarm, essa espera nunca aconteceria — e o Core subiria antes da migration.
+No Swarm, essa espera nunca aconteceria — e o Backend subiria antes da migration.
 
 **Solução:** o `entrypoint.sh` assume a ordenação. Ver
-[decisoes.md](../decisoes.md#a-migration-dentro-do-core).
+[decisoes.md](../decisoes.md#a-migration-dentro-do-backend).
 
 ### 2. Todo serviço do Swarm é perpétuo
 
@@ -109,7 +109,7 @@ simplesmente é recriado.
 O modelo antigo usava essa capacidade: `migrate-core` rodava, aplicava, saía.
 Copiado para o Swarm, viraria um laço de migrations.
 
-**Solução:** a mesma. Migration dentro do Core, antes do servidor HTTP.
+**Solução:** a mesma. Migration dentro do Backend, antes do servidor HTTP.
 
 ### 3. O Postgres era gerenciado por fora
 

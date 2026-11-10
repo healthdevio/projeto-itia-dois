@@ -95,7 +95,7 @@ Tem que ser a senha que o Postgres aceita:
 docker exec <id-do-container> env | grep POSTGRES
 ```
 
-Se divergirem, o banco sobe, o Core tenta entrar e falha com
+Se divergirem, o banco sobe, o Backend tenta entrar e falha com
 `password authentication failed`.
 
 Para trocar depois, é preciso alterar no banco **e** na variável:
@@ -132,7 +132,7 @@ confirmar que está de pé, aí trocar para `nvidia`.
 
 ## Portas
 
-O stack publica **só** a interface. O Core (3001) fica em `expose`, sem `ports` —
+O stack publica **só** a interface. O Backend (3001) fica em `expose`, sem `ports` —
 o backend valida JWT OIDC, mas a interface ainda precisa ser integrada para
 autorização.
 
@@ -144,7 +144,7 @@ ports:
 ```
 
 Em `mode: host` o Swarm publica no nó que roda a task. Com o Postgres fixo no
-`compute01` e o Core em qualquer nó, **`OMNIA_WEB_PORT` precisa ser o mesmo em
+`compute01` e o Backend em qualquer nó, **`OMNIA_WEB_PORT` precisa ser o mesmo em
 todos** — senão o acesso depende de qual servidor recebeu a task.
 
 ## Documentos relacionados

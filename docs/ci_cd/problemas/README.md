@@ -14,11 +14,11 @@ Este documento é o **diagnóstico**. O processo que evita cada um deles está e
 | `manifest unknown`                          | imagem não publicada            | [2](#2-manifest-unknown)                          |
 | `unauthorized`                              | credencial do registry          | [3](#3-unauthorized)                              |
 | `no matching manifest for linux/amd64`      | arquitetura errada              | [4](#4-no-matching-manifest-for-linuxamd64)       |
-| `web` responde 502                          | o Core não está no ar           | [5](#5-web-responde-502)                          |
+| `web` responde 502                          | o Backend não está no ar           | [5](#5-web-responde-502)                          |
 | `constraint requirements not satisfied`     | nenhum nó chamado `compute01`   | [6](#6-constraint-requirements-not-satisfied)     |
 | `relation "conversations" does not exist`   | banco vazio, em outro nó        | [7](#7-relation-conversations-does-not-exist)     |
-| `core` reiniciando em loop                  | banco fora ou senha errada      | [8](#8-core-reiniciando-em-loop)                  |
-| `postgres nao respondeu apos 30 tentativas` | o Core não acha o banco         | [9](#9-postgres-nao-respondeu-apos-30-tentativas) |
+| `core` reiniciando em loop                  | banco fora ou senha errada      | [8](#8-backend-reiniciando-em-loop)                  |
+| `postgres nao respondeu apos 30 tentativas` | o Backend não acha o banco         | [9](#9-postgres-nao-respondeu-apos-30-tentativas) |
 | migration falha sem motivo claro            | log incompleto                  | [10](#10-migration-falha-sem-causa)               |
 | migration pula a primeira                   | carimbo de outro pacote         | [11](#11-migration-pula-a-primeira)               |
 | workflow verde e a aplicação não mudou      | o `PUT` não redesenhou as tasks | [12](#12-workflow-verde-e-a-aplicação-não-mudou)  |
@@ -113,7 +113,7 @@ platforms: linux/amd64
 
 **Sintoma.** A interface abre, mas `/api/*` devolve 502.
 
-**Causa.** O nginx responde e o Core não. Quase sempre é o Core subindo devagar: a
+**Causa.** O nginx responde e o Backend não. Quase sempre é o Backend subindo devagar: a
 migration roda antes do servidor HTTP, e isso leva alguns segundos.
 
 **Como diagnosticar.**
@@ -123,13 +123,13 @@ docker service ls --filter name=omnia_core    # deve mostrar 1/1
 docker service logs omnia_core --tail 50
 ```
 
-**Se o Core estiver em `0/1`**, o problema é de subida — vá ao problema 8.
+**Se o Backend estiver em `0/1`**, o problema é de subida — vá ao problema 8.
 
 ---
 
 ## 6. `constraint requirements not satisfied`
 
-**Sintoma.** O Postgres fica em `Pending`, e o Core em `0/1`.
+**Sintoma.** O Postgres fica em `Pending`, e o Backend em `0/1`.
 
 **Causa.** A constraint exige um nó chamado `compute01`:
 
@@ -157,13 +157,13 @@ pré-requisito que mais trava.
 
 ## 7. `relation "conversations" does not exist`
 
-**Sintoma.** O Core conecta no banco e a API falha ao consultar.
+**Sintoma.** O Backend conecta no banco e a API falha ao consultar.
 
 **Causa.** O Postgres **não está no `compute01`**. O volume é local, e um banco
 em outro nó sobe vazio — e a migration, longe de falhar, cria o schema no lugar
 errado.
 
-Este é o sintoma mais enganoso do catálogo: o log do Core mostra a migration
+Este é o sintoma mais enganoso do catálogo: o log do Backend mostra a migration
 como aplicada com sucesso, e o banco realmente recebeu as tabelas. Só que em um
 outro banco.
 
@@ -173,7 +173,7 @@ outro banco.
 docker service ps omnia_postgres --no-trunc
 ```
 
-`CURRENT NODE` precisa ser `compute01`. E o log do Core precisa mostrar a conexão
+`CURRENT NODE` precisa ser `compute01`. E o log do Backend precisa mostrar a conexão
 no banco certo:
 
 ```bash
@@ -200,7 +200,7 @@ docker volume ls | grep omnia_postgres
 
 ## 8. `core` reiniciando em loop
 
-**Sintoma.** O Core sobe e cai. `0/1` ou `1/1` oscilando.
+**Sintoma.** O Backend sobe e cai. `0/1` ou `1/1` oscilando.
 
 **Causa.** Uma de duas:
 
@@ -219,9 +219,9 @@ docker service logs omnia_core --tail 50
 
 ### Senha errada
 
-O Core lê a senha do secret, mas o Postgres foi criado com a senha que estava em
+O Backend lê a senha do secret, mas o Postgres foi criado com a senha que estava em
 `DATABASE_URL` no `docker-stack.yml`. Se as duas divergirem, o banco sobe e o
-Core não entra.
+Backend não entra.
 
 ```bash
 docker exec <id-postgres> env | grep POSTGRES
@@ -236,7 +236,7 @@ docker exec <id-postgres> env | grep POSTGRES
 
 **Sintoma.** O `entrypoint.sh` desiste de esperar.
 
-**Causa.** O Core não resolve o nome `postgres`, ou o banco não está no ar.
+**Causa.** O Backend não resolve o nome `postgres`, ou o banco não está no ar.
 
 **Como diagnosticar.**
 
@@ -247,7 +247,7 @@ docker service inspect omnia_core --format '{{json .Spec.TaskTemplate.Networks}}
 
 Os dois precisam listar `omnia_net`.
 
-**Como resolver.** Se o Postgres estiver `1/1` e o Core não acha o nome, os dois
+**Como resolver.** Se o Postgres estiver `1/1` e o Backend não acha o nome, os dois
 serviços estão em redes diferentes — confira `docker stack ls` e recrie a stack.
 
 ---
@@ -285,8 +285,8 @@ if (error instanceof Error && error.cause) {
 **Sintoma.** A primeira migration de um pacote nunca é aplicada.
 
 **Causa.** Dois pacotes do Drizzle no **mesmo banco**, com a tabela de controle
-compartilhada. O migrator decide o que já rodou comparando timestamps, e o Core lê
-o carimbo do `knowledge` — que é mais novo que a primeira migration do Core.
+compartilhada. O migrator decide o que já rodou comparando timestamps, e o Backend lê
+o carimbo do `knowledge` — que é mais novo que a primeira migration do Backend.
 
 **Como resolver.** Dar um schema próprio ao pacote:
 

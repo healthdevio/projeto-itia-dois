@@ -5,17 +5,17 @@
 O **Chat Omnia** é um chatbot de suporte proposto pela empresa para
 auxiliar usuários/clientes em dúvidas e interações relacionadas ao
 serviço. O projeto foi organizado como um **monorepo**, com
-responsabilidades separadas entre Interface, Chat Core, transporte e
+responsabilidades separadas entre Interface, Chat Backend, transporte e
 componentes de IA/conhecimento.
 
 Na arquitetura atual, a Interface está em `apps/chat-omnia/` e o Chat
-Core em `apps/chat-back/`. A Interface é responsável pela apresentação e
-interação do usuário; regras de domínio, contratos e estados do Core
+Backend em `apps/chat-back/`. A Interface é responsável pela apresentação e
+interação do usuário; regras de domínio, contratos e estados do Backend
 devem permanecer desacoplados da camada visual.
 
 O desenvolvimento segue uma abordagem incremental: cada task entrega uma
 parte funcional do produto sem antecipar responsabilidades de outras
-camadas. Integrações reais com Core, REST, SSE, autenticação, IA e
+camadas. Integrações reais com Backend, REST, SSE, autenticação, IA e
 conhecimento devem ser feitas nos pontos definidos pela arquitetura, e
 não diretamente nos componentes visuais.
 

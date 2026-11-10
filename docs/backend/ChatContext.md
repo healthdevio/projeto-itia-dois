@@ -40,7 +40,7 @@ A estrutura utiliza `ChatConfig` por meio de uma importação de tipo. Os campos
 
 ## Escopo atual
 
-O `ChatContext` está definido como modelo de dados. Sua criação não altera o contexto operacional `AIContext`, utilizado atualmente pelo Core para montar o histórico enviado ao provider da IA.
+O `ChatContext` está definido como modelo de dados. Sua criação não altera o contexto operacional `AIContext`, utilizado atualmente pelo Backend para montar o histórico enviado ao provider da IA.
 
 A estrutura ainda não está integrada ao fluxo de mensagens, à autenticação, à sessão ou a uma integração com Host. Esses usos dependem de implementação posterior.
 

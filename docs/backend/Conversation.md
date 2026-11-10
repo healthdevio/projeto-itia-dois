@@ -1,15 +1,15 @@
 # Modelo de Conversation
 
-Esse documento trata de como deve ser formatada a conversa atual que o Core entrega para a interface, e de como ela é armazenada.
+Esse documento trata de como deve ser formatada a conversa atual que o Backend entrega para a interface, e de como ela é armazenada.
 
 > **A conversa NÃO é enviada para a AI.**
-> A conversa é estado interno do Core, persistido no Postgres. Apenas as mensagens saem do Core. A cada nova mensagem, o Core monta o contexto (mensagens anteriores + ids do histórico) e o envia junto com a mensagem, para que a AI tenha consciência do diálogo sem nunca ver a conversa como objeto.
+> A conversa é estado interno do Backend, persistido no Postgres. Apenas as mensagens saem do Backend. A cada nova mensagem, o Backend monta o contexto (mensagens anteriores + ids do histórico) e o envia junto com a mensagem, para que a AI tenha consciência do diálogo sem nunca ver a conversa como objeto.
 
 #### O que é a conversation?
 
 É o retrato completo do que a interface precisa para renderizar a tela de chat: a conversa em andamento, o estado atual da máquina de estados e as conversas anteriores.
 
-Diferente da `message`, que é enviada para a AI, a `conversation` é **lida** pela interface e **guardada** pelo Core. Ela nunca atravessa a fronteira do Core.
+Diferente da `message`, que é enviada para a AI, a `conversation` é **lida** pela interface e **guardada** pelo Backend. Ela nunca atravessa a fronteira do Backend.
 
 ---
 
@@ -29,7 +29,7 @@ Configure `OIDC_ISSUER`, `OIDC_AUDIENCE` e `OIDC_JWKS_URL`; produção exige URL
 
 O JWT precisa ser emitido por um provedor de identidade confiável e estar destinado a esta API (`aud`). A configuração genérica está implementada, mas ainda depende dos valores reais do provedor. O tenant opcional vem do claim `OIDC_TENANT_CLAIM` (padrão `tenant_id`), nunca do header controlado pelo cliente.
 
-### O que o Core garante hoje
+### O que o Backend garante hoje
 
 Com a identidade resolvida, o isolamento é garantido em três camadas:
 
@@ -192,11 +192,11 @@ Os atalhos (`id`, `state`, `messages`) existem para que a interface renderize a 
 | `created_at` | `string`                | Data de criação. ISO 8601.          |
 | `updated_at` | `string`                | Data da última alteração. ISO 8601. |
 
-Existe **exatamente uma** conversa ativa no Core. Todas as demais formam o `history`.
+Existe **exatamente uma** conversa ativa no Backend. Todas as demais formam o `history`.
 
 ### `ConversationMessage`
 
-Estende o modelo `Message` de `docs/core/Message.md` com um único campo.
+Estende o modelo `Message` de `docs/backend/Message.md` com um único campo.
 
 | Campo        | Tipo                    | Descrição                  |
 | ------------ | ----------------------- | -------------------------- |
@@ -207,7 +207,7 @@ Estende o modelo `Message` de `docs/core/Message.md` com um único campo.
 | `origin`     | `string`                | Origem da mensagem.        |
 | `role`       | `"user" \| "assistant"` | Quem produziu a mensagem.  |
 
-`role` é atribuído pelo Core ao persistir. O contrato de **entrada** `POST /api/messages` permanece inalterado: a interface não envia `role`.
+`role` é atribuído pelo Backend ao persistir. O contrato de **entrada** `POST /api/messages` permanece inalterado: a interface não envia `role`.
 
 ### `ConversationState`
 
@@ -220,7 +220,7 @@ Máquina de estados do chat.
 | `success`   | A última troca terminou bem. Mostrar a resposta.                                  |
 | `error`     | A última operação falhou. Oferecer retry.                                         |
 
-Transições aplicadas pelo Core a cada envio:
+Transições aplicadas pelo Backend a cada envio:
 
 ```
 idle ──► streaming ──► success
@@ -229,13 +229,13 @@ idle ──► streaming ──► success
 error ──► streaming  |  error ──► idle
 ```
 
-O Core aplica as transições sozinho conforme o resultado do envio para a AI. A interface apenas reage ao `state` recebido.
+O Backend aplica as transições sozinho conforme o resultado do envio para a AI. A interface apenas reage ao `state` recebido.
 
-As transições são **validadas no repositório**: `transitionConversationState` recusa qualquer movimento fora da tabela com `InvalidStateTransitionError`, sem escrever nada — a conversa continua no estado anterior e a rota devolve `500`, porque uma transição ilegal é sempre bug do Core, nunca do cliente. A única escrita que não passa pela máquina é o `rotate`, que encerra a conversa (lifecycle, não transição: pode fechar até uma conversa em `streaming`).
+As transições são **validadas no repositório**: `transitionConversationState` recusa qualquer movimento fora da tabela com `InvalidStateTransitionError`, sem escrever nada — a conversa continua no estado anterior e a rota devolve `500`, porque uma transição ilegal é sempre bug do Backend, nunca do cliente. A única escrita que não passa pela máquina é o `rotate`, que encerra a conversa (lifecycle, não transição: pode fechar até uma conversa em `streaming`).
 
 `streaming` cobre a espera inteira pela resposta — hoje ela chega de uma vez, e o nome já antecipa o streaming de verdade (token a token), quando ele existir.
 
-Valores antigos (`greeting`, `thinking`) ainda podem estar no banco: na leitura, o Core os normaliza para o equivalente atual (`idle`, `streaming`), e a próxima escrita já grava o valor novo. Ver `normalizeConversationState` em `src/models/conversation.ts`.
+Valores antigos (`greeting`, `thinking`) ainda podem estar no banco: na leitura, o Backend os normaliza para o equivalente atual (`idle`, `streaming`), e a próxima escrita já grava o valor novo. Ver `normalizeConversationState` em `src/models/conversation.ts`.
 
 ---
 
@@ -286,7 +286,7 @@ A chave primária de `suggestions` é o par `(conversation_id, suggestion_id)`, 
 
 Três invariantes são impostas pelo Postgres, e não apenas pela aplicação:
 
-- **No máximo uma conversa ativa por usuário.** O índice parcial único `conversations_user_single_active_idx` cobre apenas as linhas com `is_active = true` e usa o par `(user_id, is_active)` como chave. Usuários distintos não colidem, porque o `user_id` faz parte da chave; o mesmo usuário, ao tentar abrir uma segunda conversa ativa, recebe violação de unicidade. Duas requisições simultâneas do mesmo usuário são tratadas pelo Core, que devolve a conversa vencedora.
+- **No máximo uma conversa ativa por usuário.** O índice parcial único `conversations_user_single_active_idx` cobre apenas as linhas com `is_active = true` e usa o par `(user_id, is_active)` como chave. Usuários distintos não colidem, porque o `user_id` faz parte da chave; o mesmo usuário, ao tentar abrir uma segunda conversa ativa, recebe violação de unicidade. Duas requisições simultâneas do mesmo usuário são tratadas pelo Backend, que devolve a conversa vencedora.
 - **`message_id` único apenas dentro da conversa.** Graças à chave composta, dois usuários podem usar o mesmo `message_id` (`msg-1`) em conversas diferentes, e reenviar a mesma mensagem na mesma conversa continua sendo um no-op — o que torna o envio idempotente.
 - **`role` fechado em `user | assistant`.** A constraint `messages_role_check` rejeita qualquer outro valor.
 
@@ -299,7 +299,7 @@ DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/omnia
 # 2. Aplicar as migrations
 npm run db:migrate
 
-# 3. Rodar o Core
+# 3. Rodar o backend
 npm run dev
 ```
 
@@ -307,7 +307,7 @@ Scripts disponíveis: `db:generate`, `db:migrate`, `db:push`, `db:studio`.
 
 ### Comportamento sem banco
 
-O pool de conexões é preguiçoso: o Core sobe e responde ao health check mesmo com o Postgres indisponível.
+O pool de conexões é preguiçoso: o Backend sobe e responde ao health check mesmo com o Postgres indisponível.
 
 | Situação                    | Resposta                                                    |
 | --------------------------- | ----------------------------------------------------------- |
@@ -326,7 +326,7 @@ A ausência de token Bearer válido é independente do banco: responde `401` sem
 ### Divisão de responsabilidades
 
 ```
-Interface                 Core                          provider da AI
+Interface               Backend                          provider da AI
    │                        │                                  │
    │ GET /conversations/    │                                  │
    │ current                │                                  │
@@ -343,7 +343,7 @@ Interface                 Core                          provider da AI
    │◄───────────────────────│  grava a resposta (role: "assistant")  │
 ```
 
-**A conversa não sai do Core.** A única coisa que atravessa a fronteira é o trio `{ message, context, config }` montado por `src/services/ai/`: a mensagem nova, a fatia mínima do diálogo e a configuração que a interface pediu. O `config` não vem da conversa — vem do cliente, e vale só para este envio. Ver [ChatConfig.md](./ChatConfig.md).
+**A conversa não sai do Backend.** A única coisa que atravessa a fronteira é o trio `{ message, context, config }` montado por `src/services/ai/`: a mensagem nova, a fatia mínima do diálogo e a configuração que a interface pediu. O `config` não vem da conversa — vem do cliente, e vale só para este envio. Ver [ChatConfig.md](./ChatConfig.md).
 
 O contexto é montado a partir da conversa **do usuário que enviou a mensagem**. Nenhum histórico de outro usuário é lido para construir esse payload.
 
@@ -365,29 +365,29 @@ Em conversas longas, só as `max_context_messages` mensagens mais recentes são 
 
 ### Sem estado na AI
 
-A AI não guarda conversa. Todo o histórico é reconstruído pelo Core a partir do Postgres no momento de cada envio. Consequência: ela responde com consciência do diálogo, mas uma queda do Core não perde nada, porque o estado nunca esteve nela.
+A AI não guarda conversa. Todo o histórico é reconstruído pelo Backend a partir do Postgres no momento de cada envio. Consequência: ela responde com consciência do diálogo, mas uma queda do Backend não perde nada, porque o estado nunca esteve nela.
 
 A mesma coisa vale para a configuração: o `config` do envio é um despacho, não estado. Ele não é storeado, não sobrevive à mensagem seguinte e não volta em nenhum endpoint de conversa. Ver [ChatConfig.md](./ChatConfig.md).
 
-### A fronteira: o Core não sabe o que é IA
+### A fronteira: o Backend não sabe o que é IA
 
-O Core não conhece provider, modelo, prompt nem formato de requisição de
+O Backend não conhece provider, modelo, prompt nem formato de requisição de
 nenhuma API de IA. Isso mora atrás da interface `AIProvider`, em
-`src/services/ai/providers/`. O Core monta o contexto e chama o provider;
+`src/services/ai/providers/`. O Backend monta o contexto e chama o provider;
 quem decide como gerar o texto é o outro lado da interface.
 
-O provider roda dentro do processo do Core — a AI não é mais um serviço
+O provider roda dentro do processo do Backend — a AI não é mais um serviço
 separado, e não há mais endpoint para configurar. Isso muda o
 transporte, não a fronteira: o provider continua sem conhecer rotas, conversa,
-sugestões ou banco, e o Core continua sem conhecer provider.
+sugestões ou banco, e o Backend continua sem conhecer provider.
 
 O mesmo vale para as opções que a interface escolhe: idioma, tom e tamanho
-chegam como etiquetas e saem como etiquetas. O Core valida o formato, não o
+chegam como etiquetas e saem como etiquetas. O Backend valida o formato, não o
 significado — ele sabe o que `formal` quer dizer na tela, e o que isso vira no
 modelo é do provider.
 
-Falar de "a AI tem consciência do contexto" não significa que o Core integra
-um modelo: significa que o Core reconstrói, a cada envio, tudo o que a IA
+Falar de "a AI tem consciência do contexto" não significa que o Backend integra
+um modelo: significa que o Backend reconstrói, a cada envio, tudo o que a IA
 precisa para não começar do zero — e ela não precisa guardar nada.
 
 Na prática, o contrato é `AIProvider.respond({ message, context, config })` com

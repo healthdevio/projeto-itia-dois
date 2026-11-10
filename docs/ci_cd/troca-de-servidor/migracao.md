@@ -64,7 +64,7 @@ da stack.
 
 **Antes:** o banco era gerenciado pelo Portainer numa rede externa, e o compose
 do deploy só o alcançava. Subir um `postgres` naquele compose criaria um banco
-novo e vazio, com volume separado, e o Core passaria a falar com ele em vez do
+novo e vazio, com volume separado, e o Backend passaria a falar com ele em vez do
 real.
 
 **Agora:** a stack é dona do banco. O Swarm resolve `postgres` pelo DNS da rede
@@ -98,11 +98,11 @@ enganoso que isso previne.
 |              | Antes                            | Agora                      |
 | ------------ | -------------------------------- | -------------------------- |
 | Onde         | serviço `migrate-core`           | dentro do `entrypoint.sh`  |
-| Como termina | `restart: 'no'` e sai            | não termina; o Core assume |
+| Como termina | `restart: 'no'` e sai            | não termina; o Backend assume |
 | Quem espera  | `service_completed_successfully` | o próprio script           |
 
 O modelo antigo dependia de duas coisas que o Swarm não tem: container que
-termina, e `depends_on` que funciona. Ver [decisoes.md](../decisoes.md#a-migration-dentro-do-core).
+termina, e `depends_on` que funciona. Ver [decisoes.md](../decisoes.md#a-migration-dentro-do-backend).
 
 O `entrypoint.sh` faz três coisas em ordem:
 
@@ -130,7 +130,7 @@ POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .Env da stac
 ```
 
 Sem a variável, o Swarm **recusa a stack** com mensagem explícita. Antes, uma
-senha errada produzia um banco que aceitava a si mesmo e um Core que não
+senha errada produzia um banco que aceitava a si mesmo e um Backend que não
 conseguia entrar — o sintoma mais difícil de diagnosticar do modelo antigo.
 
 ## 6. O gatilho
@@ -154,7 +154,7 @@ do PR.
 
 |          | Antes                                     | Agora          |
 | -------- | ----------------------------------------- | -------------- |
-| Core     | healthcheck no compose, `service_healthy` | só o da imagem |
+| Backend     | healthcheck no compose, `service_healthy` | só o da imagem |
 | Postgres | serviço `db` com `pg_isready`             | nenhum         |
 
 A seção `healthcheck:` do compose é redundante no Swarm: quem manda é o

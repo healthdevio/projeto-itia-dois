@@ -56,7 +56,7 @@ git push -u itia feat/nome-da-tarefa
 - **Monorepo** com dois apps principais: `chat-core` (backend NestJS/TypeScript) e `chat-omnia` (frontend React)
 - **Banco de Dados**: PostgreSQL 16 com pgvector, gerenciado por Docker Swarm
 - **Infraestrutura**: Docker Swarm (Portainer), registry privado `registry.cloud.grupopw2c.com.br`
-- **API Gateway**: Nginx (proxy para o Core na porta 80)
+- **API Gateway**: Nginx (proxy para o Backend na porta 80)
 - **IA**: Provider `echo` para testes, NVIDIA NIM para produção
 
 ### Arquivos Modificados Recentemente
@@ -69,8 +69,8 @@ git push -u itia feat/nome-da-tarefa
 | `apps/chat-core/tsconfig.json`       | Configuração      | Adição de `"types": ["node"]`                                                             |
 | `apps/chat-core/tsconfig.test.json`  | Configuração      | Adição de `"types": ["node"]`                                                             |
 | `apps/chat-core/tsconfig.json`       | Configuração      | Adição de `"types": ["node"]`                                                             |
-| `docs/core/health-check-core.md`     | Nova documentação | Documentação das rotas de health check do Core                                            |
-| `docs/core/fluxo-git-e-contexto.md`  | Nova documentação | Este arquivo - fluxo de git e contexto do projeto                                         |
+| `docs/backend/health-check-backend.md`     | Nova documentação | Documentação das rotas de health check do Backend                                            |
+| `docs/backend/fluxo-git-e-contexto.md`  | Nova documentação | Este arquivo - fluxo de git e contexto do projeto                                         |
 | `apps/docker/pw2c/.env`              | Novo arquivo      | Variáveis de ambiente da stack PW2C                                                       |
 | `apps/docker/pw2c/stack.env.example` | Removido          | Template removido conforme solicitação                                                    |
 
@@ -110,7 +110,7 @@ git checkout -b feat/health-check-core-contexto
 git add .
 # Isto adicionará:
 # - Modified files (códigos, configs, yamls)
-# - Novo markdown: docs/core/fluxo-git-e-contexto.md
+# - Novo markdown: docs/backend/fluxo-git-e-contexto.md
 # - Novo arquivo: apps/docker/pw2c/.env
 # - Removido: apps/docker/pw2c/stack.env.example
 ```
@@ -120,7 +120,7 @@ git add .
 ```bash
 git commit -m "feat: adiciona guia de fluxo de git e contexto do projeto
 
-- Cria docs/core/fluxo-git-e-contexto.md com regras de commit,
+- Cria docs/backend/fluxo-git-e-contexto.md com regras de commit,
   fluxo git, contexto do projeto e variáveis críticas
 - Atualiza códigos e configs conforme trabalho realizado
 - Remove stack.env.example desnecessário
@@ -158,11 +158,11 @@ develop
 
 ## 5. Checklist Pré-Deploy (Antes de Merge para Main)
 
-- [ ] Container core está `Running` (não `starting → complete`)
+- [ ] Container backend está `Running` (não `starting → complete`)
 - [ ] `https://projeto-itia-dois.cloud.grupopw2c.com.br/health` retorna `{"status":"ok",...}`
 - [ ] `POSTGRES_PASSWORD` = `omniabanco2026` no Portainer
 - [ ] `CORE_PORT` = `80` no Portainer e no yaml
-- [ ] Constraint `node.hostname == compute01` no core está ativo
+- [ ] Constraint `node.hostname == compute01` no backend está ativo
 - [ ] As 6 secrets do GitHub estão configurados (2 registry + 4 Portainer)
 - [ ] Nó `compute01` está `Ready` em `docker node ls`
 
@@ -175,7 +175,7 @@ develop
 | Container `starting → complete` | Variáveis de env inconsistentes                      | Verificar POSTGRES_PASSWORD, POSTGRES_USER no Portainer |
 | `502 Bad Gateway`               | Nginx não proxyando corretamente                     | Reiniciar stack + Repull image                          |
 | Health check `starting` parado  | Docker checkando `/health` antes do app estar pronto | Aguardar 2-3 minutos após o container ficar `Running`   |
-| Código não sobe para o core     | Branch errada ou yaml com erro                       | Verificar `git push -u itia feat/nome` e yaml syntax    |
+| Código não sobe para o backend     | Branch errada ou yaml com erro                       | Verificar `git push -u itia feat/nome` e yaml syntax    |
 
 ---
 

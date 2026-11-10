@@ -35,7 +35,7 @@ O registro histórico informa que as mensagens eram mantidas no estado do `App` 
 
 ## Cuidados
 
-O modelo visual histórico usa `author: 'user' | 'omnia'`, enquanto o Core utiliza conceitos como `role: user | assistant`. A conversão deve ser centralizada em um contrato/mapeamento explícito.
+O modelo visual histórico usa `author: 'user' | 'omnia'`, enquanto o Backend utiliza conceitos como `role: user | assistant`. A conversão deve ser centralizada em um contrato/mapeamento explícito.
 
 Mensagens reais devem usar identificadores estáveis quando disponíveis.
 

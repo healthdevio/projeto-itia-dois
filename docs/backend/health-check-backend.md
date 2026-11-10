@@ -1,4 +1,4 @@
-# Health Check — Core (Backend)
+# Health Check do Backend
 
 **Arquivo:** `apps/chat-back/src/index.ts`
 **Endpoints:** `GET /health`, `GET /health/ready`, `GET /health/live`
@@ -20,11 +20,11 @@
 
 ## Implementação
 
-As rotas foram adicionadas em `apps/chat-back/src/index.ts` após os imports. O nginx (`apps/docker/nginx.conf`) já proxyava `/health` para o Core. Agora o core responde corretamente, liberando o endpoint.
+As rotas foram adicionadas em `apps/chat-back/src/index.ts` após os imports. O nginx (`apps/docker/nginx.conf`) já proxyava `/health` para o Backend. Agora o backend responde corretamente, liberando o endpoint.
 
 ## Checklist de Deploy
 
-- [ ] Core rebuild e push da nova imagem
+- [ ] Backend rebuild e push da nova imagem
 - [ ] Atualizar stack no Portainer (`OMNIA_CORE_IMAGE` → nova tag)
 - [ ] `Update the stack` + `Repull image`
 - [ ] Testar: `curl https://projeto-itia-dois.cloud.grupopw2c.com.br/health`
@@ -35,4 +35,4 @@ As rotas foram adicionadas em `apps/chat-back/src/index.ts` após os imports. O 
 
 | Data       | Mudança                                                                       |
 | ---------- | ----------------------------------------------------------------------------- |
-| 2026-10-20 | Criação: rotas `/health`, `/health/ready`, `/health/live` adicionadas ao Core |
+| 2026-10-20 | Criação: rotas `/health`, `/health/ready`, `/health/live` adicionadas ao Backend |

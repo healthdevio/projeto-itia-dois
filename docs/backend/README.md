@@ -1,4 +1,4 @@
-# Core
+# Backend
 
 Contrato da API, para quem consome.
 
@@ -33,7 +33,7 @@ curl -H "Authorization: Bearer <access-token>" http://localhost:3001/api/convers
 
 Sem token válido ou sem configuração OIDC, a resposta é `401`.
 
-> O Core valida assinatura, issuer, audience e expiração do JWT via JWKS. Configure
+> O Backend valida assinatura, issuer, audience e expiração do JWT via JWKS. Configure
 > `OIDC_ISSUER`, `OIDC_AUDIENCE` e `OIDC_JWKS_URL`; o claim `sub` determina o
 > usuário. Headers `X-User-Id` e `X-Tenant-Id` enviados pelo cliente são ignorados.
 

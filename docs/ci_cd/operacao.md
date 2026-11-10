@@ -51,7 +51,7 @@ http://<host>:8080
 
 ### Conferir a API pelo proxy
 
-Prova a cadeia inteira: navegador → nginx → Core → Postgres.
+Prova a cadeia inteira: navegador → nginx → Backend → Postgres.
 
 ```powershell
 curl.exe -H "Authorization: Bearer <access-token>" http://<host>:8080/api/conversations/current
@@ -80,9 +80,9 @@ Com `AI_PROVIDER=echo`, a resposta vem com `[echo] Recebi: ...`, sem gastar cota
 | `manifest unknown`                        | login ok; a imagem não foi publicada                                        |
 | `unauthorized` no `pull`                  | credencial do registry                                                      |
 | `no matching manifest for linux/amd64`    | a imagem foi construída para outra arch                                     |
-| `web` responde 502                        | o Core não está no ar                                                       |
+| `web` responde 502                        | o Backend não está no ar                                                       |
 | `core` reiniciando em loop                | banco fora, ou senha errada                                                 |
-| `relation "conversations" does not exist` | o Core conectou num banco vazio                                             |
+| `relation "conversations" does not exist` | o Backend conectou num banco vazio                                             |
 | `constraint requirements not satisfied`   | nenhum nó chamado `compute01`                                               |
 | publicação verde e a aplicação não mudou  | `DEPLOY_ENABLED` está desligado, webhook falhou ou serviço não usa `latest` |
 
@@ -93,22 +93,22 @@ docker service logs omnia_core -f
 docker service logs omnia_postgres -f
 ```
 
-O log do Core começa pelo `entrypoint.sh`, que é onde a causa costuma estar:
+O log do Backend começa pelo `entrypoint.sh`, que é onde a causa costuma estar:
 
 ```
 [entrypoint] esperando o postgres
 [entrypoint] postgres nao respondeu apos 30 tentativas
 ```
 
-Essa linha é a resposta mais direta que existe: o banco não subiu, ou o Core
+Essa linha é a resposta mais direta que existe: o banco não subiu, ou o Backend
 não resolveu o nome.
 
 ### Quando o Postgres não resolve
 
-Sintoma: `getaddrinfo ENOTFOUND postgres`, ou o Core sai com
+Sintoma: `getaddrinfo ENOTFOUND postgres`, ou o Backend sai com
 `postgres nao respondeu apos 30 tentativas`.
 
-No Swarm, o nome vem da rede overlay. Conferir se o Core está na mesma rede:
+No Swarm, o nome vem da rede overlay. Conferir se o Backend está na mesma rede:
 
 ```bash
 docker service inspect omnia_core --format '{{json .Spec.TaskTemplate.Networks}}'
@@ -118,7 +118,7 @@ Tem que listar `omnia_net`, e o mesmo para o Postgres.
 
 ### Quando o banco sobe vazio
 
-Sintoma: `relation "conversations" does not exist`, mas o log do Core mostra a
+Sintoma: `relation "conversations" does not exist`, mas o log do Backend mostra a
 migration como aplicada.
 
 Isso é o Postgres **não está no `compute01`**. O volume é local, e um banco em
