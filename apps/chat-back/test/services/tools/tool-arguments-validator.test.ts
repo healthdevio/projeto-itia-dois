@@ -7,6 +7,7 @@ import { validateToolArguments } from '../../../src/services/tools/tool-argument
 const searchTool: Tool = {
   name: 'buscar_cliente',
   description: 'Busca os dados de um cliente.',
+  required_permissions: ['customer.read'],
   input_schema: {
     type: 'object',
     properties: {

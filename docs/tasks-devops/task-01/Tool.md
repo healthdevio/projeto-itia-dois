@@ -10,23 +10,30 @@ Omnia IA, com campos para identificá-la e descrever a capacidade oferecida.
 O tipo está definido em `apps/chat-back/src/models/tool.ts`:
 
 ```ts
+import type { Schema } from 'ajv';
+import type { PermissionCode } from './permission.js';
+
 export interface Tool {
   name: string;
   description: string;
+  input_schema: Schema;
+  required_permissions: PermissionCode[];
 }
 ```
 
-| Campo         | Tipo     | Descrição                                             |
-| ------------- | -------- | ----------------------------------------------------- |
-| `name`        | `string` | Identificador estável da ferramenta.                  |
-| `description` | `string` | Descrição da capacidade oferecida pela ferramenta.    |
+| Campo                  | Tipo               | Descrição                                                |
+| ---------------------- | ------------------ | -------------------------------------------------------- |
+| `name`                 | `string`           | Identificador estável da ferramenta.                     |
+| `description`          | `string`           | Descrição da capacidade oferecida pela ferramenta.       |
+| `input_schema`         | `Schema`           | JSON Schema dos argumentos aceitos pela ferramenta.      |
+| `required_permissions` | `PermissionCode[]` | Códigos de permissão necessários para usar a ferramenta. |
 
 ## Escopo desta task
 
-Este modelo define apenas a identidade e a descrição da ferramenta. Ele não
-inclui parâmetros, schema de entrada, validação, permissões nem lógica de
-execução. Esses aspectos devem ser tratados nas tasks correspondentes, conforme
-a integração com ferramentas evoluir.
+O modelo descreve a identidade, a capacidade, o formato dos argumentos e as
+permissões exigidas pela ferramenta. Ele não valida argumentos, concede ou
+confere permissões nem executa a ferramenta. Esses comportamentos são tratados
+nas tasks correspondentes.
 
 ## Exemplo
 
@@ -34,5 +41,14 @@ a integração com ferramentas evoluir.
 const tool: Tool = {
   name: 'buscar_cliente',
   description: 'Busca os dados de um cliente.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      customer_id: { type: 'string' },
+    },
+    required: ['customer_id'],
+    additionalProperties: false,
+  },
+  required_permissions: ['customer.read'],
 };
 ```

@@ -19,7 +19,7 @@ O modelo define apenas o formato dos dados. Ele não busca informações do usu�
 | `preferences`    | `ChatConfig`              | Preferências de atendimento, como idioma, tom e tamanho da resposta. |
 | `session`        | `Record<string, unknown>` | Informações relacionadas à sessão atual.                             |
 | `current_page`   | `string`                  | Página ou área atual em que o chat está sendo utilizado.             |
-| `permissions`    | `string[]`                | Lista de permissões disponíveis no contexto.                         |
+| `permissions`    | `PermissionCode[]`        | Permissões disponíveis, com códigos no formato `recurso.ação`.       |
 | `system_context` | `string`                  | Informações adicionais sobre o contexto do sistema.                  |
 
 Todos os campos são opcionais. Isso permite que o contexto seja construído gradualmente, conforme as informações estiverem disponíveis.
@@ -43,6 +43,11 @@ A estrutura utiliza `ChatConfig` por meio de uma importação de tipo. Os campos
 O `ChatContext` está definido como modelo de dados. Sua criação não altera o contexto operacional `AIContext`, utilizado atualmente pelo Core para montar o histórico enviado ao provider da IA.
 
 A estrutura ainda não está integrada ao fluxo de mensagens, à autenticação, à sessão ou a uma integração com Host. Esses usos dependem de implementação posterior.
+
+Os códigos são tipados em `apps/chat-back/src/models/permission.ts`. A presença
+de `permissions` neste modelo não concede autorização: quando integrado, o
+backend deve preenchê-lo a partir de uma fonte confiável, nunca confiar em
+permissões enviadas livremente pelo cliente.
 
 ## Task relacionada
 
