@@ -36,9 +36,15 @@ reverter.
 
 ```
 docs/
-├── ci_cd/        o processo de entrega, do push ao deploy
-├── core/         o contrato do Core, para quem consome a API
-└── estrutura/    as peças que sustentam o processo
+├── ci_cd/                       CI/CD, deploy, operação e diagnóstico
+├── changelog/                   registros históricos de alterações
+├── contexto/                    arquitetura e contexto de manutenção
+├── core/                        contratos da API
+├── dependabot/                  configuração e atualizações de dependências
+├── estrutura/                   Docker, ambientes, testes e versionamento
+├── implementacao-nova-seguranca/ registro histórico de implementação
+├── interface/                   componentes e configuração da interface
+└── seguranca-workflows/         estado atual dos controles e workflows
 ```
 
 A regra: **o que alguém precisa saber para fazer algo pertence ao processo de

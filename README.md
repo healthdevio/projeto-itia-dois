@@ -137,9 +137,10 @@ npm run format
 ```
 
 `npm run format` **altera arquivos** usando Prettier; use `npm run format:check`
-para apenas verificar. Em Pull Requests para `develop` e `main`, a CI executa a
-verificação sem escrita. Se falhar, rode `npm run format` localmente e envie um
-novo commit. A CI não cria commits de formatação.
+para apenas verificar. Em Pull Requests para `develop` e `main`, a CI aplica a
+formatação e gera um patch. Para branches do próprio repositório, um job
+separado envia um commit automático com esse patch; em PRs de forks, a pessoa
+autora precisa aplicar a formatação localmente.
 
 O script `npm test` na raiz é apenas um placeholder; execute os testes do
 backend em `apps/chat-back`. A pasta `apps/packages/knowledge` possui lockfile,
@@ -154,15 +155,19 @@ Swarm com PostgreSQL, API e interface servida por Nginx. O Nginx encaminha
 `/api` para o serviço `core`.
 
 O CI roda em Pull Requests e pushes para `develop` e `main`; valida interface e
-backend, roda testes, verifica a formatação e constrói imagens Docker. O CD é
-acionado após uma CI bem-sucedida em `main`, publica imagens e executa scan de
-vulnerabilidades. O redeploy via webhooks do Portainer depende da configuração
-explícita de `DEPLOY_ENABLED`.
+backend, roda testes, verifica a formatação e constrói imagens Docker. Workflows
+separados executam CodeQL, Dependency Review, Gitleaks e auditoria de segurança
+dos workflows. O auto-merge do Dependabot é limitado a PRs elegíveis para
+`develop` e exige os checks configurados.
 
-Os workflows também incluem varredura de segredos, CodeQL, revisão de
-dependências e validação de workflows. A configuração presente no checkout
-local pode ainda não estar publicada no GitHub; confirme o branch e os checks
-ativos antes de depender de uma execução.
+O CD é acionado após uma CI bem-sucedida em `main`, publica imagens e executa
+scan de vulnerabilidades. Com `DEPLOY_ENABLED=true`, aciona os webhooks dos
+serviços `core` e `web` no Portainer. Isso redeploya serviços que usam `latest`,
+mas não altera a configuração da stack.
+
+Secret scanning e push protection estão habilitados nas configurações do
+repositório. As configurações remotas e variáveis/secrets podem mudar fora do
+código; confirme-as no GitHub antes de depender de uma execução.
 
 ## Documentação
 

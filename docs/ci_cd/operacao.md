@@ -74,17 +74,17 @@ Com `AI_PROVIDER=echo`, a resposta vem com `[echo] Recebi: ...`, sem gastar cota
 
 ## Diagnóstico por sintoma
 
-| Sintoma                                   | Causa provável                          |
-| ----------------------------------------- | --------------------------------------- |
-| `cd.yml` não aparece na aba Actions       | não chegou na branch padrão             |
-| `manifest unknown`                        | login ok; a imagem não foi publicada    |
-| `unauthorized` no `pull`                  | credencial do registry                  |
-| `no matching manifest for linux/amd64`    | a imagem foi construída para outra arch |
-| `web` responde 502                        | o Core não está no ar                   |
-| `core` reiniciando em loop                | banco fora, ou senha errada             |
-| `relation "conversations" does not exist` | o Core conectou num banco vazio         |
-| `constraint requirements not satisfied`   | nenhum nó chamado `compute01`           |
-| workflow verde e a aplicação não mudou    | `RepullImageAndRedeploy` não chegou     |
+| Sintoma                                   | Causa provável                                                              |
+| ----------------------------------------- | --------------------------------------------------------------------------- |
+| `cd.yml` não aparece na aba Actions       | não chegou na branch padrão                                                 |
+| `manifest unknown`                        | login ok; a imagem não foi publicada                                        |
+| `unauthorized` no `pull`                  | credencial do registry                                                      |
+| `no matching manifest for linux/amd64`    | a imagem foi construída para outra arch                                     |
+| `web` responde 502                        | o Core não está no ar                                                       |
+| `core` reiniciando em loop                | banco fora, ou senha errada                                                 |
+| `relation "conversations" does not exist` | o Core conectou num banco vazio                                             |
+| `constraint requirements not satisfied`   | nenhum nó chamado `compute01`                                               |
+| publicação verde e a aplicação não mudou  | `DEPLOY_ENABLED` está desligado, webhook falhou ou serviço não usa `latest` |
 
 ### Onde ver o log de cada serviço
 

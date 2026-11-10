@@ -10,6 +10,14 @@ Contrato da API, para quem consome.
 | [ChatConfig.md](ChatConfig.md)     | Configuração e o repasse para a AI                            |
 | [ChatContext.md](ChatContext.md)   | Estrutura de contexto adicional para a Omnia IA e integrações |
 
+## Tasks de DevOps
+
+- [Task 01 — Modelo Tool](../tasks-devops/task-01/Tool.md)
+- [Task 02 — Modelo ToolCall](../tasks-devops/task-02/ToolCall.md)
+- [Task 03 — JSON Schema das ferramentas](../tasks-devops/task-03/JSON-Schema.md)
+- [Task 04 — Validar parâmetros das ferramentas](../tasks-devops/task-04/Validar-parametros.md)
+- [Task 05 — Definir estrutura de permissões](../tasks-devops/task-05/Estrutura-permissoes.md)
+
 ## Resumo dos endpoints
 
 | Método   | Rota                         | Quem chama   |
@@ -28,7 +36,7 @@ Contrato da API, para quem consome.
 Todos os endpoints de conversa, mensagem e sugestão exigem JWT OIDC válido no header `Authorization: Bearer`.
 
 ```bash
-curl -H "Authorization: Bearer <access-token>" http://localhost:3001/api/conversations/current
+curl -H "Authorization: ******" http://localhost:3001/api/conversations/current
 ```
 
 Sem token válido ou sem configuração OIDC, a resposta é `401`.

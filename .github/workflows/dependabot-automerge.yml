@@ -13,7 +13,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: dependabot-automerge-${{ github.event.workflow_run.pull_requests[0].number || github.run_id }}
+  group: dependabot-automerge-${{ github.event.workflow_run.head_sha || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -24,7 +24,6 @@ jobs:
       github.event.workflow_run.event == 'pull_request' &&
       (github.event.workflow_run.actor.login == 'dependabot[bot]' ||
        github.event.workflow_run.actor.login == 'app/dependabot') &&
-      github.event.workflow_run.pull_requests[0].number != null &&
       (startsWith(github.event.workflow_run.head_branch, 'dependabot/npm_and_yarn/') ||
        startsWith(github.event.workflow_run.head_branch, 'dependabot/github_actions/'))
     name: Validate and merge eligible Dependabot PR
@@ -39,7 +38,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
@@ -51,6 +49,22 @@ jobs:
             ALLOWED_GROUP=github-actions
           else
             echo "Branch fora dos grupos permitidos; nenhum merge será feito."
+            exit 0
+          fi
+
+          PR_NUMBER="$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/pulls" |
+            jq -r \
+              --arg head_branch "$HEAD_BRANCH" \
+              --arg head_sha "$HEAD_SHA" \
+              '[.[] | select(
+                .state == "open" and
+                .base.ref == "develop" and
+                .head.ref == $head_branch and
+                .head.sha == $head_sha
+              )] | if length == 1 then .[0].number else empty end')"
+
+          if [[ -z "$PR_NUMBER" ]]; then
+            echo "Nenhum PR aberto único corresponde ao SHA e branch; nenhum merge será feito."
             exit 0
           fi
 

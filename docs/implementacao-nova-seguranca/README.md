@@ -3,6 +3,8 @@
 > Registro da implementação original. Para o estado atual do repositório, disponibilidade dos recursos e últimas execuções, consulte [seguranca-workflows](../seguranca-workflows/README.md).
 
 > Estado atual: o repositório é público, `GHAS_ENABLED=true`, e CodeQL/Dependency Review executam sem assinatura paga neste repositório.
+>
+> Este arquivo registra decisões e procedimentos da implementação original. Para comportamentos atuais de CI, deploy, push protection e auto-merge, use [Ativação e operação](../ci_cd/ativacao-e-operacao.md) e [Segurança dos workflows](../seguranca-workflows/README.md).
 
 ## Objetivo
 

@@ -5,23 +5,23 @@ Resumo dos workflows versionados em `.github/workflows/ci.yml` e `cd.yml`.
 ## Fluxo atual
 
 ```text
-pull request/push em develop ou main -> CI
-CI concluída com sucesso em main -> CD
-CD -> build e publicação de imagens por SHA
-após publicação -> atualização manual da stack no Portainer
+pull request/push em develop ou main -> CI e checks de segurança
+PR Dependabot elegível em develop -> validação dos checks -> squash merge
+CI concluída com sucesso em main -> CD: build, Trivy e publicação de imagens
+DEPLOY_ENABLED=true -> webhooks de redeploy dos serviços core e web no Portainer
 ```
 
-O CD usa `workflow_run`, faz checkout do mesmo commit aprovado pela CI e só continua quando a conclusão é `success`. A atualização do Portainer permanece manual.
+O CD usa `workflow_run`, faz checkout do mesmo commit aprovado pela CI e só continua quando a conclusão é `success`. O redeploy dos serviços é acionado pelos webhooks quando `DEPLOY_ENABLED=true`; isso não atualiza o arquivo/configuração da stack. Mudanças na stack e rollbacks para tags SHA continuam sendo operações manuais.
 
 ## CI
 
-O workflow valida o frontend `apps/chat-omnia`, backend `apps/chat-back`, formatação Prettier, build das imagens e vulnerabilidades HIGH/CRITICAL corrigíveis nas imagens. A CI usa Node 24; os Dockerfiles Node também usam Node 24.
+O workflow valida o frontend `apps/chat-omnia`, backend `apps/chat-back`, testes do backend, formatação Prettier e build das imagens. Em PRs, aplica o formato e, quando necessário, um job separado envia o patch à branch do mesmo repositório; PRs de forks precisam aplicar o patch manualmente. CodeQL, Dependency Review, Gitleaks e Workflow Security rodam em workflows separados. A CI usa Node 24; confira os Dockerfiles para as versões atuais de build.
 
 ## CD
 
-O CD publica as imagens `chat-core` e `chat-web`, com tags `latest`, branch e SHA. O SHA identifica a versão exata para a atualização manual e rollback. As imagens publicadas incluem SBOM e provenance.
+O CD constrói e escaneia as imagens `chat-core` e `chat-web` com Trivy antes de publicá-las com tags `latest`, branch e SHA. O SHA identifica a versão exata para rollback. As imagens publicadas incluem SBOM e provenance.
 
-O job **não** atualiza automaticamente a stack. O resumo no GitHub Actions informa as tags imutáveis a aplicar em Portainer.
+Com `DEPLOY_ENABLED=true`, o job de deploy chama os webhooks individuais do Portainer para `core` e `web`, que redeployam serviços configurados com `latest`. Isso não modifica a configuração da stack. Aplique mudanças de stack ou tags SHA no Portainer conforme o procedimento operacional.
 
 ## Nomes alinhados
 

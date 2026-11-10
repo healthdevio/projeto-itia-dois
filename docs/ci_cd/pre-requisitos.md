@@ -8,7 +8,8 @@ Este checklist reflete o repositório atual. Ele não confirma a existência ou 
 - Confirmar que a CI aprovou o commit SHA que será publicado.
 - Conferir que os secrets do registry permitem publicação e pull pelo Swarm.
 - Definir no Portainer as variáveis indicadas em [`stack.env.example`](../../apps/docker/pw2c/stack.env.example). Preencha `POSTGRES_PASSWORD` com uma senha forte fora do Git.
-- Manter a atualização da stack manual no Portainer e aplicar as tags imutáveis por SHA registradas pelo CD.
+- Configurar `DEPLOY_ENABLED=true` somente após cadastrar e validar os secrets `PORTAINER_WEBHOOK_CORE` e `PORTAINER_WEBHOOK_WEB` no environment `production`. O CD aciona esses webhooks após publicar as imagens.
+- A stack precisa usar `latest` para que o webhook redeploye automaticamente a imagem recém-publicada. Atualizações da configuração da stack ou uso de tags SHA continuam exigindo ação manual no Portainer.
 
 ## Antes de aplicar a stack
 
