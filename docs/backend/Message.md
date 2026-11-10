@@ -291,10 +291,10 @@ a seguir. O Backend as grava na conversa ativa de quem enviou e as devolve em
 O campo é **opcional e a diferença importa**:
 
 | O que a AI devolve              | O que o Backend faz com as sugestões da conversa |
-| ------------------------------- | --------------------------------------------- |
-| `suggestions: [...]`            | Substitui pelas novas                         |
-| `suggestions: []`               | Limpa                                         |
-| campo `suggestions` **ausente** | **Preserva** as que já estavam                |
+| ------------------------------- | ------------------------------------------------ |
+| `suggestions: [...]`            | Substitui pelas novas                            |
+| `suggestions: []`               | Limpa                                            |
+| campo `suggestions` **ausente** | **Preserva** as que já estavam                   |
 
 Sugestão malformada é descartada sem derrubar a resposta: o texto da AI é o
 que a interface precisa mostrar, e uma sugestão ruim é um detalhe a menos.
@@ -346,7 +346,7 @@ A máquina de estados completa está em [Conversation.md](./Conversation.md#conv
 
 | Variável            | Descrição                                 | Padrão                                |
 | ------------------- | ----------------------------------------- | ------------------------------------- |
-| `CORE_PORT`         | Porta do servidor Backend                    | `3001`                                |
+| `CORE_PORT`         | Porta do servidor Backend                 | `3001`                                |
 | `DATABASE_URL`      | Conexão Postgres que storeia as conversas | — (obrigatória)                       |
 | `AI_PROVIDER`       | Provider da AI: `nvidia` ou `echo`        | `nvidia`                              |
 | `NVIDIA_API_KEY`    | Chave do backend da Nvidia                | — (com `nvidia`)                      |

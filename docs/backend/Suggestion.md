@@ -206,10 +206,10 @@ A cada resposta da AI, as sugestões são **substituídas** pelas novas. O conte
 A diferença entre as duas abaixo importa, e vem do contrato com a AI:
 
 | O que a AI devolve              | O que o Backend faz com as sugestões da conversa |
-| ------------------------------- | --------------------------------------------- |
-| `suggestions: [...]`            | Substitui pelas novas                         |
-| `suggestions: []`               | Limpa — é uma decisão, não uma omissão        |
-| campo `suggestions` **ausente** | **Preserva** as que já estavam                |
+| ------------------------------- | ------------------------------------------------ |
+| `suggestions: [...]`            | Substitui pelas novas                            |
+| `suggestions: []`               | Limpa — é uma decisão, não uma omissão           |
+| campo `suggestions` **ausente** | **Preserva** as que já estavam                   |
 
 A omissão é preservada porque a produção das sugestões é responsabilidade do provider da AI, e um provider que ainda não devolve o campo não deve apagar o que a interface está exibindo. O provider traduz "não produziu lista" para `null` antes de devolver — detalhe em `extractJsonArray`, em `src/services/ai/prompt.ts`.
 

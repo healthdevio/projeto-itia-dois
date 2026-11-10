@@ -61,18 +61,18 @@ git push -u itia feat/nome-da-tarefa
 
 ### Arquivos Modificados Recentemente
 
-| Arquivo                              | Tipo de alteração | Descrição                                                                                 |
-| ------------------------------------ | ----------------- | ----------------------------------------------------------------------------------------- |
-| `apps/chat-core/src/index.ts`        | Código            | Adição de rotas `/health`, `/health/ready`, `/health/live`; mudança de porta 3001 para 80 |
-| `apps/docker/nginx.conf`             | Configuração      | Atualização do upstream de `core:3001` para `core:80` em 2 locations                      |
-| `apps/docker/pw2c/docker-stack.yml`  | Configuração      | `CORE_PORT` mudou de `'3001'` para `'80'`                                                 |
-| `apps/chat-core/tsconfig.json`       | Configuração      | Adição de `"types": ["node"]`                                                             |
-| `apps/chat-core/tsconfig.test.json`  | Configuração      | Adição de `"types": ["node"]`                                                             |
-| `apps/chat-core/tsconfig.json`       | Configuração      | Adição de `"types": ["node"]`                                                             |
-| `docs/backend/health-check-backend.md`     | Nova documentação | Documentação das rotas de health check do Backend                                            |
-| `docs/backend/fluxo-git-e-contexto.md`  | Nova documentação | Este arquivo - fluxo de git e contexto do projeto                                         |
-| `apps/docker/pw2c/.env`              | Novo arquivo      | Variáveis de ambiente da stack PW2C                                                       |
-| `apps/docker/pw2c/stack.env.example` | Removido          | Template removido conforme solicitação                                                    |
+| Arquivo                                | Tipo de alteração | Descrição                                                                                 |
+| -------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------- |
+| `apps/chat-core/src/index.ts`          | Código            | Adição de rotas `/health`, `/health/ready`, `/health/live`; mudança de porta 3001 para 80 |
+| `apps/docker/nginx.conf`               | Configuração      | Atualização do upstream de `core:3001` para `core:80` em 2 locations                      |
+| `apps/docker/pw2c/docker-stack.yml`    | Configuração      | `CORE_PORT` mudou de `'3001'` para `'80'`                                                 |
+| `apps/chat-core/tsconfig.json`         | Configuração      | Adição de `"types": ["node"]`                                                             |
+| `apps/chat-core/tsconfig.test.json`    | Configuração      | Adição de `"types": ["node"]`                                                             |
+| `apps/chat-core/tsconfig.json`         | Configuração      | Adição de `"types": ["node"]`                                                             |
+| `docs/backend/health-check-backend.md` | Nova documentação | Documentação das rotas de health check do Backend                                         |
+| `docs/backend/fluxo-git-e-contexto.md` | Nova documentação | Este arquivo - fluxo de git e contexto do projeto                                         |
+| `apps/docker/pw2c/.env`                | Novo arquivo      | Variáveis de ambiente da stack PW2C                                                       |
+| `apps/docker/pw2c/stack.env.example`   | Removido          | Template removido conforme solicitação                                                    |
 
 ### Variáveis de Ambiente Críticas (no Portainer)
 
@@ -175,7 +175,7 @@ develop
 | Container `starting → complete` | Variáveis de env inconsistentes                      | Verificar POSTGRES_PASSWORD, POSTGRES_USER no Portainer |
 | `502 Bad Gateway`               | Nginx não proxyando corretamente                     | Reiniciar stack + Repull image                          |
 | Health check `starting` parado  | Docker checkando `/health` antes do app estar pronto | Aguardar 2-3 minutos após o container ficar `Running`   |
-| Código não sobe para o backend     | Branch errada ou yaml com erro                       | Verificar `git push -u itia feat/nome` e yaml syntax    |
+| Código não sobe para o backend  | Branch errada ou yaml com erro                       | Verificar `git push -u itia feat/nome` e yaml syntax    |
 
 ---
 

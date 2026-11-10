@@ -14,11 +14,11 @@ Este documento é o **diagnóstico**. O processo que evita cada um deles está e
 | `manifest unknown`                          | imagem não publicada            | [2](#2-manifest-unknown)                          |
 | `unauthorized`                              | credencial do registry          | [3](#3-unauthorized)                              |
 | `no matching manifest for linux/amd64`      | arquitetura errada              | [4](#4-no-matching-manifest-for-linuxamd64)       |
-| `web` responde 502                          | o Backend não está no ar           | [5](#5-web-responde-502)                          |
+| `web` responde 502                          | o Backend não está no ar        | [5](#5-web-responde-502)                          |
 | `constraint requirements not satisfied`     | nenhum nó chamado `compute01`   | [6](#6-constraint-requirements-not-satisfied)     |
 | `relation "conversations" does not exist`   | banco vazio, em outro nó        | [7](#7-relation-conversations-does-not-exist)     |
-| `core` reiniciando em loop                  | banco fora ou senha errada      | [8](#8-backend-reiniciando-em-loop)                  |
-| `postgres nao respondeu apos 30 tentativas` | o Backend não acha o banco         | [9](#9-postgres-nao-respondeu-apos-30-tentativas) |
+| `core` reiniciando em loop                  | banco fora ou senha errada      | [8](#8-backend-reiniciando-em-loop)               |
+| `postgres nao respondeu apos 30 tentativas` | o Backend não acha o banco      | [9](#9-postgres-nao-respondeu-apos-30-tentativas) |
 | migration falha sem motivo claro            | log incompleto                  | [10](#10-migration-falha-sem-causa)               |
 | migration pula a primeira                   | carimbo de outro pacote         | [11](#11-migration-pula-a-primeira)               |
 | workflow verde e a aplicação não mudou      | o `PUT` não redesenhou as tasks | [12](#12-workflow-verde-e-a-aplicação-não-mudou)  |

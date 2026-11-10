@@ -95,11 +95,11 @@ enganoso que isso previne.
 
 ## 4. A migration
 
-|              | Antes                            | Agora                      |
-| ------------ | -------------------------------- | -------------------------- |
-| Onde         | serviço `migrate-core`           | dentro do `entrypoint.sh`  |
+|              | Antes                            | Agora                         |
+| ------------ | -------------------------------- | ----------------------------- |
+| Onde         | serviço `migrate-core`           | dentro do `entrypoint.sh`     |
 | Como termina | `restart: 'no'` e sai            | não termina; o Backend assume |
-| Quem espera  | `service_completed_successfully` | o próprio script           |
+| Quem espera  | `service_completed_successfully` | o próprio script              |
 
 O modelo antigo dependia de duas coisas que o Swarm não tem: container que
 termina, e `depends_on` que funciona. Ver [decisoes.md](../decisoes.md#a-migration-dentro-do-backend).
@@ -154,7 +154,7 @@ do PR.
 
 |          | Antes                                     | Agora          |
 | -------- | ----------------------------------------- | -------------- |
-| Backend     | healthcheck no compose, `service_healthy` | só o da imagem |
+| Backend  | healthcheck no compose, `service_healthy` | só o da imagem |
 | Postgres | serviço `db` com `pg_isready`             | nenhum         |
 
 A seção `healthcheck:` do compose é redundante no Swarm: quem manda é o

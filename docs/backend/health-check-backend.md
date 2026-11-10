@@ -33,6 +33,6 @@ As rotas foram adicionadas em `apps/chat-back/src/index.ts` após os imports. O 
 
 ## Histórico
 
-| Data       | Mudança                                                                       |
-| ---------- | ----------------------------------------------------------------------------- |
+| Data       | Mudança                                                                          |
+| ---------- | -------------------------------------------------------------------------------- |
 | 2026-10-20 | Criação: rotas `/health`, `/health/ready`, `/health/live` adicionadas ao Backend |

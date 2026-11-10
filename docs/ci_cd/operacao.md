@@ -80,9 +80,9 @@ Com `AI_PROVIDER=echo`, a resposta vem com `[echo] Recebi: ...`, sem gastar cota
 | `manifest unknown`                        | login ok; a imagem não foi publicada                                        |
 | `unauthorized` no `pull`                  | credencial do registry                                                      |
 | `no matching manifest for linux/amd64`    | a imagem foi construída para outra arch                                     |
-| `web` responde 502                        | o Backend não está no ar                                                       |
+| `web` responde 502                        | o Backend não está no ar                                                    |
 | `core` reiniciando em loop                | banco fora, ou senha errada                                                 |
-| `relation "conversations" does not exist` | o Backend conectou num banco vazio                                             |
+| `relation "conversations" does not exist` | o Backend conectou num banco vazio                                          |
 | `constraint requirements not satisfied`   | nenhum nó chamado `compute01`                                               |
 | publicação verde e a aplicação não mudou  | `DEPLOY_ENABLED` está desligado, webhook falhou ou serviço não usa `latest` |
 

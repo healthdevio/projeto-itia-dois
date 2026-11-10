@@ -10,8 +10,8 @@ Registro das decisões tomadas para uma versão anterior da stack e do workflow.
 | [Tags explícitas](#tags-explícitas-por-imagem)                | Gerador compartilhado faria cada build publicar nas duas imagens |
 | [Três tags](#três-tags-por-imagem)                            | Branch para o deploy, sha para reverter                          |
 | [Postgres preso ao compute01](#o-postgres-preso-ao-compute01) | Volume local; banco que muda de nó sobe vazio                    |
-| [`replicas: 1` no Backend](#replicas-1-no-backend)                  | A migration roda no start; duas tasks rodariam juntas            |
-| [Migration dentro do Backend](#a-migration-dentro-do-backend)       | No Swarm todo serviço é perpétuo                                 |
+| [`replicas: 1` no Backend](#replicas-1-no-backend)            | A migration roda no start; duas tasks rodariam juntas            |
+| [Migration dentro do Backend](#a-migration-dentro-do-backend) | No Swarm todo serviço é perpétuo                                 |
 | [Sem healthcheck na stack](#sem-healthcheck-na-stack)         | Só o healthcheck da imagem conta                                 |
 | [Senha como variável](#a-senha-vai-por-variável-de-ambiente)  | Uma fonte só, e o `.Env` já é reenviado no deploy                |
 | [`platforms: linux/amd64`](#platforms-linuxamd64)             | O cluster é amd64                                                |

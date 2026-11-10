@@ -42,14 +42,14 @@ location /health {
 
 ## O que cada parte faz
 
-| Diretiva                           | Valor                     | Por que                            |
-| ---------------------------------- | ------------------------- | ---------------------------------- |
+| Diretiva                           | Valor                     | Por que                               |
+| ---------------------------------- | ------------------------- | ------------------------------------- |
 | `proxy_pass $core_upstream/health` | `http://core:3001/health` | Encaminha para `/health` do Backend   |
 | `proxy_connect_timeout 2s`         | 2 segundos                | Falha rápido se Backend não responder |
-| `proxy_read_timeout 5s`            | 5 segundos                | Health check deve ser rápido       |
-| `proxy_buffering off`              | off                       | Resposta imediata, sem buffer      |
-| `Cache-Control: no-cache...`       | always                    | Health check nunca cacheado        |
-| `add_header ... always`            | always                    | Headers mesmo em erro (5xx)        |
+| `proxy_read_timeout 5s`            | 5 segundos                | Health check deve ser rápido          |
+| `proxy_buffering off`              | off                       | Resposta imediata, sem buffer         |
+| `Cache-Control: no-cache...`       | always                    | Health check nunca cacheado           |
+| `add_header ... always`            | always                    | Headers mesmo em erro (5xx)           |
 
 ---
 
@@ -137,24 +137,24 @@ curl http://<host>:8080/health
 ## Por que proxy no nginx e não expor Backend direto?
 
 | Aspecto                | Expor Backend direto (3001)   | Proxy no nginx                |
-| ---------------------- | -------------------------- | ----------------------------- |
-| **Segurança**          | Backend exposto na internet   | Backend só na rede interna       |
-| **Header `X-User-Id`** | Cliente manda o que quiser | nginx pode validar/reescrever |
+| ---------------------- | ----------------------------- | ----------------------------- |
+| **Segurança**          | Backend exposto na internet   | Backend só na rede interna    |
+| **Header `X-User-Id`** | Cliente manda o que quiser    | nginx pode validar/reescrever |
 | **SSL/TLS**            | Precisa configurar no Backend | Termina no nginx              |
 | **Rate limit**         | Difícil no Backend            | Fácil no nginx                |
-| **Health check**       | Expõe porta 3001           | Só porta 80 exposta           |
-| **Single origin**      | CORS necessário            | Mesmo domínio, sem CORS       |
+| **Health check**       | Expõe porta 3001              | Só porta 80 exposta           |
+| **Single origin**      | CORS necessário               | Mesmo domínio, sem CORS       |
 
 ---
 
 ## Próximos passos (opcional)
 
-| Melhoria                | O que faz                                |
-| ----------------------- | ---------------------------------------- |
+| Melhoria                   | O que faz                                |
+| -------------------------- | ---------------------------------------- |
 | `/health/ready` no Backend | Separa "vivo" de "pronto para tráfego"   |
 | `/health/live` no Backend  | Para Kubernetes/Swarm liveness probe     |
-| Banner no React         | Mostra "API offline" se `/health` falhar |
-| Métricas de latência    | Tempo de resposta do `/health`           |
+| Banner no React            | Mostra "API offline" se `/health` falhar |
+| Métricas de latência       | Tempo de resposta do `/health`           |
 
 ---
 

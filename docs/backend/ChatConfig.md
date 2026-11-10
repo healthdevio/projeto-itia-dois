@@ -121,12 +121,12 @@ A validação acontece **antes** de qualquer escrita: uma mensagem com `config` 
 
 ## Regras de validação
 
-| O que veio                              | O que o Backend faz                        |
+| O que veio                              | O que o Backend faz                     |
 | --------------------------------------- | --------------------------------------- |
 | `config` ausente, ou `null`             | Usa o `DEFAULT_CHAT_CONFIG`             |
 | objeto com alguns campos                | Completa o que falta com o default      |
 | campo conhecido com valor fora da lista | **`400`**, dizendo o campo e os valores |
-| chave que o Backend não conhece            | Ignora                                  |
+| chave que o Backend não conhece         | Ignora                                  |
 | `config` que não é objeto               | **`400`**                               |
 
 **Chave desconhecida é ignorada, e não recusada**, porque o config é contrato de dois lados. Uma interface mais nova pode mandar um campo que este Backend ainda não conhece, e um Backend mais velho não pode quebrar o chat por causa disso. O inverso — um provider da AI que não conhece o `config` — também é seguro, porque o campo chega no topo do payload e ele pode simplesmente ignorá-lo.
