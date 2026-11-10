@@ -18,6 +18,7 @@ Contrato da API, para quem consome.
 - [Task 02 — Modelo ToolCall](../tasks-devops/task-02/ToolCall.md)
 - [Task 03 — JSON Schema das ferramentas](../tasks-devops/task-03/JSON-Schema.md)
 - [Task 04 — Validar parâmetros das ferramentas](../tasks-devops/task-04/Validar-parametros.md)
+- [Task 05 — Definir estrutura de permissões](../tasks-devops/task-05/Estrutura-permissoes.md)
 
 ## Resumo dos endpoints
 
