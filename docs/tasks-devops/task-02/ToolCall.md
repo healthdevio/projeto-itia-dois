@@ -22,13 +22,13 @@ export interface ToolCall {
 }
 ```
 
-| Campo          | Tipo                        | Descrição                                                |
-| -------------- | --------------------------- | -------------------------------------------------------- |
-| `id`           | `string`                    | Identificador que permite correlacionar a chamada.      |
-| `tool_name`    | `string`                    | Nome da ferramenta solicitada; corresponde ao `name` do modelo `Tool`. |
-| `arguments`    | `Record<string, unknown>`   | Argumentos fornecidos para a chamada.                    |
-| `context`      | `ToolCallContext`           | Contexto associado à solicitação.                        |
-| `conversation_id` | `string`                 | Identificador da conversa em que a chamada foi criada.   |
+| Campo             | Tipo                      | Descrição                                                              |
+| ----------------- | ------------------------- | ---------------------------------------------------------------------- |
+| `id`              | `string`                  | Identificador que permite correlacionar a chamada.                     |
+| `tool_name`       | `string`                  | Nome da ferramenta solicitada; corresponde ao `name` do modelo `Tool`. |
+| `arguments`       | `Record<string, unknown>` | Argumentos fornecidos para a chamada.                                  |
+| `context`         | `ToolCallContext`         | Contexto associado à solicitação.                                      |
+| `conversation_id` | `string`                  | Identificador da conversa em que a chamada foi criada.                 |
 
 ## Exemplo
 
