@@ -49,7 +49,7 @@ Em **Settings → General → Pull Requests**, confirme que **Allow squash mergi
 2. Se o `.Env` da stack ainda definir `OMNIA_BACKEND_IMAGE` ou outra tag de backend, remova essa variável antiga e use `OMNIA_CORE_IMAGE=registry.cloud.grupopw2c.com.br/chat-core:latest` (ou remova a variável para usar o padrão do compose).
 3. Confirme que o serviço `web` usa `registry.cloud.grupopw2c.com.br/chat-web:latest`.
 4. Atualize a configuração da stack para o serviço `web` receber tráfego na porta interna `8080`. A imagem web roda como não-root e o Nginx escuta nessa porta; a porta publicada externa pode continuar igual.
-5. Em **Services → core → Service webhook** e **Services → web → Service webhook**, habilite e copie os dois links. O webhook de serviço redeploya o serviço com a tag já configurada; ele não aplica alterações novas no Compose da stack.
+5. Em **Services → backend → Service webhook** e **Services → web → Service webhook**, habilite e copie os dois links. O webhook de serviço redeploya o serviço com a tag já configurada; ele não aplica alterações novas no Compose da stack.
 6. Armazene os links como os dois Environment secrets `PORTAINER_WEBHOOK_CORE` e `PORTAINER_WEBHOOK_WEB` em `production`.
 
 O banco não recebe webhook: o CD não constrói nem publica imagem do banco. Com `:latest`, cada webhook puxa a imagem recém-publicada e reinicia o serviço. Se a stack usa tags SHA, atualize as tags na stack antes do redeploy.

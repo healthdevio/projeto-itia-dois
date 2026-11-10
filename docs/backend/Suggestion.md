@@ -1,6 +1,6 @@
 # Modelo de Suggestion
 
-Esse documento trata de como deve ser formatada a sugestão que o Core entrega para a interface, e de onde ela vem.
+Esse documento trata de como deve ser formatada a sugestão que o Backend entrega para a interface, e de onde ela vem.
 
 #### O que é a suggestion?
 
@@ -27,13 +27,13 @@ AI ───────────────────▶┐   interface �
                            │                            │
                            ▼        GET /api/suggestions  │
                     ┌──────────────┐◀────────────────────┘
-                    │     Core     │
+                    │   Backend    │
                     └──────────────┘
 ```
 
-A produção da sugestão é da **AI** — o Core não sabe o que é um modelo de linguagem, então não decide o que é uma boa sugestão. O Core é o meio: guarda o que a AI devolveu, no lugar certo, e entrega o que está guardado.
+A produção da sugestão é da **AI** — o Backend não sabe o que é um modelo de linguagem, então não decide o que é uma boa sugestão. O Backend é o meio: guarda o que a AI devolveu, no lugar certo, e entrega o que está guardado.
 
-> **A sugestão sai do Core, a conversa não.** Assim como as mensagens, as sugestões são estado interno do Core, e a conversa continua nunca sendo enviada para a AI.
+> **A sugestão sai do Backend, a conversa não.** Assim como as mensagens, as sugestões são estado interno do Backend, e a conversa continua nunca sendo enviada para a AI.
 
 ---
 
@@ -106,7 +106,7 @@ A lista vem embrulhada em `data.suggestions`, e não solta no `data`, para o cli
 
 Acrescenta sugestões ao fim da lista da conversa ativa do usuário, **sem apagar** o que já estava lá. É o caminho para a interface registrar uma sugestão que não veio da AI — um atalho, uma ação de tela.
 
-O `suggestion_id` é opcional: quando falta, o Core gera um (`sg-<uuid>`). O envelope `success`/`data` do próprio Core é aceito na resposta.
+O `suggestion_id` é opcional: quando falta, o Backend gera um (`sg-<uuid>`). O envelope `success`/`data` do próprio Backend é aceito na resposta.
 
 **Request Body** — as duas formas são aceitas:
 
@@ -205,11 +205,11 @@ A cada resposta da AI, as sugestões são **substituídas** pelas novas. O conte
 
 A diferença entre as duas abaixo importa, e vem do contrato com a AI:
 
-| O que a AI devolve              | O que o Core faz com as sugestões da conversa |
-| ------------------------------- | --------------------------------------------- |
-| `suggestions: [...]`            | Substitui pelas novas                         |
-| `suggestions: []`               | Limpa — é uma decisão, não uma omissão        |
-| campo `suggestions` **ausente** | **Preserva** as que já estavam                |
+| O que a AI devolve              | O que o Backend faz com as sugestões da conversa |
+| ------------------------------- | ------------------------------------------------ |
+| `suggestions: [...]`            | Substitui pelas novas                            |
+| `suggestions: []`               | Limpa — é uma decisão, não uma omissão           |
+| campo `suggestions` **ausente** | **Preserva** as que já estavam                   |
 
 A omissão é preservada porque a produção das sugestões é responsabilidade do provider da AI, e um provider que ainda não devolve o campo não deve apagar o que a interface está exibindo. O provider traduz "não produziu lista" para `null` antes de devolver — detalhe em `extractJsonArray`, em `src/services/ai/prompt.ts`.
 
@@ -253,10 +253,10 @@ A tabela **não tem `user_id`**, pelo mesmo motivo das mensagens: `conversation_
 O harness de desenvolvimento fica em `apps/chat-back/local/` e **é git-ignored**: um REPL de terminal e um smoke test. Ver a seção “Harness local” no [README do backend](../../apps/chat-back/README.md).
 
 ```bash
-npm run repl    # REPL de terminal contra o Core
+npm run repl    # REPL de terminal contra o backend
 npm run smoke   # checagem ponta a ponta, sem interação
 ```
 
-O provider que produz as sugestões roda dentro do Core, em `src/services/ai/providers/`. Sem chave de modelo, `AI_PROVIDER=echo` devolve uma lista fixa — o suficiente para o smoke passar sem gastar cota.
+O provider que produz as sugestões roda dentro do Backend, em `src/services/ai/providers/`. Sem chave de modelo, `AI_PROVIDER=echo` devolve uma lista fixa — o suficiente para o smoke passar sem gastar cota.
 
-O `smoke` cobre o fluxo de sugestão inteiro: leitura vazia, registro pela interface, id gerado pelo Core, substituição pelas sugestões da AI, limpeza, `401` sem identidade, `400` no corpo inválido, o teto de 8 por conversa e o isolamento entre usuários.
+O `smoke` cobre o fluxo de sugestão inteiro: leitura vazia, registro pela interface, id gerado pelo Backend, substituição pelas sugestões da AI, limpeza, `401` sem identidade, `400` no corpo inválido, o teto de 8 por conversa e o isolamento entre usuários.

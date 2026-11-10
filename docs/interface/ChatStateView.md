@@ -32,14 +32,14 @@ Esses são os estados visuais descritos no registro da Task 07; confirme os valo
 
 A documentação histórica registra o `ChatStateView` dentro de `MiniChat` e `ExpandedChat`.
 
-## Diferença em relação ao Core
+## Diferença em relação ao Backend
 
-O Core pode usar estados e transições diferentes, incluindo `streaming` e `success`. Não se deve renomear estados visualmente sem definir o mapeamento oficial entre os contratos do Core e da Interface.
+O Backend pode usar estados e transições diferentes, incluindo `streaming` e `success`. Não se deve renomear estados visualmente sem definir o mapeamento oficial entre os contratos do Backend e da Interface.
 
 ## Cuidados
 
 - Evitar estados incompatíveis simultaneamente.
-- Não expor regras internas do Core ao componente visual.
+- Não expor regras internas do Backend ao componente visual.
 - Não transformar o componente em uma máquina de estados de negócio.
 - Centralizar o mapeamento entre estados de domínio e apresentações visuais.
 

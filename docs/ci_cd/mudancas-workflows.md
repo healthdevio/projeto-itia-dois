@@ -115,7 +115,7 @@ Unable to resolve action `docker/build-push-action@b5ca514318bd6ebac0fb2aedd5d36
 
 **Aplicado em**:
 
-- Job ` Construir imagem do Core`
+- Job ` Construir imagem do backend`
 - Job ` Construir imagem da interface`
 
 #### 2. Correção do Job de Formatação (Prettier)

@@ -1,6 +1,6 @@
 # Testes automatizados automatizados
 
-Suíte do Core: `apps/chat-back/test/`, **95 testes**, rodar com `node --test`
+Suíte do Backend: `apps/chat-back/test/`, **95 testes**, rodar com `node --test`
 via `tsx`. Sem framework novo — `node:test` e `node:assert` já vêm no Node.
 
 ```bash
@@ -59,7 +59,7 @@ O caminho com banco continua no harness local:
 npm run smoke
 ```
 
-Ele sobe o Core contra um Postgres de verdade e exercita o fluxo ponta a ponta.
+Ele sobe o Backend contra um Postgres de verdade e exercita o fluxo ponta a ponta.
 É git-ignored (regras locais de ignore do backend), porque guarda a `NVIDIA_API_KEY` de
 quem roda.
 

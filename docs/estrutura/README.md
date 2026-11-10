@@ -20,17 +20,17 @@ reverter.
 | [docker.md](docker.md)                                 | As imagens, a stack e o nginx                |
 | [ambientes.md](ambientes.md)                           | Dev local, stack e senhas                    |
 | [config_github.md](config_github.md)                   | Secrets do registry e do Portainer no GitHub |
-| [testes.md](testes.md)                                 | A suíte do Core: o que cobre e o que não     |
+| [testes.md](testes.md)                                 | A suíte do Backend: o que cobre e o que não  |
 | [fluxo_de_versionamento.md](fluxo_de_versionamento.md) | Branch, PR, revisão, promoção                |
 
-## Modelo do Core
+## Modelo do Backend
 
-| Documento                                          | Assunto                            |
-| -------------------------------------------------- | ---------------------------------- |
-| [../core/Conversation.md](../core/Conversation.md) | Conversa, estados e contexto       |
-| [../core/Message.md](../core/Message.md)           | Modelo e endpoint de envio         |
-| [../core/Suggestion.md](../core/Suggestion.md)     | Sugestões, endpoints e limites     |
-| [../core/ChatConfig.md](../core/ChatConfig.md)     | Configuração e o repasse para a AI |
+| Documento                                                | Assunto                            |
+| -------------------------------------------------------- | ---------------------------------- |
+| [../backend/Conversation.md](../backend/Conversation.md) | Conversa, estados e contexto       |
+| [../backend/Message.md](../backend/Message.md)           | Modelo e endpoint de envio         |
+| [../backend/Suggestion.md](../backend/Suggestion.md)     | Sugestões, endpoints e limites     |
+| [../backend/ChatConfig.md](../backend/ChatConfig.md)     | Configuração e o repasse para a AI |
 
 ## Divisão
 
@@ -39,7 +39,7 @@ docs/
 ├── ci_cd/                       CI/CD, deploy, operação e diagnóstico
 ├── changelog/                   registros históricos de alterações
 ├── contexto/                    arquitetura e contexto de manutenção
-├── core/                        contratos da API
+├── backend/                     contratos da API
 ├── dependabot/                  configuração e atualizações de dependências
 ├── estrutura/                   Docker, ambientes, testes e versionamento
 ├── implementacao-nova-seguranca/ registro histórico de implementação
