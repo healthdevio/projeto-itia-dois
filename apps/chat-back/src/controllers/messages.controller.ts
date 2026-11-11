@@ -4,11 +4,11 @@ import {
   formatChatConfig,
   validateChatConfig,
   type ChatConfig,
-  type ChatConfigInput,
 } from '../models/chat-config.js';
 import type { ConversationState } from '../models/conversation.js';
 import type { ApiResponse } from '../models/api-response.js';
 import type { Message } from '../models/message.js';
+import type { ChatRequest } from '../models/chat-request.js';
 import type { Suggestion } from '../models/suggestion.js';
 import { IdentityGuard, type IdentityRequest } from '../middleware/identity.js';
 import {
@@ -22,10 +22,6 @@ import {
   replaceActiveSuggestions,
 } from '../repositories/suggestion-repository.js';
 import { AIError, buildContext, sendToAI } from '../services/ai/index.js';
-
-interface MessageRequestBody extends Message {
-  config?: ChatConfigInput;
-}
 
 interface MessageResponseData {
   message_id: string;
@@ -57,7 +53,7 @@ export class MessagesController {
       return response.status(400).json(body);
     }
 
-    const input = parsed as MessageRequestBody;
+    const input = parsed as ChatRequest;
     const chatConfig = validateChatConfig(input.config);
     if (!chatConfig.ok) {
       const body: ApiResponse = { success: false, error: chatConfig.error };
