@@ -19,6 +19,9 @@ Contrato da API, para quem consome.
 - [Task 03 — JSON Schema das ferramentas](../tasks-devops/task-03/JSON-Schema.md)
 - [Task 04 — Validar parâmetros das ferramentas](../tasks-devops/task-04/Validar-parametros.md)
 - [Task 05 — Definir estrutura de permissões](../tasks-devops/task-05/Estrutura-permissoes.md)
+- [Task 06 — Implementar autorização](../tasks-devops/task-06/Implementar-autorizacao.md)
+- [Task 07 — Bloquear ferramenta não autorizada](../tasks-devops/task-07/Bloquear-ferramenta-nao-autorizada.md)
+- [Task 08 — Permitir execução autorizada](../tasks-devops/task-08/Permitir-execucao-autorizada.md)
 
 ## Resumo dos endpoints
 

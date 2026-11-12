@@ -41,8 +41,9 @@ const tool: Tool = {
 ```
 
 Uma lista vazia (`[]`) indica que a ferramenta não declara permissões
-específicas. A Task 06 deverá definir como tratar esse caso e comparar as
-permissões exigidas com as concedidas.
+específicas; nesse caso, a autorização não exige grants. Quando houver
+permissões exigidas, a ausência de permissões concedidas no contexto resulta em
+rejeição.
 
 ## Permissões disponíveis no contexto
 
@@ -59,5 +60,5 @@ contexto, o backend deve obter as permissões disponíveis de uma fonte confiáv
 (por exemplo, uma identidade verificada ou integração confiável com o Host), e
 nunca confiar em valores enviados livremente pelo cliente ou gerados pela IA.
 
-A Task 06 implementará a decisão de autorização e o bloqueio de chamadas sem as
-permissões necessárias.
+A Task 06 implementa a decisão de autorização. O bloqueio efetivo de chamadas
+durante a execução dependerá da integração com um executor de ferramentas.
