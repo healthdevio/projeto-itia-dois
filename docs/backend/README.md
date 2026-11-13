@@ -11,7 +11,7 @@ Contrato da API, para quem consome.
 | [ChatContext.md](ChatContext.md)   | Estrutura de contexto adicional para a Omnia IA e integrações |
 | [ChatRequest](./ChatRequest.md)    | Contrato de entrada de uma solicitação de chat.               |
 | [ChatResponse](./ChatResponse.md)  | Contrato de saída de uma resposta do chat.                    |
-| [sse-events.md](sse-events.md) | Contrato dos eventos SSE e seus respectivos payloads. |
+| [sse-events.md](sse-events.md)     | Contrato dos eventos SSE e seus respectivos payloads.         |
 
 ## Tasks de DevOps
 
