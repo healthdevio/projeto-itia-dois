@@ -2,27 +2,28 @@
 
 Contrato da API, para quem consome.
 
-| Documento                          | Assunto                                                       |
-| ---------------------------------- | ------------------------------------------------------------- |
-| [Conversation.md](Conversation.md) | Conversa, estados, persistência e contexto da AI              |
-| [Message.md](Message.md)           | Modelo de mensagem e endpoint de envio                        |
-| [Suggestion.md](Suggestion.md)     | Sugestões, endpoints e limites                                |
-| [ChatConfig.md](ChatConfig.md)     | Configuração e o repasse para a AI                            |
-| [ChatContext.md](ChatContext.md)   | Estrutura de contexto adicional para a Omnia IA e integrações |
-| [ChatRequest](./ChatRequest.md)    | Contrato de entrada de uma solicitação de chat.               |
-| [ChatResponse](./ChatResponse.md)  | Contrato de saída de uma resposta do chat.                    |
-| [sse-events.md](sse-events.md)     | Contrato dos eventos SSE e seus respectivos payloads.         |
+| Documento                                | Assunto                                                               |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| [Conversation.md](Conversation.md)       | Conversa, estados, persistência e contexto da AI                      |
+| [Message.md](Message.md)                 | Modelo de mensagem e endpoint de envio                                |
+| [Suggestion.md](Suggestion.md)           | Sugestões, endpoints e limites                                        |
+| [ChatConfig.md](ChatConfig.md)           | Configuração e o repasse para a AI                                    |
+| [ChatContext.md](ChatContext.md)         | Estrutura de contexto adicional para a Omnia IA e integrações         |
+| [HostIntegration.md](HostIntegration.md) | Contrato independente de provider para contexto e ferramentas do Host |
+| [ChatRequest](./ChatRequest.md)          | Contrato de entrada de uma solicitação de chat.                       |
+| [ChatResponse](./ChatResponse.md)        | Contrato de saída de uma resposta do chat.                            |
+| [sse-events.md](sse-events.md)           | Contrato dos eventos SSE e seus respectivos payloads.                 |
 
 ## Tasks de DevOps
 
-- [Task 01 — Modelo Tool](../tasks-devops/task-01/Tool.md)
-- [Task 02 — Modelo ToolCall](../tasks-devops/task-02/ToolCall.md)
-- [Task 03 — JSON Schema das ferramentas](../tasks-devops/task-03/JSON-Schema.md)
-- [Task 04 — Validar parâmetros das ferramentas](../tasks-devops/task-04/Validar-parametros.md)
-- [Task 05 — Definir estrutura de permissões](../tasks-devops/task-05/Estrutura-permissoes.md)
-- [Task 06 — Implementar autorização](../tasks-devops/task-06/Implementar-autorizacao.md)
-- [Task 07 — Bloquear ferramenta não autorizada](../tasks-devops/task-07/Bloquear-ferramenta-nao-autorizada.md)
-- [Task 08 — Permitir execução autorizada](../tasks-devops/task-08/Permitir-execucao-autorizada.md)
+- [Task 01 — Modelo Tool](../tasks-devops/tools-e-seguranca/task-01/Tool.md)
+- [Task 02 — Modelo ToolCall](../tasks-devops/tools-e-seguranca/task-02/ToolCall.md)
+- [Task 03 — JSON Schema das ferramentas](../tasks-devops/tools-e-seguranca/task-03/JSON-Schema.md)
+- [Task 04 — Validar parâmetros das ferramentas](../tasks-devops/tools-e-seguranca/task-04/Validar-parametros.md)
+- [Task 05 — Definir estrutura de permissões](../tasks-devops/tools-e-seguranca/task-05/Estrutura-permissoes.md)
+- [Task 06 — Implementar autorização](../tasks-devops/tools-e-seguranca/task-06/Implementar-autorizacao.md)
+- [Task 07 — Bloquear ferramenta não autorizada](../tasks-devops/tools-e-seguranca/task-07/Bloquear-ferramenta-nao-autorizada.md)
+- [Task 08 — Permitir execução autorizada](../tasks-devops/tools-e-seguranca/task-08/Permitir-execucao-autorizada.md)
 
 ## Resumo dos endpoints
 
