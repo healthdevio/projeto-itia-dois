@@ -4,8 +4,7 @@ import type { Tool } from '../../models/tool.js';
 const ajv = new Ajv({ allErrors: true });
 
 export type ToolArgumentsValidation =
-  | { valid: true }
-  | { valid: false; errors: ErrorObject[] };
+  { valid: true } | { valid: false; errors: ErrorObject[] };
 
 export function validateToolArguments(
   tool: Tool,
