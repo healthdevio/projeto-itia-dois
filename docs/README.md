@@ -13,7 +13,7 @@
 | Entender a interface                         | [Documentação da interface](interface/README.md)                                                                                        |
 | Configurar Docker e ambientes                | [Docker](estrutura/docker.md) e [ambientes](estrutura/ambientes.md)                                                                     |
 | Verificar workflows de segurança             | [Estado de segurança dos workflows](seguranca-workflows/README.md)                                                                      |
-| Consultar a correção de uma vulnerabilidade  | [01 - Vulnerabilidade em deepmerge via CLI shadcn](seguranca-vulnerabilidades/01-vulnerabilidade-deepmerge-shadcn.md)                    |
+| Consultar correções de vulnerabilidades      | [Deepmerge/shadcn](seguranca-vulnerabilidades/01-vulnerabilidade-deepmerge-shadcn.md) e [esbuild/minimatch](seguranca-vulnerabilidades/02-esbuild-minimatch-dependabot.md) |
 | Entender dependências e auto-merge           | [Guia do Dependabot](dependabot/README.md) e [operação do CI/CD](ci_cd/ativacao-e-operacao.md#como-funciona-o-auto-merge-do-dependabot) |
 
 ## Componentes
@@ -44,6 +44,7 @@ Consulte [visão geral da CI/CD](ci_cd/visao-geral.md), [operação](ci_cd/ativa
 | [dependabot/](dependabot/README.md)                                     | Atualizações de dependências e regras do Dependabot                     |
 | [seguranca-workflows/](seguranca-workflows/README.md)                   | Estado atual de CodeQL, Dependency Review, Gitleaks e Workflow Security |
 | [01 - Vulnerabilidade deepmerge/shadcn](seguranca-vulnerabilidades/01-vulnerabilidade-deepmerge-shadcn.md) | Registro e correção de vulnerabilidades de dependências |
+| [02 - Vulnerabilidades esbuild/minimatch](seguranca-vulnerabilidades/02-esbuild-minimatch-dependabot.md) | Investigação e correção de dependências bloqueadas pelo Dependabot |
 | [implementacao-nova-seguranca/](implementacao-nova-seguranca/README.md) | Registro da implementação original dos controles de segurança           |
 | [estrutura/](estrutura/README.md)                                       | CI, Docker, ambientes, testes e versionamento                           |
 | [backend/](backend/README.md)                                           | Contratos e comportamento da API                                        |
