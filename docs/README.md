@@ -47,6 +47,7 @@ Consulte [visão geral da CI/CD](ci_cd/visao-geral.md), [operação](ci_cd/ativa
 | [implementacao-nova-seguranca/](implementacao-nova-seguranca/README.md) | Registro da implementação original dos controles de segurança           |
 | [estrutura/](estrutura/README.md)                                       | CI, Docker, ambientes, testes e versionamento                           |
 | [backend/](backend/README.md)                                           | Contratos e comportamento da API                                        |
+| [Task 01 — Contrato com o Sistema Host](tasks-devops/integracao-com-host/task-01/Definir-contrato.md) | Processo e contrato da integração com o Host |
 | [interface/](interface/README.md)                                       | Componentes e configuração da interface                                 |
 | [contexto/](contexto/CONTEXTO_MODELO.md)                                | Contexto de manutenção, arquitetura e limitações                        |
 | [changelog/](changelog/CHANGELOG.md)                                    | Registros históricos de alterações                                      |

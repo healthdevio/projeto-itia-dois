@@ -25,6 +25,10 @@ Contrato da API, para quem consome.
 - [Task 07 — Bloquear ferramenta não autorizada](../tasks-devops/tools-e-seguranca/task-07/Bloquear-ferramenta-nao-autorizada.md)
 - [Task 08 — Permitir execução autorizada](../tasks-devops/tools-e-seguranca/task-08/Permitir-execucao-autorizada.md)
 
+## Tasks de integração com Host
+
+- [Task 01 — Definir contrato com o Sistema Host](../tasks-devops/integracao-com-host/task-01/Definir-contrato.md)
+
 ## Resumo dos endpoints
 
 | Método   | Rota                         | Quem chama   |
