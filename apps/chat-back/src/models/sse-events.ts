@@ -3,16 +3,22 @@ import type { ChatConfig } from './chat-config.js';
 import type { Suggestion } from './suggestion.js';
 
 export interface MessageStartedEvent {
+  request_id: string;
+  conversation_id: string;
   message_id: string;
   state: Extract<ConversationState, 'streaming'>;
 }
 
 export interface MessageDeltaEvent {
+  request_id: string;
+  conversation_id: string;
   message_id: string;
   delta: string;
 }
 
 export interface MessageCompletedEvent {
+  request_id: string;
+  conversation_id: string;
   message_id: string;
   state: Extract<ConversationState, 'success'>;
   suggestions: Suggestion[];
@@ -20,6 +26,8 @@ export interface MessageCompletedEvent {
 }
 
 export interface MessageErrorEvent {
+  request_id: string;
+  conversation_id: string;
   message_id: string;
   state: Extract<ConversationState, 'error'>;
   error: string;
