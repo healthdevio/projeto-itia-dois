@@ -6,7 +6,21 @@ Este documento define o contrato dos eventos enviados pelo backend durante o pro
 
 O contrato padroniza os nomes dos eventos, seus respectivos payloads e a sequência de comunicação entre backend e frontend, permitindo que a interface acompanhe a geração da resposta em tempo real.
 
+Cada evento transporta identificadores que permitem relacionar sua ocorrência à requisição, à conversa e à mensagem correspondentes.
+
 A definição desses eventos estabelece um formato comum de comunicação, independentemente do provedor de IA utilizado.
+
+## Identificadores de correlação
+
+Todos os eventos devem transportar os seguintes identificadores:
+
+| Campo             | Tipo     | Descrição                                               |
+| ----------------- | -------- | ------------------------------------------------------- |
+| `request_id`      | `string` | Identifica a requisição responsável pelo processamento. |
+| `conversation_id` | `string` | Identifica a conversa à qual a mensagem pertence.       |
+| `message_id`      | `string` | Identifica a mensagem enviada pelo usuário.             |
+
+Os identificadores devem permanecer iguais durante todo o processamento de uma mesma requisição.
 
 ## Eventos disponíveis
 
@@ -29,10 +43,12 @@ Indica que o processamento da mensagem foi iniciado.
 
 Payload:
 
-| Campo        | Tipo          | Descrição                                         |
-| ------------ | ------------- | ------------------------------------------------- |
-| `message_id` | `string`      | Identificador da mensagem.                        |
-| `state`      | `'streaming'` | Estado da conversa durante a geração da resposta. |
+| Campo             | Tipo          | Descrição                                         |
+| ----------------- | ------------- | ------------------------------------------------- |
+| `request_id`      | `string`      | Identificador da requisição.                      |
+| `conversation_id` | `string`      | Identificador da conversa.                        |
+| `message_id`      | `string`      | Identificador da mensagem.                        |
+| `state`           | `'streaming'` | Estado da conversa durante a geração da resposta. |
 
 ### `message.delta`
 
@@ -40,10 +56,12 @@ Transporta um fragmento da resposta gerada pela IA. Esse evento pode ser enviado
 
 Payload:
 
-| Campo        | Tipo     | Descrição                                           |
-| ------------ | -------- | --------------------------------------------------- |
-| `message_id` | `string` | Identificador da mensagem.                          |
-| `delta`      | `string` | Fragmento de texto recebido da geração da resposta. |
+| Campo             | Tipo     | Descrição                                           |
+| ----------------- | -------- | --------------------------------------------------- |
+| `request_id`      | `string` | Identificador da requisição.                        |
+| `conversation_id` | `string` | Identificador da conversa.                          |
+| `message_id`      | `string` | Identificador da mensagem.                          |
+| `delta`           | `string` | Fragmento de texto recebido da geração da resposta. |
 
 ### `message.completed`
 
@@ -51,12 +69,14 @@ Indica que a geração da resposta foi concluída com sucesso.
 
 Payload:
 
-| Campo         | Tipo           | Descrição                              |
-| ------------- | -------------- | -------------------------------------- |
-| `message_id`  | `string`       | Identificador da mensagem.             |
-| `state`       | `'success'`    | Estado final da conversa.              |
-| `suggestions` | `Suggestion[]` | Sugestões disponibilizadas ao usuário. |
-| `config`      | `ChatConfig`   | Configuração aplicada à conversa.      |
+| Campo             | Tipo           | Descrição                              |
+| ----------------- | -------------- | -------------------------------------- |
+| `request_id`      | `string`       | Identificador da requisição.           |
+| `conversation_id` | `string`       | Identificador da conversa.             |
+| `message_id`      | `string`       | Identificador da mensagem.             |
+| `state`           | `'success'`    | Estado final da conversa.              |
+| `suggestions`     | `Suggestion[]` | Sugestões disponibilizadas ao usuário. |
+| `config`          | `ChatConfig`   | Configuração aplicada à conversa.      |
 
 A resposta completa não é repetida nesse evento, pois o frontend deve reconstruí-la a partir dos fragmentos recebidos em `message.delta`.
 
@@ -66,11 +86,27 @@ Indica que ocorreu um erro durante o processamento da mensagem.
 
 Payload:
 
-| Campo        | Tipo      | Descrição                                    |
-| ------------ | --------- | -------------------------------------------- |
-| `message_id` | `string`  | Identificador da mensagem.                   |
-| `state`      | `'error'` | Estado final da conversa.                    |
-| `error`      | `string`  | Mensagem segura descrevendo o erro ocorrido. |
+| Campo             | Tipo      | Descrição                                    |
+| ----------------- | --------- | -------------------------------------------- |
+| `request_id`      | `string`  | Identificador da requisição.                 |
+| `conversation_id` | `string`  | Identificador da conversa.                   |
+| `message_id`      | `string`  | Identificador da mensagem.                   |
+| `state`           | `'error'` | Estado final da conversa.                    |
+| `error`           | `string`  | Mensagem segura descrevendo o erro ocorrido. |
+
+## Exemplo de evento
+
+```json
+{
+  "event": "message.delta",
+  "data": {
+    "request_id": "req-example-001",
+    "conversation_id": "conv-example-001",
+    "message_id": "msg-example-001",
+    "delta": "Olá! Como posso ajudar?"
+  }
+}
+```
 
 ## Sequência dos eventos
 
@@ -89,7 +125,7 @@ Durante o processamento de uma mensagem, os eventos devem seguir esta sequência
 - `message.completed` e `message.error` são eventos terminais e mutuamente exclusivos.
 - Nenhum evento `message.delta` deve ser enviado após um evento terminal.
 - `message.error` pode ser enviado após `message.started` ou após um ou mais eventos `message.delta`, caso ocorra uma falha durante o processamento.
-- Cada evento deve manter o mesmo `message_id` durante o processamento da mensagem.
+- Todos os eventos de uma mesma requisição devem manter os mesmos valores de `request_id`, `conversation_id` e `message_id`.
 
 ## Segurança e observações
 

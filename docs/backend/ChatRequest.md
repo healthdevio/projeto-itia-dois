@@ -10,14 +10,17 @@ O modelo reúne os dados de uma mensagem e permite o envio opcional de configura
 
 O modelo está definido em `apps/chat-back/src/models/chat-request.ts` e estende a interface `Message`.
 
-| Campo        | Tipo              | Obrigatório | Descrição                  |
-| ------------ | ----------------- | ----------- | -------------------------- |
-| `message_id` | `string`          | Sim         | Identificador da mensagem. |
-| `message`    | `string`          | Sim         | Conteúdo da mensagem.      |
-| `date`       | `string`          | Não         | Data da mensagem.          |
-| `metadata`   | `string`          | Não         | Metadados adicionais.      |
-| `origin`     | `string`          | Sim         | Origem da mensagem.        |
-| `config`     | `ChatConfigInput` | Não         | Configurações da resposta. |
+| Campo             | Tipo              | Obrigatório | Descrição                            |
+| ----------------- | ----------------- | ----------- | ------------------------------------ |
+| `request_id`      | `string`          | Sim         | Identificador da requisição.         |
+| `conversation_id` | `string`          | Não         | Identificador da conversa existente. |
+|                   |                   |             | Ausente na primeira mensagem.        |
+| `message_id`      | `string`          | Sim         | Identificador da mensagem.           |
+| `message`         | `string`          | Sim         | Conteúdo da mensagem.                |
+| `date`            | `string`          | Não         | Data da mensagem.                    |
+| `metadata`        | `string`          | Não         | Metadados adicionais.                |
+| `origin`          | `string`          | Sim         | Origem da mensagem.                  |
+| `config`          | `ChatConfigInput` | Não         | Configurações da resposta.           |
 
 ### Configurações
 
@@ -33,7 +36,9 @@ Os valores aceitos são definidos pelo modelo `ChatConfig`.
 
 ```json
 {
+  "request_id": "req-example-001",
   "message_id": "msg-example-001",
+  "conversation_id": "conv-example-001",
   "message": "Olá, preciso de ajuda.",
   "date": "2026-11-10T14:00:00.000Z",
   "origin": "web",
