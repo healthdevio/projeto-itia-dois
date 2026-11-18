@@ -54,5 +54,10 @@
     "vite": "^8.3.8",
     "vitest": "^4.1.2",
     "tsx": "^4.15.0"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "0.28.2"
+    }
   }
 }
