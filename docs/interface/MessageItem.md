@@ -19,7 +19,7 @@ O registro da Task 06 descreve mensagens diferenciadas visualmente por autor, us
 author: 'user' | 'omnia'
 ```
 
-Esse formato é histórico e não deve ser considerado automaticamente o contrato definitivo. O Core utiliza conceitos como `role: user | assistant`; a integração deve definir um mapeamento explícito entre os modelos.
+Esse formato é histórico e não deve ser considerado automaticamente o contrato definitivo. O Backend utiliza conceitos como `role: user | assistant`; a integração deve definir um mapeamento explícito entre os modelos.
 
 ## Boas práticas
 

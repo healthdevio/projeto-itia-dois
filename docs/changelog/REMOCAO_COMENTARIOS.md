@@ -50,7 +50,7 @@ Os arquivos de infraestrutura (Dockerfile, workflow, stack, entrypoint) acumulav
 #
 # O volume `omnia_postgres_data` e LOCAL: ele nao viaja entre nos do
 # Swarm. Se o container do Postgres mudar de servidor, sobe la um banco
-# VAZIO, e o Core passa a conectar num banco sem as tabelas dele.
+# VAZIO, e o backend passa a conectar num banco sem as tabelas dele.
 #
 # O sintoma e o mesmo de migration nao aplicada: "relation
 # conversations does not exist". A diferenca e que a migration roda e
@@ -89,7 +89,7 @@ Exemplo:
 
 O volume `omnia_postgres_data` e LOCAL: ele nao viaja entre nos do
 Swarm. Se o container do Postgres mudar de servidor, sobe la um banco
-VAZIO, e o Core passa a conectar num banco sem as tabelas dele.
+VAZIO, e o backend passa a conectar num banco sem as tabelas dele.
 
 O sintoma e o mesmo de migration nao aplicada: "relation
 conversations does not exist". A diferenca e que a migration roda e

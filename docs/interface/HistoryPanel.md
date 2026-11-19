@@ -22,7 +22,7 @@ O registro da Task 08 inclui a implementação do histórico como uma das entreg
 
 ## Pendências
 
-- Confirmar o contrato atual de `Conversation` no Core.
+- Confirmar o contrato atual de `Conversation` no backend.
 - Definir e implementar o carregamento do histórico pela camada de transporte.
 - Confirmar como a seleção de uma conversa deve funcionar.
 - Tratar loading, lista vazia e erro.
@@ -38,7 +38,7 @@ Hook / camada de estado
        ↓
 Transport
        ↓
-Chat Core
+Chat Backend
 ```
 
 > A fonte fornecida não confirma props, endpoint ou comportamento final do histórico. Não trate esses detalhes como definidos sem consultar o código e os contratos atuais.

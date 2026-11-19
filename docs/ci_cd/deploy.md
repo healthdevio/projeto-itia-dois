@@ -43,7 +43,7 @@ O `.Env` da stack guarda o que o compose **não** guarda: a senha do Postgres, a
 chave da Nvidia, a porta. Os valores vivem lá, não no arquivo.
 
 Se o `PUT` mandasse só as duas tags, o Postgres subiria **sem senha** — e o
-sintoma seria confuso: banco criado, Core conecta, migration roda, e nenhuma
+sintoma seria confuso: banco criado, Backend conecta, migration roda, e nenhuma
 requisição passa.
 
 ## Os serviços
@@ -81,7 +81,7 @@ flowchart LR
     P[postgres] --> C[core: espera, migra, serve] --> W[web]
 ```
 
-**O Swarm não implementa `depends_on`.** Quem espera é o `entrypoint.sh` do Core,
+**O Swarm não implementa `depends_on`.** Quem espera é o `entrypoint.sh` do Backend,
 que faz três coisas em ordem:
 
 ```
@@ -94,22 +94,22 @@ que faz três coisas em ordem:
 Se o Postgres não responder em 60 segundos, o container sai com erro e o
 `restart_policy` faz o Swarm tentar de novo.
 
-### Por que a migration é dentro do Core
+### Por que a migration é dentro do Backend
 
 No compose, `migrate-core` era um serviço à parte com `restart: 'no'`: rodava,
-aplicava, terminava, e o Core subia depois.
+aplicava, terminava, e o Backend subia depois.
 
 **No Swarm todo serviço é perpétuo.** Não existe container que termina. Um serviço
-de migration sairia com o Swarm recriando em laço, e o Core esperaria um
+de migration sairia com o Swarm recriando em laço, e o Backend esperaria um
 `service_completed_successfully` que nunca aconteceria.
 
-Por isso `replicas: 1` no Core é obrigatório: duas tasks subindo juntas
+Por isso `replicas: 1` no Backend é obrigatório: duas tasks subindo juntas
 rodariam a migration ao mesmo tempo.
 
 ### Por que o Postgres fica preso a um nó
 
 O volume `omnia_postgres_data` é local — não viaja entre servidores. Se o
-container mudar de nó, sobe lá um banco vazio, e o Core conecta num banco sem as
+container mudar de nó, sobe lá um banco vazio, e o Backend conecta num banco sem as
 tabas.
 
 O sintoma é o mesmo de migration não aplicada: `relation "conversations" does
@@ -147,18 +147,18 @@ Cacheado, a interface continua servindo a versão anterior depois de um deploy.
 
 ### Por que a API não é publicada
 
-O Core valida JWT Bearer com a configuração OIDC (`OIDC_ISSUER`,
+O Backend valida JWT Bearer com a configuração OIDC (`OIDC_ISSUER`,
 `OIDC_AUDIENCE`, `OIDC_JWKS_URL`) e deriva o usuário do `sub`. Os headers
 `X-User-Id` enviados pelo cliente são ignorados. A stack publica **só** a
 interface; a UI ainda precisa ser integrada ao provedor para obter tokens.
 
 ## O banco e as migrations
 
-As migrations do Core ficam em `drizzle_core.__drizzle_migrations`, separadas do
+As migrations do Backend ficam em `drizzle_core.__drizzle_migrations`, separadas do
 padrão `drizzle` que o pacote `knowledge` usa.
 
 Os dois pacotes apontam para o mesmo banco. Se compartilhassem a tabela de
-controle, o migrator do Core leria o carimbo do `knowledge` e concluiria que uma
+controle, o migrator do Backend leria o carimbo do `knowledge` e concluiria que uma
 migration própria — mais antiga que aquele carimbo — já tinha sido aplicada, e a
 pularia.
 

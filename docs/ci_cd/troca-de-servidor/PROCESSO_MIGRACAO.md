@@ -21,7 +21,7 @@ O projeto rodava em uma VM gratuita da Oracle Cloud (`167.126.20.64`) com deploy
 | 2   | `PUT` reenvia compose inteiro      | PUT substitui; corpo vazio apaga a stack sem erro    |
 | 3   | `.Env` da stack vai inteiro        | Senha do Postgres vive no `.Env`, não no compose     |
 | 4   | Postgres preso ao `compute01`      | Volume local; banco que muda de nó sobe vazio        |
-| 5   | `replicas: 1` no Core              | Migration roda no start; 2 tasks = colisão de schema |
+| 5   | `replicas: 1` no Backend           | Migration roda no start; 2 tasks = colisão de schema |
 | 6   | Migration no `entrypoint.sh`       | Swarm: serviço perpétuo + sem `depends_on`           |
 | 7   | Sem healthcheck na stack           | Quem conta é o `HEALTHCHECK` da imagem               |
 | 8   | Senha como variável com `:?`       | Uma fonte só; Swarm recusa stack se faltar           |
@@ -34,18 +34,18 @@ O projeto rodava em uma VM gratuita da Oracle Cloud (`167.126.20.64`) com deploy
 
 ## 3. Mudança de modelo
 
-| Aspecto            | Antes (Oracle VM)                | Agora (PW2C Swarm)                      |
-| ------------------ | -------------------------------- | --------------------------------------- |
-| **Registry**       | `ghcr.io`                        | `registry.cloud.grupopw2c.com.br`       |
-| **Credencial**     | `GITHUB_TOKEN` (auto)            | `PW2C_REGISTRY_PASSWORD` (manual)       |
-| **Entrada deploy** | SSH + `scp` + `deploy.sh`        | API Portainer (GET → modifica → PUT)    |
-| **Topologia**      | `docker compose`                 | `docker stack`                          |
-| **Postgres**       | Fora, rede `omnia-db` + alias    | **Serviço da stack**, volume local      |
-| **Rede**           | `omnia-db` externa               | `omnia_net` overlay do Swarm            |
-| **Migration**      | Serviço `migrate-core` (termina) | No `entrypoint.sh` (Core sobe depois)   |
-| **Fixidez banco**  | Implícita (1 VM)                 | Constraint `node.hostname == compute01` |
-| **Trigger CD**     | `workflow_run` após CI           | `push` direto em `main`                 |
-| **Secrets**        | 3 (SSH)                          | 6 (2 registry + 4 Portainer)            |
+| Aspecto            | Antes (Oracle VM)                | Agora (PW2C Swarm)                       |
+| ------------------ | -------------------------------- | ---------------------------------------- |
+| **Registry**       | `ghcr.io`                        | `registry.cloud.grupopw2c.com.br`        |
+| **Credencial**     | `GITHUB_TOKEN` (auto)            | `PW2C_REGISTRY_PASSWORD` (manual)        |
+| **Entrada deploy** | SSH + `scp` + `deploy.sh`        | API Portainer (GET → modifica → PUT)     |
+| **Topologia**      | `docker compose`                 | `docker stack`                           |
+| **Postgres**       | Fora, rede `omnia-db` + alias    | **Serviço da stack**, volume local       |
+| **Rede**           | `omnia-db` externa               | `omnia_net` overlay do Swarm             |
+| **Migration**      | Serviço `migrate-core` (termina) | No `entrypoint.sh` (Backend sobe depois) |
+| **Fixidez banco**  | Implícita (1 VM)                 | Constraint `node.hostname == compute01`  |
+| **Trigger CD**     | `workflow_run` após CI           | `push` direto em `main`                  |
+| **Secrets**        | 3 (SSH)                          | 6 (2 registry + 4 Portainer)             |
 
 ---
 
@@ -53,7 +53,7 @@ O projeto rodava em uma VM gratuita da Oracle Cloud (`167.126.20.64`) com deploy
 
 | Caminho                                    | Descrição                               |
 | ------------------------------------------ | --------------------------------------- |
-| `apps/docker/pw2c/docker-stack.yml`        | Stack Swarm (postgres, core, web)       |
+| `apps/docker/pw2c/docker-stack.yml`        | Stack Swarm (postgres, backend, web)    |
 | `apps/docker/pw2c/stack.env.example`       | Template variáveis da stack             |
 | `apps/docker/entrypoint.sh`                | Espera PG → migration → server          |
 | `apps/docker/Dockerfile.core`              | + `postgresql-client` + `entrypoint.sh` |
@@ -83,7 +83,7 @@ O projeto rodava em uma VM gratuita da Oracle Cloud (`167.126.20.64`) com deploy
 | Arquivo                              | Mudança principal                                |
 | ------------------------------------ | ------------------------------------------------ |
 | `apps/docker/Dockerfile.core`        | + `postgresql-client`; + `COPY entrypoint.sh`    |
-| `apps/docker/pw2c/docker-stack.yml`  | Stack Swarm (postgres, core, web)                |
+| `apps/docker/pw2c/docker-stack.yml`  | Stack Swarm (postgres, backend, web)             |
 | `apps/docker/pw2c/stack.env.example` | Template variáveis (sem secrets)                 |
 | `.github/workflows/cd.yml`           | Build + push apenas; sem deploy                  |
 | `apps/docker/entrypoint.sh`          | Novo: espera PG → migration → server             |
@@ -134,7 +134,7 @@ exec node dist/main.js
 ### `docker-stack.yml` (stack Swarm)
 
 - Postgres como serviço com constraint `node.hostname == compute01`
-- Core com `replicas: 1` (migration no start)
+- Backend com `replicas: 1` (migration no start)
 - Web com `mode: host` na porta `OMNIA_WEB_PORT`
 - Secrets removidos → variáveis `.Env` com `:?`
 
@@ -217,17 +217,17 @@ Só reverte código. Migration já aplicada não volta (Drizzle não tem `down`)
 
 ## 12. Problemas conhecidos e soluções
 
-| Sintoma                                     | Causa                              | Solução                                    |
-| ------------------------------------------- | ---------------------------------- | ------------------------------------------ |
-| `manifest unknown`                          | Imagem não publicada               | Merge para main dispara CD                 |
-| `unauthorized` no pull                      | Credencial divergente              | Conferir secrets GitHub = cluster          |
-| `no matching manifest linux/amd64`          | Build sem platform                 | `platforms: linux/amd64` no workflow       |
-| `web` 502                                   | Core não subiu                     | `docker service logs omnia_core`           |
-| `constraint requirements not satisfied`     | Nó `compute01` não existe          | `docker node ls` + ajuste constraint       |
-| `relation "conversations" does not exist`   | Postgres em nó errado              | `docker service ps omnia_postgres`         |
-| `core` reiniciando                          | Banco fora ou senha errada         | Log do Core + conferir `POSTGRES_PASSWORD` |
-| `postgres nao respondeu apos 30 tentativas` | Core não acha banco                | `docker service inspect omnia_core` redes  |
-| Workflow verde mas app não mudou            | `OMNIA_CORE_IMAGE` ausente no .Env | Adicionar no Portainer                     |
+| Sintoma                                     | Causa                              | Solução                                       |
+| ------------------------------------------- | ---------------------------------- | --------------------------------------------- |
+| `manifest unknown`                          | Imagem não publicada               | Merge para main dispara CD                    |
+| `unauthorized` no pull                      | Credencial divergente              | Conferir secrets GitHub = cluster             |
+| `no matching manifest linux/amd64`          | Build sem platform                 | `platforms: linux/amd64` no workflow          |
+| `web` 502                                   | Backend não subiu                  | `docker service logs omnia_core`              |
+| `constraint requirements not satisfied`     | Nó `compute01` não existe          | `docker node ls` + ajuste constraint          |
+| `relation "conversations" does not exist`   | Postgres em nó errado              | `docker service ps omnia_postgres`            |
+| `core` reiniciando                          | Banco fora ou senha errada         | Log do Backend + conferir `POSTGRES_PASSWORD` |
+| `postgres nao respondeu apos 30 tentativas` | Backend não acha banco             | `docker service inspect omnia_core` redes     |
+| Workflow verde mas app não mudou            | `OMNIA_CORE_IMAGE` ausente no .Env | Adicionar no Portainer                        |
 
 ---
 

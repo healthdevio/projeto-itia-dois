@@ -33,7 +33,7 @@ A implementação atual pode ter evoluído desde esses registros. Confirme no `a
 - Manter o estado no nível apropriado para os componentes que o compartilham.
 - Evitar concentrar indefinidamente responsabilidades de interface, transporte e domínio em um único componente.
 - Usar a camada de transporte para comunicação HTTP, conforme a arquitetura definida.
-- Mapear explicitamente os modelos da Interface para os contratos do Core.
+- Mapear explicitamente os modelos da Interface para os contratos do Backend.
 
 ## Validação
 

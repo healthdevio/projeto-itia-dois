@@ -1,15 +1,9 @@
 import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
-import {
-  formatChatConfig,
-  validateChatConfig,
-  type ChatConfig,
-  type ChatConfigInput,
-} from '../models/chat-config.js';
-import type { ConversationState } from '../models/conversation.js';
+import { formatChatConfig, validateChatConfig } from '../models/chat-config.js';
 import type { ApiResponse } from '../models/api-response.js';
 import type { Message } from '../models/message.js';
-import type { Suggestion } from '../models/suggestion.js';
+import type { ChatRequest } from '../models/chat-request.js';
 import { IdentityGuard, type IdentityRequest } from '../middleware/identity.js';
 import {
   appendMessage,
@@ -22,18 +16,7 @@ import {
   replaceActiveSuggestions,
 } from '../repositories/suggestion-repository.js';
 import { AIError, buildContext, sendToAI } from '../services/ai/index.js';
-
-interface MessageRequestBody extends Message {
-  config?: ChatConfigInput;
-}
-
-interface MessageResponseData {
-  message_id: string;
-  ai_response: string;
-  state: ConversationState;
-  suggestions: Suggestion[];
-  config: ChatConfig;
-}
+import type { ChatResponse } from '../models/chat-response.js';
 
 @Controller('api/messages')
 @UseGuards(IdentityGuard)
@@ -57,7 +40,7 @@ export class MessagesController {
       return response.status(400).json(body);
     }
 
-    const input = parsed as MessageRequestBody;
+    const input = parsed as ChatRequest;
     const chatConfig = validateChatConfig(input.config);
     if (!chatConfig.ok) {
       const body: ApiResponse = { success: false, error: chatConfig.error };
@@ -121,9 +104,11 @@ export class MessagesController {
           ? await getActiveSuggestions(userId)
           : await replaceActiveSuggestions(userId, aiResponse.suggestions);
       await transitionConversationState(userId, 'success');
-      const body: ApiResponse<MessageResponseData> = {
+      const body: ApiResponse<ChatResponse> = {
         success: true,
         data: {
+          request_id: input.request_id,
+          conversation_id: conversation.id,
           message_id: message.message_id,
           ai_response: aiResponse.response,
           state: 'success',

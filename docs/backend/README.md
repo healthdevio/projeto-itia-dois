@@ -1,0 +1,69 @@
+# Backend
+
+Contrato da API, para quem consome.
+
+| Documento                                | Assunto                                                               |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| [Conversation.md](Conversation.md)       | Conversa, estados, persistência e contexto da AI                      |
+| [Message.md](Message.md)                 | Modelo de mensagem e endpoint de envio                                |
+| [Suggestion.md](Suggestion.md)           | Sugestões, endpoints e limites                                        |
+| [ChatConfig.md](ChatConfig.md)           | Configuração e o repasse para a AI                                    |
+| [ChatContext.md](ChatContext.md)         | Estrutura de contexto adicional para a Omnia IA e integrações         |
+| [HostIntegration.md](HostIntegration.md) | Contrato independente de provider para contexto e ferramentas do Host |
+| [ChatRequest](./ChatRequest.md)          | Contrato de entrada de uma solicitação de chat.                       |
+| [ChatResponse](./ChatResponse.md)        | Contrato de saída de uma resposta do chat.                            |
+| [sse-events.md](sse-events.md)           | Contrato dos eventos SSE e seus respectivos payloads.                 |
+
+## Tasks de DevOps
+
+- [Task 01 — Modelo Tool](../tasks-devops/tools-e-seguranca/task-01/Tool.md)
+- [Task 02 — Modelo ToolCall](../tasks-devops/tools-e-seguranca/task-02/ToolCall.md)
+- [Task 03 — JSON Schema das ferramentas](../tasks-devops/tools-e-seguranca/task-03/JSON-Schema.md)
+- [Task 04 — Validar parâmetros das ferramentas](../tasks-devops/tools-e-seguranca/task-04/Validar-parametros.md)
+- [Task 05 — Definir estrutura de permissões](../tasks-devops/tools-e-seguranca/task-05/Estrutura-permissoes.md)
+- [Task 06 — Implementar autorização](../tasks-devops/tools-e-seguranca/task-06/Implementar-autorizacao.md)
+- [Task 07 — Bloquear ferramenta não autorizada](../tasks-devops/tools-e-seguranca/task-07/Bloquear-ferramenta-nao-autorizada.md)
+- [Task 08 — Permitir execução autorizada](../tasks-devops/tools-e-seguranca/task-08/Permitir-execucao-autorizada.md)
+
+## Tasks de integração com Host
+
+- [Task 01 — Definir contrato com o Sistema Host](../tasks-devops/integracao-com-host/task-01/Definir-contrato.md)
+
+## Resumo dos endpoints
+
+| Método   | Rota                         | Quem chama   |
+| -------- | ---------------------------- | ------------ |
+| `GET`    | `/health`                    | health check |
+| `GET`    | `/api/conversations/current` | interface    |
+| `GET`    | `/api/conversations/active`  | interface    |
+| `POST`   | `/api/conversations/rotate`  | interface    |
+| `POST`   | `/api/messages`              | interface    |
+| `GET`    | `/api/suggestions`           | interface    |
+| `POST`   | `/api/suggestions`           | interface    |
+| `DELETE` | `/api/suggestions`           | interface    |
+
+## Identidade
+
+Todos os endpoints de conversa, mensagem e sugestão exigem JWT OIDC válido no header `Authorization: Bearer`.
+
+```bash
+curl -H "Authorization: ******" http://localhost:3001/api/conversations/current
+```
+
+Sem token válido ou sem configuração OIDC, a resposta é `401`.
+
+> O Backend valida assinatura, issuer, audience e expiração do JWT via JWKS. Configure
+> `OIDC_ISSUER`, `OIDC_AUDIENCE` e `OIDC_JWKS_URL`; o claim `sub` determina o
+> usuário. Headers `X-User-Id` e `X-Tenant-Id` enviados pelo cliente são ignorados.
+
+O tenant opcional vem do claim configurado em `OIDC_TENANT_CLAIM` (padrão
+`tenant_id`) e escolhe apenas o prompt da requisição. Ele não concede acesso.
+
+## Onde a API está documentada
+
+O contrato completo está no `README.md` de `apps/chat-back`. Esta pasta tem a
+especificação por modelo; o README tem o ponto de entrada prático.
+
+O processo de migração da camada HTTP de Hono para NestJS (causas, mudanças,
+verificação e rollback) está em
+[refatoracao-hono-para-nest.md](refatoracao-hono-para-nest.md).

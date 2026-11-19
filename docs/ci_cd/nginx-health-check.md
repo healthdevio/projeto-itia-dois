@@ -1,17 +1,17 @@
-# Health Check no nginx → Core
+# Health Check no nginx → Backend
 
-> **Registro de implementação:** este documento descreve a alteração original do proxy de health check. Para o comportamento atual das rotas, consulte [health-check-core.md](../core/health-check-core.md) e `apps/docker/nginx.conf`.
+> **Registro de implementação:** este documento descreve a alteração original do proxy de health check. Para o comportamento atual das rotas, consulte [health-check-backend.md](../backend/health-check-backend.md) e `apps/docker/nginx.conf`.
 
 **Data:** 2026-10-20
 **Arquivo alterado:** `apps/docker/nginx.conf`
-**Objetivo:** Frontend saber se a API (Core) está viva, sem expor o Core diretamente.
+**Objetivo:** Frontend saber se a API (Backend) está viva, sem expor o Backend diretamente.
 
 ---
 
 ## O que foi adicionado no `nginx.conf`
 
 ```nginx
-# Health check: proxy para o Core (para o frontend saber se a API está viva)
+# Health check: proxy para o backend (para a interface saber se a API está viva)
 location /health {
   set $core_upstream http://core:3001;
 
@@ -42,14 +42,14 @@ location /health {
 
 ## O que cada parte faz
 
-| Diretiva                           | Valor                     | Por que                            |
-| ---------------------------------- | ------------------------- | ---------------------------------- |
-| `proxy_pass $core_upstream/health` | `http://core:3001/health` | Encaminha para `/health` do Core   |
-| `proxy_connect_timeout 2s`         | 2 segundos                | Falha rápido se Core não responder |
-| `proxy_read_timeout 5s`            | 5 segundos                | Health check deve ser rápido       |
-| `proxy_buffering off`              | off                       | Resposta imediata, sem buffer      |
-| `Cache-Control: no-cache...`       | always                    | Health check nunca cacheado        |
-| `add_header ... always`            | always                    | Headers mesmo em erro (5xx)        |
+| Diretiva                           | Valor                     | Por que                               |
+| ---------------------------------- | ------------------------- | ------------------------------------- |
+| `proxy_pass $core_upstream/health` | `http://core:3001/health` | Encaminha para `/health` do Backend   |
+| `proxy_connect_timeout 2s`         | 2 segundos                | Falha rápido se Backend não responder |
+| `proxy_read_timeout 5s`            | 5 segundos                | Health check deve ser rápido          |
+| `proxy_buffering off`              | off                       | Resposta imediata, sem buffer         |
+| `Cache-Control: no-cache...`       | always                    | Health check nunca cacheado           |
+| `add_header ... always`            | always                    | Headers mesmo em erro (5xx)           |
 
 ---
 
@@ -68,7 +68,7 @@ Navegador (React)
       │
       ▼
 ┌─────────────────────────────────────┐
-│      Core (porta 3001)              │
+│      Backend (porta 3001)           │
 │  GET /health                        │
 │  Retorna: { status, database }      │
 └─────────────────────────────────────┘
@@ -76,9 +76,9 @@ Navegador (React)
 
 ---
 
-## Resposta do Core (`GET /health`)
+## Resposta do Backend (`GET /health`)
 
-O Core já tem rota `/` que retorna health:
+O Backend já tem rota `/` que retorna health:
 
 ```json
 {
@@ -114,7 +114,7 @@ curl http://<host>:8080/health
 }
 ```
 
-### Se Core estiver down
+### Se Backend estiver down
 
 ```json
 {
@@ -124,7 +124,7 @@ curl http://<host>:8080/health
 }
 ```
 
-### Se nginx não achar Core (DNS)
+### Se nginx não achar Backend (DNS)
 
 ```
 502 Bad Gateway
@@ -134,27 +134,27 @@ curl http://<host>:8080/health
 
 ---
 
-## Por que proxy no nginx e não expor Core direto?
+## Por que proxy no nginx e não expor Backend direto?
 
-| Aspecto                | Expor Core direto (3001)   | Proxy no nginx                |
-| ---------------------- | -------------------------- | ----------------------------- |
-| **Segurança**          | Core exposto na internet   | Core só na rede interna       |
-| **Header `X-User-Id`** | Cliente manda o que quiser | nginx pode validar/reescrever |
-| **SSL/TLS**            | Precisa configurar no Core | Termina no nginx              |
-| **Rate limit**         | Difícil no Core            | Fácil no nginx                |
-| **Health check**       | Expõe porta 3001           | Só porta 80 exposta           |
-| **Single origin**      | CORS necessário            | Mesmo domínio, sem CORS       |
+| Aspecto                | Expor Backend direto (3001)   | Proxy no nginx                |
+| ---------------------- | ----------------------------- | ----------------------------- |
+| **Segurança**          | Backend exposto na internet   | Backend só na rede interna    |
+| **Header `X-User-Id`** | Cliente manda o que quiser    | nginx pode validar/reescrever |
+| **SSL/TLS**            | Precisa configurar no Backend | Termina no nginx              |
+| **Rate limit**         | Difícil no Backend            | Fácil no nginx                |
+| **Health check**       | Expõe porta 3001              | Só porta 80 exposta           |
+| **Single origin**      | CORS necessário               | Mesmo domínio, sem CORS       |
 
 ---
 
 ## Próximos passos (opcional)
 
-| Melhoria                | O que faz                                |
-| ----------------------- | ---------------------------------------- |
-| `/health/ready` no Core | Separa "vivo" de "pronto para tráfego"   |
-| `/health/live` no Core  | Para Kubernetes/Swarm liveness probe     |
-| Banner no React         | Mostra "API offline" se `/health` falhar |
-| Métricas de latência    | Tempo de resposta do `/health`           |
+| Melhoria                   | O que faz                                |
+| -------------------------- | ---------------------------------------- |
+| `/health/ready` no Backend | Separa "vivo" de "pronto para tráfego"   |
+| `/health/live` no Backend  | Para Kubernetes/Swarm liveness probe     |
+| Banner no React            | Mostra "API offline" se `/health` falhar |
+| Métricas de latência       | Tempo de resposta do `/health`           |
 
 ---
 

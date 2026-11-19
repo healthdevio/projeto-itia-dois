@@ -1,4 +1,4 @@
-# Refatoração do Core: Hono → NestJS
+# Refatoração do Backend: Hono → NestJS
 
 Data: 2026-11-04
 Branch: `refactor/migrar-modelos-para-nestjs`

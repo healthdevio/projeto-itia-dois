@@ -97,7 +97,7 @@ Para operação Docker e backup, leia `docs/ci_cd/operacao.md` e `docs/estrutura
 - `README.md`: visão geral, início rápido e limitações do produto.
 - `docs/README.md`: índice dos documentos.
 - `apps/chat-back/README.md`: contratos e comandos da API.
-- `docs/core/`: contratos de conversa, mensagem, configuração e sugestões.
+- `docs/backend/`: contratos de conversa, mensagem, configuração e sugestões.
 - `docs/ci_cd/`: pipeline, publicação, operação e diagnóstico.
 - `docs/estrutura/`: CI, Docker, ambientes e testes.
 - `docs/interface/`: componentes e estado da interface.

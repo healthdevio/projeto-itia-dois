@@ -1,12 +1,12 @@
 # Modelo de Message
 
-Esse documento trata de como deve ser formatada o modelo do message que vem da interface, passa pelo core e então é enviada para o AI.
+Esse documento trata de como deve ser formatada o modelo do message que vem da interface, passa pelo backend e então é enviada para o AI.
 
 #### O que é o message?
 
-É responsável por enviar a mensagem do usuário para o core, onde processamento pode ser feito e então entregue para a AI como prompt.
+É responsável por enviar a mensagem do usuário para o backend, onde processamento pode ser feito e então entregue para a AI como prompt.
 
-Por conta disso, esse arquivo pode ser separado em duas etapas. Uma entre a interface e o core, e outra do core para o provider da AI.
+Por conta disso, esse arquivo pode ser separado em duas etapas. Uma entre a interface e o backend, e outra do backend para o provider da AI.
 
 Esse json deve incluir os seguintes fields:
 
@@ -20,7 +20,7 @@ Esse json deve incluir os seguintes fields:
 
 `String: origin` Identifica a fonte da mensagem. Obrigatório.
 
-`Object: config` Configuração escolhida pela interface para este envio — idioma, tom e tamanho da resposta. Opcional; quando falta, o Core completa com o default. Não é persistida: vale para esta mensagem. Ver [ChatConfig.md](./ChatConfig.md).
+`Object: config` Configuração escolhida pela interface para este envio — idioma, tom e tamanho da resposta. Opcional; quando falta, o Backend completa com o default. Não é persistida: vale para esta mensagem. Ver [ChatConfig.md](./ChatConfig.md).
 
 A interface deve esperar por códigos de HTTP dependendo no resultado da transferência.
 
@@ -30,11 +30,11 @@ A interface deve esperar por códigos de HTTP dependendo no resultado da transfe
 
 `500` Erro interno.
 
-`502` O provider da AI falhou. O Core funcionou; foi o provider de quem ele depende que não respondeu. O corpo traz a causa como o provider a reportou.
+`502` O provider da AI falhou. O Backend funcionou; foi o provider de quem ele depende que não respondeu. O corpo traz a causa como o provider a reportou.
 
 ---
 
-## Endpoint do Core
+## Endpoint do Backend
 
 ### Localização
 
@@ -112,7 +112,7 @@ presente: são as que a AI devolveu com a resposta, ou as que já estavam lá
 quando ela não devolveu nenhuma. Ver [Sugestão.md](./Suggestion.md).
 
 `config` traz a configuração efetiva deste envio — a que foi repassada para a
-AI, já com o que faltava preenchido pelo default do Core. É o que permite à
+AI, já com o que faltava preenchido pelo default do Backend. É o que permite à
 tela mostrar o que vale sem guardar a configuração por conta própria. Ver
 [ChatConfig.md](./ChatConfig.md).
 
@@ -157,7 +157,7 @@ O timeout aparece na mesma forma, dizendo o teto que estourou:
 ```
 
 Isso é o que permite à interface diferenciar "falhou no provider" de "falhou por
-bug no Core", e oferecer retry só no primeiro caso. O Core não sabe — e não
+bug no Backend", e oferecer retry só no primeiro caso. O Backend não sabe — e não
 precisa saber — _por que_ o provider falhou; só precisa não descartar a
 informação.
 
@@ -181,24 +181,24 @@ apps/chat-back/src/services/ai/
 ### Como funciona
 
 1. A interface envia a mensagem, com token Bearer, para o endpoint `/api/messages`
-2. O Core valida e processa a mensagem, e valida o `config` antes de qualquer escrita
-3. O Core grava a mensagem na conversa ativa **do usuário**, já existente ou recém-criada
-4. O Core monta o **contexto** da conversa (mensagens anteriores + ids do histórico) e entrega `{ message, context, config }` ao provider da AI
-5. O Core grava a resposta da AI na conversa com `role: "assistant"`
-6. Se a resposta trouxe `suggestions`, o Core substitui as sugestões da conversa pelas novas
+2. O Backend valida e processa a mensagem, e valida o `config` antes de qualquer escrita
+3. O Backend grava a mensagem na conversa ativa **do usuário**, já existente ou recém-criada
+4. O Backend monta o **contexto** da conversa (mensagens anteriores + ids do histórico) e entrega `{ message, context, config }` ao provider da AI
+5. O Backend grava a resposta da AI na conversa com `role: "assistant"`
+6. Se a resposta trouxe `suggestions`, o Backend substitui as sugestões da conversa pelas novas
 7. A resposta da AI, as sugestões da conversa e o `config` efetivo são retornados para a interface
 
-### O Core não sabe o que é um modelo de linguagem
+### O Backend não sabe o que é um modelo de linguagem
 
-Esta é a fronteira central do design. O Core **não** conhece provider, modelo,
+Esta é a fronteira central do design. O Backend **não** conhece provider, modelo,
 prompt, temperatura, nem o formato de requisição de nenhuma API de IA. Tudo isso
 vive atrás da interface `AIProvider`, em `src/services/ai/providers/`.
 
-O provider roda **dentro do processo do Core** — não há mais salto HTTP para um
+O provider roda **dentro do processo do Backend** — não há mais salto HTTP para um
 serviço da AI separado. O que era contrato de rede virou contrato de
 interface, e o provider em uso hoje é um substituto temporário de teste.
 
-O Core sabe apenas três coisas:
+O Backend sabe apenas três coisas:
 
 1. O contrato de contexto `AIContext`, que ele mesmo monta a partir do estado
    que guarda.
@@ -215,12 +215,12 @@ Consequências práticas:
   lugar errado.
 - Trocar de provider de IA não toca rotas, modelos, repositórios nem banco: é um
   arquivo novo em `providers/` e uma linha no registro de `createProvider`.
-- O Core não consegue cumprir nenhuma função de IA por conta própria: ele não
+- O Backend não consegue cumprir nenhuma função de IA por conta própria: ele não
   sabe gerar texto, nem resumir, nem fazer embedding. Quem responde é o provider.
 
 ### Contrato com o provider da AI
 
-Requisição — o que o Core entrega a `AIProvider.respond()`:
+Requisição — o que o Backend entrega a `AIProvider.respond()`:
 
 ```json
 {
@@ -256,7 +256,7 @@ Resposta:
 ```
 
 `suggestions` é opcional, e o `suggestion_id` de cada item também: quando falta,
-o Core gera. Cada item aceita `{ "text": "..." }` ou a string do texto direto.
+o Backend gera. Cada item aceita `{ "text": "..." }` ou a string do texto direto.
 Ver [Sugestões na resposta](#sugestões-na-resposta).
 
 ### Tempo de espera pelo modelo
@@ -274,7 +274,7 @@ esperar cinco minutos por um provider que morreu.
 ### Sugestões na resposta
 
 A AI pode anexar sugestões à resposta — as ações que o usuário poderia tomar
-a seguir. O Core as grava na conversa ativa de quem enviou e as devolve em
+a seguir. O Backend as grava na conversa ativa de quem enviou e as devolve em
 `data.suggestions`, para a interface renderizar as chips sem uma segunda chamada.
 
 ```json
@@ -290,11 +290,11 @@ a seguir. O Core as grava na conversa ativa de quem enviou e as devolve em
 
 O campo é **opcional e a diferença importa**:
 
-| O que a AI devolve              | O que o Core faz com as sugestões da conversa |
-| ------------------------------- | --------------------------------------------- |
-| `suggestions: [...]`            | Substitui pelas novas                         |
-| `suggestions: []`               | Limpa                                         |
-| campo `suggestions` **ausente** | **Preserva** as que já estavam                |
+| O que a AI devolve              | O que o Backend faz com as sugestões da conversa |
+| ------------------------------- | ------------------------------------------------ |
+| `suggestions: [...]`            | Substitui pelas novas                            |
+| `suggestions: []`               | Limpa                                            |
+| campo `suggestions` **ausente** | **Preserva** as que já estavam                   |
 
 Sugestão malformada é descartada sem derrubar a resposta: o texto da AI é o
 que a interface precisa mostrar, e uma sugestão ruim é um detalhe a menos.
@@ -303,28 +303,28 @@ O modelo completo está em [Suggestion.md](./Suggestion.md).
 
 ### Contexto e a conversa
 
-> **A conversa não é enviada para a AI.** Ela é estado interno do Core, storeado no Postgres.
+> **A conversa não é enviada para a AI.** Ela é estado interno do Backend, storeado no Postgres.
 > O que chega ao provider da AI é a mensagem nova, o contexto — as mensagens anteriores e os ids das conversas passadas — e a configuração que a interface pediu. É o suficiente para a AI responder com consciência do diálogo.
 
-Isso significa que a AI não guarda estado: todo o histórico é reconstruído pelo Core a partir do Postgres no momento de cada envio.
+Isso significa que a AI não guarda estado: todo o histórico é reconstruído pelo Backend a partir do Postgres no momento de cada envio.
 
 O formato do `AIContext` está em [Conversation.md](./Conversation.md#aicontext).
 
 ### Configuração da conversa
 
-A interface pode mandar `config` junto da mensagem, e o Core o repassa no topo do payload, ao lado de `message` e `context`:
+A interface pode mandar `config` junto da mensagem, e o Backend o repassa no topo do payload, ao lado de `message` e `context`:
 
 ```json
 "config": { "language": "pt-BR", "tone": "formal", "response_length": "detailed" }
 ```
 
-Ele fica **fora** do `context` porque não é estado da conversa: o `context` é o que o Core leu do Postgres, e o `config` é o que a tela pediu agora. É um despacho, não um histórico — por isso não é storeado e não volta em `GET /api/conversations`.
+Ele fica **fora** do `context` porque não é estado da conversa: o `context` é o que o Backend leu do Postgres, e o `config` é o que a tela pediu agora. É um despacho, não um histórico — por isso não é storeado e não volta em `GET /api/conversations`.
 
-O Core valida o formato, preenche o que faltar com o default e repassa sem interpretar. Quem decide o que fazer com as etiquetas é o provider, e um provider que não conhece o campo pode ignorá-lo. O modelo completo está em [ChatConfig.md](./ChatConfig.md).
+O Backend valida o formato, preenche o que faltar com o default e repassa sem interpretar. Quem decide o que fazer com as etiquetas é o provider, e um provider que não conhece o campo pode ignorá-lo. O modelo completo está em [ChatConfig.md](./ChatConfig.md).
 
 ### Estados da conversa durante o envio
 
-O Core alterna o `state` da conversa conforme o resultado, para que a interface saiba o que renderizar:
+O Backend alterna o `state` da conversa conforme o resultado, para que a interface saiba o que renderizar:
 
 | Momento                           | `state`     |
 | --------------------------------- | ----------- |
@@ -346,7 +346,7 @@ A máquina de estados completa está em [Conversation.md](./Conversation.md#conv
 
 | Variável            | Descrição                                 | Padrão                                |
 | ------------------- | ----------------------------------------- | ------------------------------------- |
-| `CORE_PORT`         | Porta do servidor Core                    | `3001`                                |
+| `CORE_PORT`         | Porta do servidor Backend                 | `3001`                                |
 | `DATABASE_URL`      | Conexão Postgres que storeia as conversas | — (obrigatória)                       |
 | `AI_PROVIDER`       | Provider da AI: `nvidia` ou `echo`        | `nvidia`                              |
 | `NVIDIA_API_KEY`    | Chave do backend da Nvidia                | — (com `nvidia`)                      |
