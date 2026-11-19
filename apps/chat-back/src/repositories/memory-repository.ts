@@ -63,7 +63,6 @@ function toRelevantMemory(row: MemoryRow): RelevantMemory {
   };
 }
 
-
 function palavrasSignificativas(texto: string): string[] {
   return texto
     .toLowerCase()
@@ -73,7 +72,6 @@ function palavrasSignificativas(texto: string): string[] {
 }
 
 type DB = ReturnType<typeof getDatabase>;
-
 
 export async function createMemory(
   input: CreateMemoryInput,
@@ -97,7 +95,6 @@ export async function createMemory(
   return toMemory(row);
 }
 
-
 export async function listMemories(
   userId: string,
   db: DB = getDatabase(),
@@ -110,7 +107,6 @@ export async function listMemories(
     .limit(50);
   return rows.map(toMemory);
 }
-
 
 export async function getMemory(
   id: string,
@@ -125,7 +121,6 @@ export async function getMemory(
   if (rows.length === 0) return null;
   return toMemory(rows[0]);
 }
-
 
 export async function updateMemory(
   id: string,
@@ -151,7 +146,6 @@ export async function updateMemory(
   return toMemory(row);
 }
 
-
 export async function deleteMemory(
   id: string,
   userId: string,
@@ -162,7 +156,6 @@ export async function deleteMemory(
     .where(and(eq(memories.id, id), eq(memories.userId, userId)));
   return (result.rowCount ?? 0) > 0;
 }
-
 
 export async function buscarMemoriasSimilares(
   userId: string,
@@ -186,7 +179,6 @@ export async function buscarMemoriasSimilares(
   return rows.map(toMemory);
 }
 
-
 export async function listarMemoriasRecentes(
   userId: string,
   limite: number,
@@ -195,7 +187,6 @@ export async function listarMemoriasRecentes(
   const todas = await listMemories(userId, db);
   return todas.slice(0, limite);
 }
-
 
 export async function findRelevantMemories(
   userId: string,

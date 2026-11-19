@@ -52,8 +52,7 @@ export class SseResponseChannel implements SseChannel {
     this.closed = true;
     try {
       this.response.end();
-    } catch {
-    }
+    } catch {}
     this.controller.abort();
   }
 }

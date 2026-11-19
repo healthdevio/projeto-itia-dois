@@ -13,16 +13,14 @@ export interface SseChannel {
   readonly abortSignal: AbortSignal;
 }
 
-
 export class SseBroadcaster extends EventEmitter {
   private readonly connections = new Map<SseConnectionId, SseChannel>();
 
-    register(id: SseConnectionId, channel: SseChannel): void {
+  register(id: SseConnectionId, channel: SseChannel): void {
     this.connections.set(id, channel);
     this.emit('connection', id, channel);
   }
 
-  
   unregister(id: SseConnectionId): void {
     const channel = this.connections.get(id);
     if (channel) {
