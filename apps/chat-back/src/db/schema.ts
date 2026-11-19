@@ -76,6 +76,28 @@ export const suggestions = pgTable(
     ),
   ],
 );
+export const memories = pgTable(
+  'memories',
+  {
+    id: text('id').primaryKey().notNull(),
+    userId: text('user_id').notNull(),
+    content: text('content').notNull(),
+    category: text('category').notNull().default('geral'),
+    importance: integer('importance').notNull().default(1),
+    context: text('context'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('memories_user_id_idx').on(table.userId),
+    index('memories_user_category_idx').on(table.userId, table.category),
+  ],
+);
 export type ConversationRow = typeof conversations.$inferSelect;
 export type MessageRow = typeof messages.$inferSelect;
 export type SuggestionRow = typeof suggestions.$inferSelect;
+export type MemoryRow = typeof memories.$inferSelect;

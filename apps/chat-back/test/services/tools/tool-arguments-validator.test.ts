@@ -18,8 +18,8 @@ const searchTool: Tool = {
   },
 };
 
-void describe('validateToolArguments', () => {
-  void it('aceita argumentos que seguem o schema', () => {
+describe('validateToolArguments', () => {
+  it('aceita argumentos que seguem o schema', () => {
     const result = validateToolArguments(searchTool, {
       customer_id: 'cliente-123',
     });
@@ -27,14 +27,14 @@ void describe('validateToolArguments', () => {
     assert.deepEqual(result, { valid: true });
   });
 
-  void it('rejeita argumentos sem o campo obrigatório', () => {
+  it('rejeita argumentos sem o campo obrigatório', () => {
     const result = validateToolArguments(searchTool, {});
 
     assert.equal(result.valid, false);
     assert.ok(!result.valid && result.errors.length > 0);
   });
 
-  void it('rejeita argumentos com tipo incorreto', () => {
+  it('rejeita argumentos com tipo incorreto', () => {
     const result = validateToolArguments(searchTool, {
       customer_id: 123,
     });
@@ -43,7 +43,7 @@ void describe('validateToolArguments', () => {
     assert.ok(!result.valid && result.errors.length > 0);
   });
 
-  void it('rejeita propriedades não declaradas no schema', () => {
+  it('rejeita propriedades não declaradas no schema', () => {
     const result = validateToolArguments(searchTool, {
       customer_id: 'cliente-123',
       admin: true,

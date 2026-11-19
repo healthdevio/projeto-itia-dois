@@ -1,26 +1,18 @@
 import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
-import { formatChatConfig, validateChatConfig } from '../models/chat-config.js';
 import type { ApiResponse } from '../models/api-response.js';
-import type { Message } from '../models/message.js';
 import type { ChatRequest } from '../models/chat-request.js';
 import { IdentityGuard, type IdentityRequest } from '../middleware/identity.js';
-import {
-  appendMessage,
-  getHistoryIds,
-  getOrCreateActiveConversation,
-  transitionConversationState,
-} from '../repositories/conversation-repository.js';
-import {
-  getActiveSuggestions,
-  replaceActiveSuggestions,
-} from '../repositories/suggestion-repository.js';
-import { AIError, buildContext, sendToAI } from '../services/ai/index.js';
+import { AIError } from '../services/ai/index.js';
+import { MessageProcessingService } from '../services/message-processing/index.js';
 import type { ChatResponse } from '../models/chat-response.js';
+import { validateChatConfig } from '../models/chat-config.js';
 
 @Controller('api/messages')
 @UseGuards(IdentityGuard)
 export class MessagesController {
+  constructor(private readonly processing: MessageProcessingService) {}
+
   @Post()
   async create(
     @Req() request: IdentityRequest,
@@ -62,58 +54,21 @@ export class MessagesController {
       return response.status(400).json(body);
     }
 
-    const message: Message = {
-      message_id: input.message_id,
-      message: input.message,
-      metadata: input.metadata,
-      origin: input.origin,
-      date: input.date || new Date().toISOString(),
-    };
-
     try {
-      console.log(
-        `[Core] Mensagem recebida de ${message.origin} (usuário ${userId}):`,
-        message.message_id,
-        `· tenant ${tenantId ?? 'default'}`,
-        `· config ${formatChatConfig(chatConfig.config)}`,
+      const result = await this.processing.processMessage(
+        userId,
+        input,
+        tenantId,
       );
-      const conversation = await getOrCreateActiveConversation(userId);
-      const context = buildContext(
-        conversation.id,
-        conversation.state,
-        conversation.messages,
-        await getHistoryIds(userId),
-      );
-      await appendMessage(message, 'user', conversation.id);
-      await transitionConversationState(userId, 'streaming');
-      const aiResponse = await sendToAI({
-        message,
-        context,
-        config: chatConfig.config,
-        tenant: tenantId,
-      });
-      const aiMessage: Message = {
-        message_id: `${message.message_id}-ai`,
-        message: aiResponse.response,
-        date: new Date().toISOString(),
-        origin: 'ai',
-      };
-      await appendMessage(aiMessage, 'assistant', conversation.id);
-      const suggestions =
-        aiResponse.suggestions === null
-          ? await getActiveSuggestions(userId)
-          : await replaceActiveSuggestions(userId, aiResponse.suggestions);
-      await transitionConversationState(userId, 'success');
+
       const body: ApiResponse<ChatResponse> = {
         success: true,
         data: {
-          request_id: input.request_id,
-          conversation_id: conversation.id,
-          message_id: message.message_id,
-          ai_response: aiResponse.response,
-          state: 'success',
-          suggestions,
-          config: chatConfig.config,
+          message_id: result.message_id,
+          ai_response: result.ai_response,
+          state: result.state,
+          suggestions: result.suggestions,
+          config: result.config,
         },
       };
       return response.status(200).json(body);
@@ -124,7 +79,7 @@ export class MessagesController {
         providerFailure ? `[AI] ${error.message}` : error,
       );
       try {
-        await transitionConversationState(userId, 'error');
+        await this.processing.transitionToError(userId);
       } catch {}
       const body: ApiResponse = {
         success: false,

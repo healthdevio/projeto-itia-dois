@@ -8,7 +8,14 @@ export {
   buildContext,
   DEFAULT_CONTEXT_WINDOW,
   type AIContext,
+  type RelevantMemory,
 } from './context.js';
+export {
+  recuperarMemoriaRelevante,
+  injetarMemoriasNoContexto,
+  renderizarMemoriasContexto,
+  avaliarEAtualizarMemoria,
+} from './memory.js';
 export {
   AI_PROVIDER_NAMES,
   createProvider,
