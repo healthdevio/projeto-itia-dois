@@ -1,4 +1,5 @@
 import type { ChatConfig } from './chat-config.js';
+import type { PermissionCode } from './permission.js';
 
 export interface ChatContext {
   user?: Record<string, unknown>;
@@ -6,6 +7,6 @@ export interface ChatContext {
   preferences?: ChatConfig;
   session?: Record<string, unknown>;
   current_page?: string;
-  permissions?: string[];
+  permissions?: PermissionCode[];
   system_context?: string;
 }
