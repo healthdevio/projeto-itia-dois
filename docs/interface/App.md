@@ -26,7 +26,21 @@ A documentação também descreve `App.addMessage()` como parte do fluxo histór
 
 A documentação da Task 06 esclarece que a resposta temporária “Mensagem recebida.” era apenas um mecanismo de validação visual, não uma resposta real da IA. A Task 08, por sua vez, contém um WIP antigo para sugestões e não deve ser considerada concluída apenas por existir um commit.
 
-A implementação atual pode ter evoluído desde esses registros. Confirme no `apps/chat-omnia/src/App.tsx` quais estados, contratos e chamadas estão efetivamente presentes.
+## Estado atual (Front-end [08])
+
+`src/App.tsx` continua com `isOpen`, `isExpanded`, `messages` e `state` fixo em
+`greeting`. O envio permanece local e fixo (`'Mensagem recebida.'`) — a ligação
+desses estados ao Core é outra task.
+
+A Task 08 acrescentou apenas:
+
+- `useChatData(mockChatDataSource)`, que fornece sugestões e histórico;
+- `handleSelectSuggestion`, que reaproveita `addMessage` com o texto da sugestão;
+- props `suggestions`/`onSelectSuggestion` para `MiniChat` e `ExpandedChat`, e
+  `history` para `ExpandedChat`.
+
+Não há cliente REST, OIDC, token, SSE nem chamada a endpoints do Back-end. Ver
+[fonte de dados](fonte-de-dados.md).
 
 ## Boas práticas
 
