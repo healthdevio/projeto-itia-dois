@@ -4,6 +4,9 @@ import FloatingChatButton from './interface/chat/FloatingChatButton';
 import MiniChat from './interface/chat/MiniChat';
 import ExpandedChat from './interface/chat/ExpandedChat';
 import type { MessageProps } from './interface/messages/MessageItem';
+import { useChatData } from './hooks/useChatData';
+import { mockChatDataSource } from './transport/mockChatDataSource';
+import type { Suggestion } from './types/chat-contracts';
 
 function App() {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,6 +15,7 @@ function App() {
   const [state] = useState<'greeting' | 'idle' | 'thinking' | 'error'>(
     'greeting',
   );
+  const chatData = useChatData(mockChatDataSource);
 
   const toggleChat = () => {
     setIsOpen(!isOpen);
@@ -23,6 +27,11 @@ function App() {
       message,
       { content: 'Mensagem recebida.', author: 'omnia' },
     ]);
+  };
+
+  /** Comportamento mínimo existente: o texto vai como mensagem local. */
+  const handleSelectSuggestion = (suggestion: Suggestion) => {
+    addMessage({ content: suggestion.text, author: 'user' });
   };
 
   const onToggleExpanded = () => {
@@ -39,6 +48,9 @@ function App() {
             messages={messages}
             onSendMessage={addMessage}
             state={state}
+            suggestions={chatData.suggestions}
+            onSelectSuggestion={handleSelectSuggestion}
+            history={chatData.history}
           />
         ) : (
           <MiniChat
@@ -47,6 +59,8 @@ function App() {
             messages={messages}
             onSendMessage={addMessage}
             state={state}
+            suggestions={chatData.suggestions}
+            onSelectSuggestion={handleSelectSuggestion}
           />
         )
       ) : null}

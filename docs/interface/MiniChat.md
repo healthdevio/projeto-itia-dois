@@ -26,6 +26,29 @@ MiniChat
 
 O registro histórico indica props relacionadas a `isExpanded`, `onToggleExpanded`, `messages`, `onSendMessage` e `state`. Confirme os nomes e tipos no arquivo atual antes de usá-los como contrato.
 
+## Composição atual (Front-end [08])
+
+```text
+MiniChat
+├── ChatHeader
+├── ChatStateView
+├── MessageList
+├── SuggestionList   ← novo
+└── ChatInput
+```
+
+Props adicionadas:
+
+```ts
+suggestions: LoadedData<Suggestion>;
+onSelectSuggestion: (suggestion: Suggestion) => void;
+```
+
+`SuggestionList` fica entre as mensagens e o input, com altura limitada e
+scroll próprio. O histórico **não** aparece no modo compacto, para preservar a
+janela de 320 px. `onSelectSuggestion` é repassado por `App.tsx`, que converte o
+texto da sugestão em mensagem local.
+
 ## Responsabilidades
 
 A visualização compacta organiza os componentes de cabeçalho, estados visuais, mensagens e entrada. O envio visual delega a atualização da conversa ao componente pai, em vez de concentrar toda a lógica no próprio `MiniChat`.
