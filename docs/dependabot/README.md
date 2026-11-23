@@ -81,6 +81,42 @@ Ao revisar uma atualização, confira:
 
 Se o pull request falhar, investigue a mensagem do check e a mudança de versão. É possível solicitar uma versão mais recente, ajustar a dependência manualmente ou fechar o pull request quando a atualização não puder ser adotada. Fechar sem outras ações pode fazer com que a proposta reapareça em verificações futuras.
 
+## Quando o resolvedor não consegue corrigir `esbuild` ou `minimatch`
+
+Uma falha do job de atualização pode ser do resolvedor do Dependabot, sem relação
+com uma falha de build ou teste. Confira a árvore transitiva indicada no alerta e
+atualize a dependência que impõe a faixa incompatível, em vez de alterar o
+workflow ou ignorar o alerta.
+
+Neste repositório, os dois casos foram tratados assim:
+
+- **`esbuild` no backend:** `drizzle-kit@0.31.11` ainda traz
+  `@esbuild-kit/esm-loader` e `@esbuild-kit/core-utils@3.3.2`, cuja dependência
+  antiga pede `esbuild@~0.18.20`. Como não há uma versão mais nova de
+  `drizzle-kit` disponível que remova essa cadeia, `apps/chat-back/package.json`
+  aplica um override restrito a `@esbuild-kit/core-utils`, usando
+  `esbuild@0.28.2`. O lockfile elimina a cópia aninhada vulnerável e reutiliza a
+  versão corrigida. Remova o override apenas quando uma atualização de
+  `drizzle-kit` retirar o loader legado e a árvore continuar sem versões
+  vulneráveis.
+- **`minimatch` no frontend:** `eslint@10.14.0` e
+  `typescript-eslint@8.72.1` mantinham o pacote na linha 10. Foram atualizados
+  para versões que aceitam `minimatch` 11; o lockfile resolve atualmente
+  `minimatch@11.0.9`. Não é necessário forçar uma versão incompatível com as
+  faixas declaradas pelos pais.
+
+Verifique a resolução com:
+
+```powershell
+npm ls --prefix apps/chat-back esbuild
+npm ls --prefix apps/chat-omnia minimatch
+```
+
+O resultado esperado é `esbuild@0.28.2` sob `@esbuild-kit/core-utils` e
+`minimatch@11.0.9` no frontend, sem cópias afetadas. Esses ajustes resolvem
+somente os alertas descritos; outros itens reportados por `npm audit` precisam
+ser triados separadamente.
+
 ## Controles e personalização
 
 O arquivo pode ser ampliado com opções por grupo, por exemplo para limitar pull requests abertos, definir dia e horário, ignorar versões específicas, permitir ou bloquear determinadas atualizações, agrupar dependências ou adicionar revisores e etiquetas. Essas opções devem ser configuradas de acordo com a política do projeto e a sintaxe aceita pelo ecossistema.
