@@ -22,28 +22,40 @@ existir). Para rodar localmente sem NVIDIA, use `AI_PROVIDER=echo`.
 
 ### Variáveis de ambiente
 
-| Variável            | Obrigatória  | Padrão                                | Para que serve                               |
-| ------------------- | ------------ | ------------------------------------- | -------------------------------------------- |
-| `DATABASE_URL`      | sim          | —                                     | Conexão do Postgres (`postgresql://...`)     |
-| `CORE_PORT`         | não          | `80`                                  | Porta HTTP do Nest                           |
-| `AI_PROVIDER`       | não          | `nvidia`                              | `nvidia` ou `echo`                           |
-| `NVIDIA_API_KEY`    | com `nvidia` | —                                     | Chave da API da NVIDIA                       |
-| `NVIDIA_MODEL`      | não          | `meta/llama-3.3-70b-instruct`         | Modelo usado                                 |
-| `NVIDIA_BASE_URL`   | não          | `https://integrate.api.nvidia.com/v1` | Endpoint compatível com OpenAI               |
-| `NVIDIA_TIMEOUT_MS` | não          | `300000`                              | Timeout por chamada ao provider              |
-| `NVIDIA_MAX_TOKENS` | não          | `400`                                 | Teto de tokens da resposta                   |
-| `AI_IGNORE_CONFIG`  | não          | desligado                             | `1` ignora o `config` enviado pela interface |
-| `AI_NO_SUGGESTIONS` | não          | desligado                             | `1` desliga a geração de sugestões           |
-| `OIDC_ISSUER`       | sim          | —                                     | Issuer aceito no JWT                         |
-| `OIDC_AUDIENCE`     | sim          | —                                     | Audience aceita no JWT                       |
-| `OIDC_JWKS_URL`     | sim          | —                                     | JWKS usado para validar a assinatura         |
-| `OIDC_TENANT_CLAIM` | não          | `tenant_id`                           | Claim que escolhe o prompt do tenant         |
-| `CORS_ORIGINS`      | não          | vazio                                 | Origens permitidas, separadas por vírgula    |
-| `MIGRATIONS_FOLDER` | não          | `drizzle`                             | Pasta das migrations do Drizzle              |
-| `NODE_ENV`          | não          | —                                     | `production` exige HTTPS em OIDC e JWKS      |
+| Variável                       | Obrigatória  | Padrão                                | Para que serve                                    |
+| ------------------------------ | ------------ | ------------------------------------- | ------------------------------------------------- |
+| `DATABASE_URL`                 | sim          | —                                     | Conexão do Postgres (`postgresql://...`)          |
+| `CORE_PORT`                    | não          | `80`                                  | Porta HTTP do Nest                                |
+| `AI_PROVIDER`                  | não          | `nvidia`                              | `nvidia` ou `echo`                                |
+| `NVIDIA_API_KEY`               | com `nvidia` | —                                     | Chave da API da NVIDIA                            |
+| `NVIDIA_MODEL`                 | não          | `meta/llama-3.3-70b-instruct`         | Modelo usado                                      |
+| `NVIDIA_BASE_URL`              | não          | `https://integrate.api.nvidia.com/v1` | Endpoint compatível com OpenAI                    |
+| `NVIDIA_TIMEOUT_MS`            | não          | `300000`                              | Timeout por chamada ao provider                   |
+| `NVIDIA_MAX_TOKENS`            | não          | `400`                                 | Teto de tokens da resposta                        |
+| `AI_IGNORE_CONFIG`             | não          | desligado                             | `1` ignora o `config` enviado pela interface      |
+| `AI_NO_SUGGESTIONS`            | não          | desligado                             | `1` desliga a geração de sugestões                |
+| `HOST_CONTEXT_ENABLED`         | não          | desligado                             | `1` carrega o contexto do Host em `/api/messages` |
+| `HOST_CONTEXT_TIMEOUT_MS`      | não          | `5000`                                | Deadline da chamada de contexto do Host           |
+| `HOST_CONTEXT_MAX_BYTES`       | não          | `32768`                               | Tamanho máximo da resposta de contexto            |
+| `HOST_CONTEXT_MAX_TOOLS`       | não          | `50`                                  | Máximo de ferramentas no catálogo                 |
+| `HOST_CONTEXT_MAX_PERMISSIONS` | não          | `100`                                 | Máximo de permissões no contexto e por ferramenta |
+| `HOST_CONTEXT_MAX_TOOL_NAME`   | não          | `256`                                 | Tamanho máximo do nome de ferramenta              |
+| `HOST_CONTEXT_MAX_STRING`      | não          | `4000`                                | Tamanho máximo de textos livres                   |
+| `OIDC_ISSUER`                  | sim          | —                                     | Issuer aceito no JWT                              |
+| `OIDC_AUDIENCE`                | sim          | —                                     | Audience aceita no JWT                            |
+| `OIDC_JWKS_URL`                | sim          | —                                     | JWKS usado para validar a assinatura              |
+| `OIDC_TENANT_CLAIM`            | não          | `tenant_id`                           | Claim que escolhe o prompt do tenant              |
+| `CORS_ORIGINS`                 | não          | vazio                                 | Origens permitidas, separadas por vírgula         |
+| `MIGRATIONS_FOLDER`            | não          | `drizzle`                             | Pasta das migrations do Drizzle                   |
+| `NODE_ENV`                     | não          | —                                     | `production` exige HTTPS em OIDC e JWKS           |
 
 O `.env` é git-ignored. Segredos ficam no ambiente (Portainer/stack), nunca no
 código nem no bundle do frontend.
+
+`HOST_CONTEXT_ENABLED=1` ativa a leitura do contexto do Host em
+`/api/messages`. A integração vem desligada e, sem um adaptador real registrado
+no `HostModule`, uma chamada habilitada falha explicitamente com
+`host_unavailable` (HTTP 502) em vez de seguir com contexto vazio.
 
 ## Endpoints
 
