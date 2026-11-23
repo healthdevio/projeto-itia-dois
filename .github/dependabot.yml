@@ -71,4 +71,4 @@ updates:
       actions-minor-patch:
         update-types: [minor, patch]
 
-# Dockerfiles use node:24-alpine (major pinned); Dependabot tracks this tag.
+# Dockerfiles use node:26-alpine (major pinned); Dependabot tracks this tag.

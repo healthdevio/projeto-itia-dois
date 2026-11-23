@@ -27,14 +27,14 @@ function context(overrides: Partial<AIContext> = {}): AIContext {
 
 const config: ChatConfig = { ...DEFAULT_CHAT_CONFIG };
 
-describe('systemPrompt', () => {
-  it('começa pela persona', () => {
+void describe('systemPrompt', () => {
+  void it('começa pela persona', () => {
     assert.ok(
       systemPrompt(config, DEFAULT_PROMPT).startsWith(DEFAULT_PROMPT.persona),
     );
   });
 
-  it('inclui a instrução de idioma, tom e tamanho escolhidos', () => {
+  void it('inclui a instrução de idioma, tom e tamanho escolhidos', () => {
     const prompt = systemPrompt(
       { language: 'en-US', tone: 'formal', response_length: 'short' },
       DEFAULT_PROMPT,
@@ -45,7 +45,7 @@ describe('systemPrompt', () => {
     assert.match(prompt, /1 a 2 frases/);
   });
 
-  it('não mistura a instrução de um valor com o de outro', () => {
+  void it('não mistura a instrução de um valor com o de outro', () => {
     const prompt = systemPrompt(
       { language: 'en-US', tone: 'formal', response_length: 'short' },
       DEFAULT_PROMPT,
@@ -55,7 +55,7 @@ describe('systemPrompt', () => {
     assert.doesNotMatch(prompt, /5 a 8 frases/);
   });
 
-  it('ignora o config quando pedido', () => {
+  void it('ignora o config quando pedido', () => {
     const prompt = systemPrompt(
       { language: 'en-US', tone: 'formal', response_length: 'detailed' },
       DEFAULT_PROMPT,
@@ -65,7 +65,7 @@ describe('systemPrompt', () => {
     assert.equal(prompt, DEFAULT_PROMPT.persona);
   });
 
-  it('não deixa buraco duplo quando o template não tem a dica', () => {
+  void it('não deixa buraco duplo quando o template não tem a dica', () => {
     const prompt = systemPrompt(
       { language: 'pt-BR', tone: 'formal', response_length: 'short' },
       {
@@ -82,8 +82,8 @@ describe('systemPrompt', () => {
   });
 });
 
-describe('toChatMessages', () => {
-  it('abre com o system prompt e fecha com a mensagem nova', () => {
+void describe('toChatMessages', () => {
+  void it('abre com o system prompt e fecha com a mensagem nova', () => {
     const messages = toChatMessages('oi', context(), config, DEFAULT_PROMPT);
 
     assert.equal(messages[0].role, 'system');
@@ -91,7 +91,7 @@ describe('toChatMessages', () => {
     assert.equal(messages.at(-1)?.content, 'oi');
   });
 
-  it('leva as mensagens passadas mantendo a ordem', () => {
+  void it('leva as mensagens passadas mantendo a ordem', () => {
     const messages = toChatMessages(
       'agora',
       context({
@@ -125,7 +125,7 @@ describe('toChatMessages', () => {
     );
   });
 
-  it('avisa o modelo sobre conversas anteriores, sem mandar o conteúdo delas', () => {
+  void it('avisa o modelo sobre conversas anteriores, sem mandar o conteúdo delas', () => {
     const messages = toChatMessages(
       'oi',
       context({ history_ids: ['h1', 'h2'] }),
@@ -142,13 +142,13 @@ describe('toChatMessages', () => {
     }
   });
 
-  it('não cria a aviso de histórico quando não há conversa anterior', () => {
+  void it('não cria a aviso de histórico quando não há conversa anterior', () => {
     const messages = toChatMessages('oi', context(), config, DEFAULT_PROMPT);
 
     assert.equal(messages.filter((m) => m.role === 'system').length, 1);
   });
 
-  it('descarta mensagem anterior sem texto, sem quebrar a montagem', () => {
+  void it('descarta mensagem anterior sem texto, sem quebrar a montagem', () => {
     const messages = toChatMessages(
       'agora',
       context({
@@ -172,8 +172,8 @@ describe('toChatMessages', () => {
   });
 });
 
-describe('toSuggestionPrompt', () => {
-  it('inclui a resposta, a pergunta e a instrução do template', () => {
+void describe('toSuggestionPrompt', () => {
+  void it('inclui a resposta, a pergunta e a instrução do template', () => {
     const prompt = toSuggestionPrompt(
       'Tudo certo.',
       'Como vai?',
@@ -186,31 +186,31 @@ describe('toSuggestionPrompt', () => {
   });
 });
 
-describe('extractJsonArray', () => {
-  it('lê o array puro', () => {
+void describe('extractJsonArray', () => {
+  void it('lê o array puro', () => {
     assert.deepEqual(extractJsonArray('["a", "b"]'), ['a', 'b']);
   });
 
-  it('lê o array dentro de cerca de código', () => {
+  void it('lê o array dentro de cerca de código', () => {
     assert.deepEqual(extractJsonArray('```json\n["a"]\n```'), ['a']);
   });
 
-  it('lê o array no meio de um texto', () => {
+  void it('lê o array no meio de um texto', () => {
     assert.deepEqual(extractJsonArray('Aqui vai: ["a"] — espero ajudar.'), [
       'a',
     ]);
   });
 
-  it('devolve null quando não há array', () => {
+  void it('devolve null quando não há array', () => {
     assert.equal(extractJsonArray('não sou json'), null);
     assert.equal(extractJsonArray(''), null);
   });
 
-  it('devolve null para JSON que não é array', () => {
+  void it('devolve null para JSON que não é array', () => {
     assert.equal(extractJsonArray('{"a": 1}'), null);
   });
 
-  it('devolve null para array quebrado', () => {
+  void it('devolve null para array quebrado', () => {
     assert.equal(extractJsonArray('["a", '), null);
   });
 });

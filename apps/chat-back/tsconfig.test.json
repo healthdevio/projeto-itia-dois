@@ -5,7 +5,7 @@
     "declaration": false,
     "sourceMap": false,
     "rootDir": ".",
-    "types": ["node"]
+    "types": ["vitest/globals", "node"]
   },
   "include": ["src/**/*", "test/**/*"]
 }
