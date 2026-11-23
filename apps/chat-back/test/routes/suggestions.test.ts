@@ -49,7 +49,7 @@ async function send(path: string, init: SendOptions = {}) {
   return body === undefined ? callback : callback.send(body);
 }
 
-describe('rotas exigem identidade antes de qualquer acesso ao banco', () => {
+void describe('rotas exigem identidade antes de qualquer acesso ao banco', () => {
   const rotas: [Method, string][] = [
     ['get', '/api/suggestions'],
     ['post', '/api/suggestions'],
@@ -60,7 +60,7 @@ describe('rotas exigem identidade antes de qualquer acesso ao banco', () => {
   ];
 
   for (const [method, path] of rotas) {
-    it(`${method.toUpperCase()} ${path} responde 401 sem token Bearer`, async () => {
+    void it(`${method.toUpperCase()} ${path} responde 401 sem token Bearer`, async () => {
       const response = await send(path, {
         method,
         subject: null,
@@ -74,8 +74,8 @@ describe('rotas exigem identidade antes de qualquer acesso ao banco', () => {
   }
 });
 
-describe('POST /api/suggestions · corpo', () => {
-  it('responde 400 para JSON inválido', async () => {
+void describe('POST /api/suggestions · corpo', () => {
+  void it('responde 400 para JSON inválido', async () => {
     const response = await send('/api/suggestions', {
       method: 'post',
       body: '{ nao é json',
@@ -84,7 +84,7 @@ describe('POST /api/suggestions · corpo', () => {
     assert.equal(response.status, 400);
   });
 
-  it('responde 400 para corpo sem suggestions nem text', async () => {
+  void it('responde 400 para corpo sem suggestions nem text', async () => {
     const response = await send('/api/suggestions', {
       method: 'post',
       body: JSON.stringify({}),
@@ -94,7 +94,7 @@ describe('POST /api/suggestions · corpo', () => {
     assert.match(response.body.error, /obrigatório/i);
   });
 
-  it('responde 400 para lista vazia', async () => {
+  void it('responde 400 para lista vazia', async () => {
     const response = await send('/api/suggestions', {
       method: 'post',
       body: JSON.stringify({ suggestions: [] }),
@@ -104,7 +104,7 @@ describe('POST /api/suggestions · corpo', () => {
     assert.match(response.body.error, /vazia/);
   });
 
-  it('valida o corpo antes de gravar', async () => {
+  void it('valida o corpo antes de gravar', async () => {
     // Sem `DATABASE_URL`, validação que passasse apareceria como 500.
     const response = await send('/api/suggestions', {
       method: 'post',

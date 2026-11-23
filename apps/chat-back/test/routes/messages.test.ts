@@ -38,8 +38,8 @@ const validBody = {
   origin: 'frontend',
 };
 
-describe('POST /api/messages · identidade', () => {
-  it('responde 401 sem token Bearer', async () => {
+void describe('POST /api/messages · identidade', () => {
+  void it('responde 401 sem token Bearer', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/messages')
       .set('Content-Type', 'application/json')
@@ -50,7 +50,7 @@ describe('POST /api/messages · identidade', () => {
     assert.match(response.body.error, /Bearer/);
   });
 
-  it('responde 401 para subject malformado, antes de tocar no banco', async () => {
+  void it('responde 401 para subject malformado, antes de tocar no banco', async () => {
     const auth = await authorizationHeaders('usuário com espaço');
     const response = await request(app.getHttpServer())
       .post('/api/messages')
@@ -61,7 +61,7 @@ describe('POST /api/messages · identidade', () => {
     assert.equal(response.status, 401);
   });
 
-  it('não exige tenant: ausente, usa o prompt padrão', async () => {
+  void it('não exige tenant: ausente, usa o prompt padrão', async () => {
     // Sem `DATABASE_URL` a rota falha no banco, não na identidade.
     const response = await post(validBody);
 
@@ -69,14 +69,14 @@ describe('POST /api/messages · identidade', () => {
   });
 });
 
-describe('POST /api/messages · corpo', () => {
-  it('responde 400 para JSON inválido', async () => {
+void describe('POST /api/messages · corpo', () => {
+  void it('responde 400 para JSON inválido', async () => {
     const response = await post('{ nao é json');
 
     assert.equal(response.status, 400);
   });
 
-  it('responde 400 para JSON que não é objeto', async () => {
+  void it('responde 400 para JSON que não é objeto', async () => {
     for (const body of ['[]', 'null', '"texto"', '42']) {
       const response = await post(body);
 
@@ -84,7 +84,7 @@ describe('POST /api/messages · corpo', () => {
     }
   });
 
-  it('responde 400 listando os campos obrigatórios', async () => {
+  void it('responde 400 listando os campos obrigatórios', async () => {
     const response = await post({ message: 'Olá' });
 
     assert.equal(response.status, 400);
@@ -95,8 +95,8 @@ describe('POST /api/messages · corpo', () => {
   });
 });
 
-describe('POST /api/messages · config', () => {
-  it('recusa config inválido antes de gravar a mensagem', async () => {
+void describe('POST /api/messages · config', () => {
+  void it('recusa config inválido antes de gravar a mensagem', async () => {
     const response = await post({
       ...validBody,
       config: { tone: 'sarcastico' },
@@ -109,7 +109,7 @@ describe('POST /api/messages · config', () => {
     );
   });
 
-  it('diz o que era válido, para a interface corrigir o campo', async () => {
+  void it('diz o que era válido, para a interface corrigir o campo', async () => {
     const response = await post({
       ...validBody,
       config: { language: 'fr-FR' },
@@ -119,14 +119,14 @@ describe('POST /api/messages · config', () => {
     assert.match(response.body.error, /config\.language deve ser um de/);
   });
 
-  it('recusa config que não é objeto', async () => {
+  void it('recusa config que não é objeto', async () => {
     const response = await post({ ...validBody, config: 'formal' });
 
     assert.equal(response.status, 400);
     assert.match(response.body.error, /config deve ser um objeto/);
   });
 
-  it('prefere o erro de config ao de campo faltando', async () => {
+  void it('prefere o erro de config ao de campo faltando', async () => {
     // Sem esta ordem, a interface corrigiria o campo errado primeiro.
     const response = await post({
       message: 'Olá',

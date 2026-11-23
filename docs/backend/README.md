@@ -29,11 +29,18 @@ Contrato da API, para quem consome.
 
 - [Task 01 — Definir contrato com o Sistema Host](../tasks-devops/integracao-com-host/task-01/Definir-contrato.md)
 
+## Análises e histórico
+
+- [Problemas encontrados e correções aplicadas](problemas-encontrados.md)
+- [Task 01 — Integração com Host: o que foi resolvido](HostIntegration-task-01-resolvido.md)
+
 ## Resumo dos endpoints
 
 | Método   | Rota                         | Quem chama   |
 | -------- | ---------------------------- | ------------ |
 | `GET`    | `/health`                    | health check |
+| `GET`    | `/health/ready`              | readiness    |
+| `GET`    | `/health/live`               | liveness     |
 | `GET`    | `/api/conversations/current` | interface    |
 | `GET`    | `/api/conversations/active`  | interface    |
 | `POST`   | `/api/conversations/rotate`  | interface    |

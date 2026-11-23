@@ -8,8 +8,8 @@ import {
   validateSuggestions,
 } from '../../src/models/suggestion.js';
 
-describe('readSuggestions', () => {
-  it('lê a string solta como sugestão com o próprio texto', () => {
+void describe('readSuggestions', () => {
+  void it('lê a string solta como sugestão com o próprio texto', () => {
     const suggestions = readSuggestions(['Ver meus detalhes']);
 
     assert.equal(suggestions.length, 1);
@@ -17,7 +17,7 @@ describe('readSuggestions', () => {
     assert.match(suggestions[0].suggestion_id, /^sg-/);
   });
 
-  it('preserva o id que a AI mandou', () => {
+  void it('preserva o id que a AI mandou', () => {
     const [suggestion] = readSuggestions([
       { suggestion_id: 'sg-1', text: 'Falar com o suporte' },
     ]);
@@ -25,7 +25,7 @@ describe('readSuggestions', () => {
     assert.equal(suggestion.suggestion_id, 'sg-1');
   });
 
-  it('gera id novo quando o da AI é longo demais', () => {
+  void it('gera id novo quando o da AI é longo demais', () => {
     const [suggestion] = readSuggestions([
       { suggestion_id: 'x'.repeat(5000), text: 'abc' },
     ]);
@@ -33,7 +33,7 @@ describe('readSuggestions', () => {
     assert.match(suggestion.suggestion_id, /^sg-/);
   });
 
-  it('descarta entrada malformada sem derrubar a lista', () => {
+  void it('descarta entrada malformada sem derrubar a lista', () => {
     const suggestions = readSuggestions([
       'ok',
       null,
@@ -49,7 +49,7 @@ describe('readSuggestions', () => {
     );
   });
 
-  it('corta no limite, preservando a ordem', () => {
+  void it('corta no limite, preservando a ordem', () => {
     const suggestions = readSuggestions(
       Array.from({ length: MAX_SUGGESTIONS + 5 }, (_, i) => `s${i}`),
     );
@@ -62,15 +62,15 @@ describe('readSuggestions', () => {
     );
   });
 
-  it('devolve lista vazia para o que não é array', () => {
+  void it('devolve lista vazia para o que não é array', () => {
     for (const value of [undefined, null, 'abc', { text: 'abc' }]) {
       assert.deepEqual(readSuggestions(value), []);
     }
   });
 });
 
-describe('validateSuggestions', () => {
-  it('aceita uma lista de objetos', () => {
+void describe('validateSuggestions', () => {
+  void it('aceita uma lista de objetos', () => {
     const result = validateSuggestions({
       suggestions: [{ text: 'abc' }, { suggestion_id: 'sg-9', text: 'def' }],
     });
@@ -79,28 +79,28 @@ describe('validateSuggestions', () => {
     assert.equal(result.ok && result.suggestions.length, 2);
   });
 
-  it('aceita uma lista de strings', () => {
+  void it('aceita uma lista de strings', () => {
     const result = validateSuggestions({ suggestions: ['abc'] });
 
     assert.equal(result.ok, true);
     assert.equal(result.ok && result.suggestions[0].text, 'abc');
   });
 
-  it('aceita sugestão solta com { text }', () => {
+  void it('aceita sugestão solta com { text }', () => {
     const result = validateSuggestions({ text: 'abc' });
 
     assert.equal(result.ok, true);
     assert.equal(result.ok && result.suggestions.length, 1);
   });
 
-  it('recusa lista vazia', () => {
+  void it('recusa lista vazia', () => {
     const result = validateSuggestions({ suggestions: [] });
 
     assert.equal(result.ok, false);
     assert.match(result.ok ? '' : result.error, /vazia/);
   });
 
-  it('recusa lista acima do limite', () => {
+  void it('recusa lista acima do limite', () => {
     const result = validateSuggestions({
       suggestions: Array.from({ length: MAX_SUGGESTIONS + 1 }, () => 'abc'),
     });
@@ -109,19 +109,19 @@ describe('validateSuggestions', () => {
     assert.match(result.ok ? '' : result.error, /No máximo/);
   });
 
-  it('recusa corpo sem suggestions nem text', () => {
+  void it('recusa corpo sem suggestions nem text', () => {
     assert.equal(validateSuggestions({}).ok, false);
     assert.equal(validateSuggestions(null).ok, false);
   });
 
-  it('aponta o índice do item inválido, não o da lista', () => {
+  void it('aponta o índice do item inválido, não o da lista', () => {
     const result = validateSuggestions({ suggestions: ['ok', 'ok', 42] });
 
     assert.equal(result.ok, false);
     assert.match(result.ok ? '' : result.error, /suggestions\[2\]/);
   });
 
-  it('recusa text acima do limite de caracteres', () => {
+  void it('recusa text acima do limite de caracteres', () => {
     const result = validateSuggestions({
       text: 'x'.repeat(MAX_SUGGESTION_TEXT_LENGTH + 1),
     });
