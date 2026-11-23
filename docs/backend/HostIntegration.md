@@ -12,6 +12,26 @@ O contrato é uma interface TypeScript interna, em
 Core e um adaptador do Host; não fixa HTTP, SDK ou outro transporte. Um adaptador
 poderá implementar essa interface usando o mecanismo acordado com cada Host.
 
+## Assinatura do contrato
+
+```ts
+interface HostIntegration {
+  loadConversationContext(
+    request: HostContextRequest,
+  ): Promise<HostConversationContext>;
+
+  executeTool(request: HostToolExecutionRequest): Promise<HostToolOutput>;
+}
+```
+
+| Método                    | Entrada                    | Saída                     | Rejeita com `HostIntegrationError` quando                                                            |
+| ------------------------- | -------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `loadConversationContext` | `HostContextRequest`       | `HostConversationContext` | identidade inválida, tenant não permitido, Host indisponível, timeout                                |
+| `executeTool`             | `HostToolExecutionRequest` | `HostToolOutput`          | chamada não autorizada, ferramenta/recurso ausente, argumentos recusados, indisponibilidade, timeout |
+
+Ambos os métodos aceitam `signal?: AbortSignal` opcional para cancelamento.
+Nenhuma das duas operações resolve com sucesso vazio para representar falha.
+
 ## Identidade e confiança
 
 O Core constrói `HostPrincipal` somente após validar o JWT OIDC. `user_id`
@@ -35,6 +55,7 @@ O Core chama `loadConversationContext` com a identidade e a conversa atual:
 interface HostContextRequest {
   principal: HostPrincipal;
   conversation_id: string;
+  signal?: AbortSignal;
 }
 ```
 
@@ -48,16 +69,18 @@ interface HostConversationContext {
 }
 ```
 
-`chat_context` usa o modelo `ChatContext`: dados de usuário, perfil, sessão,
-página, preferências e permissões podem ser fornecidos conforme disponíveis e
-necessários. O Host deve minimizar dados pessoais e incluir somente informações
-autorizadas e úteis à conversa. `permissions` contém grants confiáveis para
-aquele principal; ausência de grant significa acesso negado. O Host nunca deve
-derivar permissões de texto gerado pela IA nem de valores livres do cliente.
+`chat_context` usa o [modelo `ChatContext`](../../apps/chat-back/src/models/chat-context.ts):
+dados de usuário, perfil, sessão, página, preferências e permissões podem ser
+fornecidos conforme disponíveis e necessários. O Host deve minimizar dados
+pessoais e incluir somente informações autorizadas e úteis à conversa.
+`permissions` contém grants confiáveis para aquele principal; ausência de grant
+significa acesso negado. O Host nunca deve derivar permissões de texto gerado
+pela IA nem de valores livres do cliente.
 
-Cada `Tool` contém `name`, `description`, `input_schema` e
-`required_permissions`. O Host publica apenas ferramentas disponíveis para o
-principal naquele escopo. A lista pode ser vazia.
+Cada [`Tool`](../../apps/chat-back/src/models/tool.ts) contém `name`,
+`description`, `input_schema` (JSON Schema) e `required_permissions`
+(`PermissionCode`, no formato `dominio.acao`). O Host publica apenas ferramentas
+disponíveis para o principal naquele escopo. A lista pode ser vazia.
 
 Exemplo de resposta:
 
@@ -100,15 +123,110 @@ O Host recebe:
 interface HostToolExecutionRequest {
   principal: HostPrincipal;
   tool_call: ToolCall;
+  signal?: AbortSignal;
 }
 ```
 
-O `ToolCall` contém o identificador, o nome da ferramenta, os argumentos e o
-`conversation_id`. O Host deve validar novamente acesso ao recurso e efeitos
-permitidos no instante da execução. Chamadas inválidas ou não autorizadas devem
-ser recusadas sem efeitos colaterais. `executeTool` resolve com
-`HostToolOutput` (valor JSON recursivo) ou rejeita em caso de falha; erros não
-devem ser convertidos em sucesso vazio.
+O [`ToolCall`](../../apps/chat-back/src/models/tool-call.ts) contém `id`,
+`tool_name`, `arguments` e `context.conversation_id`. O Host deve validar
+novamente acesso ao recurso e efeitos permitidos no instante da execução.
+Chamadas inválidas ou não autorizadas devem ser recusadas sem efeitos
+colaterais. `executeTool` resolve com `HostToolOutput` (valor JSON recursivo) ou
+rejeita em caso de falha; erros não devem ser convertidos em sucesso vazio.
+
+### Idempotência
+
+`tool_call.id` é a chave de idempotência da chamada. O Core mantém o mesmo `id`
+entre tentativas da mesma operação, e o Host pode usá-lo para não aplicar duas
+vezes uma operação já concluída. O contrato não garante idempotência por si só:
+quem garante é o Host, ao deduplicar por esse identificador.
+
+### Timeout e cancelamento
+
+- Cada chamada pode receber um `AbortSignal`.
+- O timeout é política do adaptador, definido por configuração; não há valor
+  fixado no contrato.
+- Quando o sinal é abortado, o adaptador deve rejeitar a operação em vez de
+  resolver com dados parciais.
+- Cancelar não desfaz efeito já aplicado: nesse caso o Core trata o resultado
+  como desconhecido, e não como falha segura.
+
+### Retry
+
+Regra do Core:
+
+- **não** repetir automaticamente ferramentas com efeito colateral;
+- repetir apenas operações de leitura idempotentes;
+- repetir somente falhas classificadas como `timeout` ou `host_unavailable`;
+- reenviar com o mesmo `tool_call.id`;
+- respeitar um limite de tentativas e backoff definidos quando o adaptador for
+  implementado.
+
+## Taxonomia de erros
+
+O adaptador traduz falhas do Host para `HostIntegrationError`, que carrega
+`code`, `message` e `cause` opcional. `message` não deve expor credenciais nem
+dados fora do escopo; `cause` fica restrita ao diagnóstico interno.
+
+| Código              | Quando usar                                                         | Tratamento no Core                                                       |
+| ------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `unauthorized`      | identidade ausente, inválida ou não reconhecida pelo Host           | falha definitiva; não repetir; reportar ao cliente sem detalhes internos |
+| `forbidden`         | identidade válida sem escopo, tenant ou grant suficiente            | falha definitiva; não repetir; registrar a recusa                        |
+| `not_found`         | ferramenta ou recurso inexistente no escopo do principal            | falha definitiva; não repetir                                            |
+| `invalid_arguments` | o Host recusou argumentos na revalidação                            | falha definitiva; devolver erro de chamada, não de infraestrutura        |
+| `timeout`           | a operação excedeu o tempo esperado ou foi cancelada por expiração  | retentável apenas para leitura idempotente, com o mesmo `tool_call.id`   |
+| `host_unavailable`  | falha de comunicação, indisponibilidade ou erro transitório do Host | retentável apenas para leitura idempotente, com o mesmo `tool_call.id`   |
+| `unknown`           | falha não classificada ou cancelamento sem código mais específico   | tratar como falha; não repetir sem decisão explícita                     |
+
+O formato de erro específico de cada Host fica fora deste contrato; a tradução
+é responsabilidade do adaptador.
+
+## Auditoria
+
+O Core deve registrar, por chamada:
+
+- `user_id` e, quando houver, `tenant_id`;
+- nome da ferramenta e `conversation_id`;
+- horário;
+- resultado: sucesso ou o código de erro.
+
+Nunca registrar argumentos ou resultados completos, que podem conter dados
+pessoais ou de negócio, e nunca registrar segredos, tokens ou headers de
+autenticação. Este documento define o requisito; o registro não está
+implementado nesta task.
+
+## Dados do Host não são confiáveis para o modelo
+
+Contexto e resultados de ferramentas entram no prompt e podem conter texto
+malicioso, inclusive instruções de prompt injection vindas de um campo livre do
+Host ou de um recurso manipulado por terceiros.
+
+Portanto:
+
+- esse conteúdo é **dado**, nunca instrução com autoridade;
+- ele não amplia permissões, não altera grants e não substitui a validação do
+  Core;
+- o modelo não autoriza nada: permissões são decididas pelos grants do contexto
+  e revalidadas pelo Host, conforme as Tasks 05–08.
+
+## Detalhes do contrato
+
+**Tenant ausente.** Se o Host exigir tenant e o `principal` não trouxer
+`tenant_id`, o Core não deve chamar o Host. Se a chamada acontecer, o adaptador
+rejeita com `forbidden`.
+
+**Limites de tamanho.** Contexto e resultado precisam de limite, porque entram
+no prompt e trafegam pela fronteira. Os valores devem ser decididos com Tools e
+Segurança e aplicados pelo Core antes de usar o dado no prompt. Nenhum número
+está fixado no contrato.
+
+**Cache do contexto.** Recomenda-se carregar por conversa/turno e não reutilizar
+entre usuários. Grants podem mudar durante a sessão; cache longo pode manter
+acesso revogado. A autorização de execução continua sendo revalidada pelo Host.
+
+**Versão.** `HOST_INTEGRATION_CONTRACT_VERSION` identifica a versão do contrato.
+Uma mudança incompatível deve incrementá-la, e o adaptador informa ao Host qual
+versão implementa.
 
 ## Fluxo e responsabilidades
 
@@ -133,3 +251,14 @@ Core. O fluxo atual de mensagens não carrega `ChatContext` nem catálogo de
 ferramentas para o provider e não executa ferramentas do Host. A implementação
 dessas etapas é posterior; este contrato não altera endpoints, autenticação,
 provider de IA ou configuração Docker.
+
+## Referências
+
+- [Contrato tipado](../../apps/chat-back/src/models/host-integration.ts)
+- [ChatContext](../../apps/chat-back/src/models/chat-context.ts)
+- [Tool](../../apps/chat-back/src/models/tool.ts)
+- [ToolCall](../../apps/chat-back/src/models/tool-call.ts)
+- [Task 05 — Estrutura de permissões](../tasks-devops/tools-e-seguranca/task-05/Estrutura-permissoes.md)
+- [Task 06 — Implementar autorização](../tasks-devops/tools-e-seguranca/task-06/Implementar-autorizacao.md)
+- [Task 07 — Bloquear ferramenta não autorizada](../tasks-devops/tools-e-seguranca/task-07/Bloquear-ferramenta-nao-autorizada.md)
+- [Task 08 — Permitir execução autorizada](../tasks-devops/tools-e-seguranca/task-08/Permitir-execucao-autorizada.md)
