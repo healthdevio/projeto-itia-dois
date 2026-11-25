@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 export const CONVERSATION_STATES = [
   'idle',
   'streaming',
@@ -6,6 +8,10 @@ export const CONVERSATION_STATES = [
 ] as const;
 
 export type ConversationState = (typeof CONVERSATION_STATES)[number];
+
+export const conversationStateSchema = z.enum(CONVERSATION_STATES, {
+  message: `state deve ser um de: ${CONVERSATION_STATES.join(', ')}`,
+});
 
 const STATE_TRANSITIONS: Record<ConversationState, ConversationState[]> = {
   idle: ['streaming', 'error'],

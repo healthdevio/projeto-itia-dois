@@ -1,7 +1,11 @@
+import { z } from 'zod';
+
 export const CHAT_CONFIG_LANGUAGES = ['pt-BR', 'en-US'] as const;
 export type ChatConfigLanguage = (typeof CHAT_CONFIG_LANGUAGES)[number];
+
 export const CHAT_CONFIG_TONES = ['formal', 'neutral', 'informal'] as const;
 export type ChatConfigTone = (typeof CHAT_CONFIG_TONES)[number];
+
 export const CHAT_CONFIG_RESPONSE_LENGTHS = [
   'short',
   'standard',
@@ -9,23 +13,51 @@ export const CHAT_CONFIG_RESPONSE_LENGTHS = [
 ] as const;
 export type ChatConfigResponseLength =
   (typeof CHAT_CONFIG_RESPONSE_LENGTHS)[number];
+
 export interface ChatConfig {
   language: ChatConfigLanguage;
   tone: ChatConfigTone;
   response_length: ChatConfigResponseLength;
 }
+
 export type ChatConfigInput = Partial<ChatConfig>;
+
+export const chatConfigLanguageSchema = z.enum(CHAT_CONFIG_LANGUAGES, {
+  message: `config.language deve ser um de: ${CHAT_CONFIG_LANGUAGES.join(', ')}`,
+});
+
+export const chatConfigToneSchema = z.enum(CHAT_CONFIG_TONES, {
+  message: `config.tone deve ser um de: ${CHAT_CONFIG_TONES.join(', ')}`,
+});
+
+export const chatConfigResponseLengthSchema = z.enum(
+  CHAT_CONFIG_RESPONSE_LENGTHS,
+  {
+    message: `config.response_length deve ser um de: ${CHAT_CONFIG_RESPONSE_LENGTHS.join(', ')}`,
+  },
+);
+
+export const chatConfigSchema = z.object({
+  language: chatConfigLanguageSchema,
+  tone: chatConfigToneSchema,
+  response_length: chatConfigResponseLengthSchema,
+});
+
+export const chatConfigInputSchema = chatConfigSchema.partial();
+
 export const DEFAULT_CHAT_CONFIG: ChatConfig = {
   language: 'pt-BR',
   tone: 'neutral',
   response_length: 'standard',
 };
+
 class ChatConfigError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'ChatConfigError';
   }
 }
+
 function readField<F extends keyof ChatConfig>(
   input: Record<string, unknown>,
   field: F,
@@ -40,6 +72,7 @@ function readField<F extends keyof ChatConfig>(
     `config.${field} deve ser um de: ${allowed.join(', ')}`,
   );
 }
+
 export type ChatConfigValidation =
   | {
       ok: true;
@@ -49,6 +82,7 @@ export type ChatConfigValidation =
       ok: false;
       error: string;
     };
+
 export function validateChatConfig(value: unknown): ChatConfigValidation {
   if (value === undefined || value === null) {
     return { ok: true, config: { ...DEFAULT_CHAT_CONFIG } };
@@ -83,6 +117,7 @@ export function validateChatConfig(value: unknown): ChatConfigValidation {
     };
   }
 }
+
 export function formatChatConfig(config: ChatConfig): string {
   return `${config.language} · ${config.tone} · ${config.response_length}`;
 }

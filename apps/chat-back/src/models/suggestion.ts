@@ -1,11 +1,38 @@
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
+
 export interface Suggestion {
   suggestion_id: string;
   text: string;
 }
+
 export const MAX_SUGGESTIONS = 8;
 export const MAX_SUGGESTION_TEXT_LENGTH = 500;
 export const MAX_SUGGESTION_ID_LENGTH = 128;
+
+export const suggestionSchema = z.object({
+  suggestion_id: z
+    .string()
+    .trim()
+    .min(1, 'suggestion_id é obrigatório')
+    .max(
+      MAX_SUGGESTION_ID_LENGTH,
+      `suggestion_id deve ter no máximo ${MAX_SUGGESTION_ID_LENGTH} caracteres`,
+    ),
+  text: z
+    .string()
+    .trim()
+    .min(1, 'text é obrigatório')
+    .max(
+      MAX_SUGGESTION_TEXT_LENGTH,
+      `text deve ter no máximo ${MAX_SUGGESTION_TEXT_LENGTH} caracteres`,
+    ),
+});
+
+export const suggestionsListSchema = z
+  .array(suggestionSchema)
+  .max(MAX_SUGGESTIONS, `No máximo ${MAX_SUGGESTIONS} sugestões permitidas`);
+
 function toSuggestion(value: unknown): Suggestion | null {
   if (typeof value === 'string') {
     return toSuggestion({ text: value });
@@ -27,6 +54,7 @@ function toSuggestion(value: unknown): Suggestion | null {
     text,
   };
 }
+
 export function readSuggestions(value: unknown): Suggestion[] {
   if (!Array.isArray(value)) return [];
   const suggestions: Suggestion[] = [];
@@ -37,6 +65,7 @@ export function readSuggestions(value: unknown): Suggestion[] {
   }
   return suggestions;
 }
+
 export type SuggestionValidation =
   | {
       ok: true;
@@ -46,6 +75,7 @@ export type SuggestionValidation =
       ok: false;
       error: string;
     };
+
 export function validateSuggestions(body: unknown): SuggestionValidation {
   if (typeof body !== 'object' || body === null) {
     return { ok: false, error: 'Corpo da requisição inválido' };

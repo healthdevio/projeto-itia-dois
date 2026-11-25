@@ -73,15 +73,14 @@ try {
   // e o motivo real ("relation does not exist", "duplicate key") vem em
   // `cause`. Sem esta linha o log mostra a query e nada sobre a causa.
   if (error instanceof Error && error.cause) {
-    const cause = error.cause;
-    const detail =
-      cause instanceof Error
-        ? cause.message
-        : typeof cause === 'string'
-          ? cause
-          : JSON.stringify(cause);
-
-    console.error('[Core] Causa:', detail);
+    console.error(
+      '[Core] Causa:',
+      error.cause instanceof Error
+        ? error.cause.message
+        : typeof error.cause === 'string'
+          ? error.cause
+          : JSON.stringify(error.cause),
+    );
   }
 
   await pool.end();
