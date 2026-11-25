@@ -43,8 +43,8 @@ function createMockHost() {
   };
 }
 
-describe('ZodValidationPipe', () => {
-  it('valida e normaliza payloads compatíveis com o schema', () => {
+void describe('ZodValidationPipe', () => {
+  void it('valida e normaliza payloads compatíveis com o schema', () => {
     const pipe = new ZodValidationPipe(messageSchema, 'Message');
 
     const result = pipe.transform({
@@ -58,7 +58,7 @@ describe('ZodValidationPipe', () => {
     assert.equal(result.origin, 'web');
   });
 
-  it('lança ContractValidationError com issues quando o payload é inválido', () => {
+  void it('lança ContractValidationError com issues quando o payload é inválido', () => {
     const pipe = new ZodValidationPipe(messageSchema, 'Message');
 
     assert.throws(
@@ -73,10 +73,10 @@ describe('ZodValidationPipe', () => {
   });
 });
 
-describe('ApiExceptionFilter', () => {
+void describe('ApiExceptionFilter', () => {
   const filter = new ApiExceptionFilter();
 
-  it('converte ContractValidationError em 400 no formato ApiResponse', () => {
+  void it('converte ContractValidationError em 400 no formato ApiResponse', () => {
     const mock = createMockHost();
     const error = new ContractValidationError('ChatRequest', [
       {
@@ -93,7 +93,7 @@ describe('ApiExceptionFilter', () => {
     assert.match(String(mock.getBody().error), /Contrato ChatRequest inválido/);
   });
 
-  it('preserva status e mensagem de HttpException no formato ApiResponse', () => {
+  void it('preserva status e mensagem de HttpException no formato ApiResponse', () => {
     const mock401 = createMockHost();
     filter.catch(
       new UnauthorizedException({
@@ -128,7 +128,7 @@ describe('ApiExceptionFilter', () => {
     });
   });
 
-  it('oculta detalhes internos em erros inesperados e retorna 500 seguro', () => {
+  void it('oculta detalhes internos em erros inesperados e retorna 500 seguro', () => {
     const mock = createMockHost();
 
     filter.catch(
@@ -144,7 +144,7 @@ describe('ApiExceptionFilter', () => {
   });
 });
 
-describe('ApiExceptionFilter integrado ao AppModule', () => {
+void describe('ApiExceptionFilter integrado ao AppModule', () => {
   let app: INestApplication;
 
   before(async () => {
@@ -155,7 +155,7 @@ describe('ApiExceptionFilter integrado ao AppModule', () => {
     await app.close();
   });
 
-  it('padroniza 404 de rotas inexistentes no contrato ApiResponse', async () => {
+  void it('padroniza 404 de rotas inexistentes no contrato ApiResponse', async () => {
     const response = await request(app.getHttpServer()).get(
       '/api/rota-inexistente',
     );
