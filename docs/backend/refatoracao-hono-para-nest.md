@@ -203,7 +203,7 @@ npm audit --audit-level=high
 | ------------------------------- | ------------------------------------------------ |
 | `npm ci`                        | OK                                               |
 | `npm run typecheck`             | OK                                               |
-| `npm test`                      | 95 testes, 95 passando                           |
+| `npm test`                      | 95 testes, 95 passando (hoje são 122)            |
 | `npm run test:e2e`              | 1 teste, 1 passando                              |
 | `npm run build`                 | OK — `dist/main.js` e `dist/db/migrate.js`       |
 | `npm audit --audit-level=high`  | exit 0 (sem HIGH/CRITICAL)                       |
@@ -269,7 +269,7 @@ Estado final da PR: `OPEN`, `MERGEABLE`, `mergeStateStatus: CLEAN`.
   estava ativo. A imagem foi validada pelo check **Imagens Docker** na CI.
 - O smoke local validou o boot do Nest e os endpoints de health, mas não exerceu
   as rotas que dependem de Postgres, OIDC e provider de AI.
-- O container usa `node:26-alpine`; a CI usa Node 24. O `npm ci` e o build foram
+- O container e a CI usam `node:26-alpine`. O `npm ci` e o build foram
   validados em ambos os caminhos (local e job de imagem).
 
 ---
