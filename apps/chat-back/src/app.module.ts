@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
+import { ApiExceptionFilter } from './common/filters/api-exception.filter.js';
 import { ConversationsController } from './controllers/conversations.controller.js';
 import { HealthController } from './controllers/health.controller.js';
 import { MessagesController } from './controllers/messages.controller.js';
@@ -14,6 +16,13 @@ import { IdentityGuard } from './middleware/identity.js';
     MessagesController,
     SuggestionsController,
   ],
-  providers: [CoreLifecycleService, IdentityGuard],
+  providers: [
+    CoreLifecycleService,
+    IdentityGuard,
+    {
+      provide: APP_FILTER,
+      useClass: ApiExceptionFilter,
+    },
+  ],
 })
 export class AppModule {}

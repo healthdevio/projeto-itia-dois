@@ -4,14 +4,14 @@ import {
   Delete,
   Get,
   Post,
-  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
+import { Identity } from '../common/decorators/identity.decorator.js';
+import { IdentityGuard, type RequestIdentity } from '../middleware/identity.js';
 import type { ApiResponse } from '../models/api-response.js';
 import { validateSuggestions, type Suggestion } from '../models/suggestion.js';
-import { IdentityGuard, type IdentityRequest } from '../middleware/identity.js';
 import {
   addActiveSuggestions,
   clearActiveSuggestions,
@@ -27,10 +27,10 @@ interface SuggestionsResponseData {
 export class SuggestionsController {
   @Get()
   async list(
-    @Req() request: IdentityRequest,
+    @Identity() identity: RequestIdentity,
     @Res() response: Response,
   ): Promise<Response> {
-    const { userId } = request.identity!;
+    const { userId } = identity;
     try {
       const suggestions = await getActiveSuggestions(userId);
       const body: ApiResponse<SuggestionsResponseData> = {
@@ -50,11 +50,11 @@ export class SuggestionsController {
 
   @Post()
   async add(
-    @Req() request: IdentityRequest,
+    @Identity() identity: RequestIdentity,
     @Body() body: unknown,
     @Res() response: Response,
   ): Promise<Response> {
-    const { userId } = request.identity!;
+    const { userId } = identity;
     const validation = validateSuggestions(body);
     if (!validation.ok) {
       const result: ApiResponse = { success: false, error: validation.error };
@@ -86,10 +86,10 @@ export class SuggestionsController {
 
   @Delete()
   async clear(
-    @Req() request: IdentityRequest,
+    @Identity() identity: RequestIdentity,
     @Res() response: Response,
   ): Promise<Response> {
-    const { userId } = request.identity!;
+    const { userId } = identity;
     try {
       const deleted = await clearActiveSuggestions(userId);
       const result: ApiResponse<{ deleted: number }> = {
