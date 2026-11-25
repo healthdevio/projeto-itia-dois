@@ -7,8 +7,8 @@ import {
   validateChatConfig,
 } from '../../src/models/chat-config.js';
 
-describe('validateChatConfig', () => {
-  it('completa com o default quando o config não vem', () => {
+void describe('validateChatConfig', () => {
+  void it('completa com o default quando o config não vem', () => {
     for (const value of [undefined, null]) {
       const result = validateChatConfig(value);
 
@@ -17,7 +17,7 @@ describe('validateChatConfig', () => {
     }
   });
 
-  it('aceita um config completo', () => {
+  void it('aceita um config completo', () => {
     const result = validateChatConfig({
       language: 'en-US',
       tone: 'formal',
@@ -32,7 +32,7 @@ describe('validateChatConfig', () => {
     });
   });
 
-  it('preenche só o campo que faltou', () => {
+  void it('preenche só o campo que faltou', () => {
     const result = validateChatConfig({ tone: 'informal' });
 
     assert.equal(result.ok, true);
@@ -42,14 +42,14 @@ describe('validateChatConfig', () => {
     });
   });
 
-  it('ignora chave que o Core não conhece', () => {
+  void it('ignora chave que o Core não conhece', () => {
     const result = validateChatConfig({ tone: 'formal', future_field: 'x' });
 
     assert.equal(result.ok, true);
     assert.equal(result.ok && result.config.tone, 'formal');
   });
 
-  it('recusa valor fora da lista, dizendo o que era válido', () => {
+  void it('recusa valor fora da lista, dizendo o que era válido', () => {
     const result = validateChatConfig({ tone: 'sarcastico' });
 
     assert.equal(result.ok, false);
@@ -59,13 +59,13 @@ describe('validateChatConfig', () => {
     );
   });
 
-  it('recusa config que não é objeto', () => {
+  void it('recusa config que não é objeto', () => {
     for (const value of ['formal', 42, ['formal']]) {
       assert.equal(validateChatConfig(value).ok, false);
     }
   });
 
-  it('não devolve o default compartilhado, para o chamador não mutar o módulo', () => {
+  void it('não devolve o default compartilhado, para o chamador não mutar o módulo', () => {
     const first = validateChatConfig(undefined);
     const second = validateChatConfig(undefined);
 
@@ -73,8 +73,8 @@ describe('validateChatConfig', () => {
   });
 });
 
-describe('formatChatConfig', () => {
-  it('resume os três campos, separando por um separador fixo', () => {
+void describe('formatChatConfig', () => {
+  void it('resume os três campos, separando por um separador fixo', () => {
     const summary = formatChatConfig({
       language: 'pt-BR',
       tone: 'neutral',

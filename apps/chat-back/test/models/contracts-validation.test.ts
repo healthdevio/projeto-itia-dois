@@ -48,8 +48,8 @@ const validMessage = {
   origin: 'web',
 };
 
-describe('validateContract e ContractValidationError', () => {
-  it('retorna ok: true com os dados validados e normalizados (trim)', () => {
+void describe('validateContract e ContractValidationError', () => {
+  void it('retorna ok: true com os dados validados e normalizados (trim)', () => {
     const result = validateContract(
       messageSchema,
       {
@@ -68,7 +68,7 @@ describe('validateContract e ContractValidationError', () => {
     }
   });
 
-  it('retorna erros identificáveis com caminho e código quando o payload é inválido', () => {
+  void it('retorna erros identificáveis com caminho e código quando o payload é inválido', () => {
     const result = validateContract(
       messageSchema,
       {
@@ -87,7 +87,7 @@ describe('validateContract e ContractValidationError', () => {
     }
   });
 
-  it('cria ContractValidationError com nome do contrato e lista de issues', () => {
+  void it('cria ContractValidationError com nome do contrato e lista de issues', () => {
     const err = new ContractValidationError('ChatRequest', [
       {
         path: 'request_id',
@@ -103,8 +103,8 @@ describe('validateContract e ContractValidationError', () => {
   });
 });
 
-describe('Schemas de Message, Conversation e Suggestion', () => {
-  it('valida Conversation e ConversationView completos', () => {
+void describe('Schemas de Message, Conversation e Suggestion', () => {
+  void it('valida Conversation e ConversationView completos', () => {
     const conversation = {
       id: 'conv-1',
       state: 'idle' as const,
@@ -134,7 +134,7 @@ describe('Schemas de Message, Conversation e Suggestion', () => {
     assert.equal(viewResult.ok, true);
   });
 
-  it('rejeita role inválido em ConversationMessage', () => {
+  void it('rejeita role inválido em ConversationMessage', () => {
     const result = validateContract(
       conversationSchema,
       {
@@ -155,7 +155,7 @@ describe('Schemas de Message, Conversation e Suggestion', () => {
     }
   });
 
-  it('valida Suggestion e respeita o limite máximo de sugestões', () => {
+  void it('valida Suggestion e respeita o limite máximo de sugestões', () => {
     assert.equal(
       validateContract(suggestionSchema, validSuggestion, 'Suggestion').ok,
       true,
@@ -174,8 +174,8 @@ describe('Schemas de Message, Conversation e Suggestion', () => {
   });
 });
 
-describe('Schemas de ChatConfig, PermissionCode e ChatContext', () => {
-  it('valida ChatConfig completo e ChatConfigInput parcial', () => {
+void describe('Schemas de ChatConfig, PermissionCode e ChatContext', () => {
+  void it('valida ChatConfig completo e ChatConfigInput parcial', () => {
     assert.equal(
       validateContract(chatConfigSchema, validConfig, 'ChatConfig').ok,
       true,
@@ -195,7 +195,7 @@ describe('Schemas de ChatConfig, PermissionCode e ChatContext', () => {
     );
   });
 
-  it('valida PermissionCode no formato recurso.acao e rejeita formatos inválidos', () => {
+  void it('valida PermissionCode no formato recurso.acao e rejeita formatos inválidos', () => {
     assert.equal(
       validateContract(permissionCodeSchema, 'chat.read', 'PermissionCode').ok,
       true,
@@ -215,7 +215,7 @@ describe('Schemas de ChatConfig, PermissionCode e ChatContext', () => {
     );
   });
 
-  it('valida ChatContext completo e rejeita permissions malformadas', () => {
+  void it('valida ChatContext completo e rejeita permissions malformadas', () => {
     const okResult = validateContract(
       chatContextSchema,
       {
@@ -245,8 +245,8 @@ describe('Schemas de ChatConfig, PermissionCode e ChatContext', () => {
   });
 });
 
-describe('Schemas de ChatRequest, ChatResponse, SSEEvent e ApiResponse', () => {
-  it('valida ChatRequest válido e rejeita ausência de request_id', () => {
+void describe('Schemas de ChatRequest, ChatResponse, SSEEvent e ApiResponse', () => {
+  void it('valida ChatRequest válido e rejeita ausência de request_id', () => {
     const okResult = validateContract(
       chatRequestSchema,
       {
@@ -270,7 +270,7 @@ describe('Schemas de ChatRequest, ChatResponse, SSEEvent e ApiResponse', () => {
     }
   });
 
-  it('valida ChatResponse válido e rejeita state desconhecido', () => {
+  void it('valida ChatResponse válido e rejeita state desconhecido', () => {
     const okResult = validateContract(
       chatResponseSchema,
       {
@@ -302,7 +302,7 @@ describe('Schemas de ChatRequest, ChatResponse, SSEEvent e ApiResponse', () => {
     assert.equal(failResult.ok, false);
   });
 
-  it('valida os 4 tipos de SSEEvent e rejeita evento com state incompatível', () => {
+  void it('valida os 4 tipos de SSEEvent e rejeita evento com state incompatível', () => {
     const validEvents = [
       {
         event: 'message.started',
@@ -369,7 +369,7 @@ describe('Schemas de ChatRequest, ChatResponse, SSEEvent e ApiResponse', () => {
     assert.equal(mismatched.ok, false);
   });
 
-  it('valida ApiResponse genérico e tipado', () => {
+  void it('valida ApiResponse genérico e tipado', () => {
     assert.equal(
       validateContract(
         apiResponseSchema,
