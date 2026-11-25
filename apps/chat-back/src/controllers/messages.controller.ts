@@ -64,6 +64,8 @@ export class MessagesController {
       const body: ApiResponse<ChatResponse> = {
         success: true,
         data: {
+          request_id: input.request_id,
+          conversation_id: result.conversation_id,
           message_id: result.message_id,
           ai_response: result.ai_response,
           state: result.state,
