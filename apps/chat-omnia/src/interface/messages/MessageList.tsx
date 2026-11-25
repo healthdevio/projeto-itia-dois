@@ -7,9 +7,9 @@ interface MessageListProps {
 function MessageList({ messages }: MessageListProps) {
   return (
     <main className="flex-1 overflow-y-auto px-4 py-3">
-      {messages.map((message) => (
+      {messages.map((message, index) => (
         <MessageItem
-          key={message.author + '-' + message.content}
+          key={`${message.author}-${index}`}
           content={message.content}
           author={message.author}
         />
