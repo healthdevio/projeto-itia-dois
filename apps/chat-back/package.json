@@ -44,7 +44,7 @@
     "@types/node": "^26.6.6",
     "@types/pg": "^8.11.10",
     "@types/supertest": "^7.0.0",
-    "@vitest/coverage-v8": "^4.1.2",
+    "@vitest/coverage-v8": "^5.0.5",
     "drizzle-kit": "^0.31.11",
     "oxlint": "^1.93.0",
     "oxlint-tsgolint": "^7.0.2007",
