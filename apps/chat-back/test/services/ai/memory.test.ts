@@ -19,9 +19,9 @@ function contextoBase(overrides: Partial<AIContext> = {}): AIContext {
   };
 }
 
-describe('serviço de memória', () => {
-  describe('recuperarMemoriaRelevante', () => {
-    it('não lança exceção sem banco real configurado', async () => {
+void describe('serviço de memória', () => {
+  void describe('recuperarMemoriaRelevante', () => {
+    void it('não lança exceção sem banco real configurado', async () => {
       const memórias = await recuperarMemoriaRelevante(
         'usuario-1',
         'qual linguagem uso no projeto?',
@@ -31,14 +31,14 @@ describe('serviço de memória', () => {
       assert.ok(Array.isArray(memórias));
     });
 
-    it('não retorna memórias para mensagem trivial', async () => {
+    void it('não retorna memórias para mensagem trivial', async () => {
       const memórias = await recuperarMemoriaRelevante('usuario-1', 'Oi', 5);
       assert.equal(memórias.length, 0);
     });
   });
 
-  describe('injetarMemoriasNoContexto', () => {
-    it('adiciona relevant_memories quando há memórias', () => {
+  void describe('injetarMemoriasNoContexto', () => {
+    void it('adiciona relevant_memories quando há memórias', () => {
       const contexto = contextoBase();
       const resultado = injetarMemoriasNoContexto(contexto, [
         {
@@ -56,15 +56,15 @@ describe('serviço de memória', () => {
       assert.equal(resultado.relevant_memories![0].category, 'projeto');
     });
 
-    it('retorna o mesmo contexto sem alterar quando não há memórias', () => {
+    void it('retorna o mesmo contexto sem alterar quando não há memórias', () => {
       const contexto = contextoBase();
       const resultado = injetarMemoriasNoContexto(contexto, []);
       assert.equal(resultado, contexto);
     });
   });
 
-  describe('renderizarMemoriasContexto', () => {
-    it('renderiza memórias como texto de instrução', () => {
+  void describe('renderizarMemoriasContexto', () => {
+    void it('renderiza memórias como texto de instrução', () => {
       const texto = renderizarMemoriasContexto([
         {
           id: 'm1',
@@ -80,7 +80,7 @@ describe('serviço de memória', () => {
       assert.ok(texto.includes('TypeScript'));
     });
 
-    it('retorna string vazia sem memórias', () => {
+    void it('retorna string vazia sem memórias', () => {
       assert.equal(renderizarMemoriasContexto([]), '');
     });
   });

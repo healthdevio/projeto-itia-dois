@@ -34,8 +34,8 @@ function buildService(): { service: SseService; broadcaster: SseBroadcaster } {
   return { service, broadcaster };
 }
 
-describe('SseBroadcaster', () => {
-  it('registra e remove conexões', () => {
+void describe('SseBroadcaster', () => {
+  void it('registra e remove conexões', () => {
     const { broadcaster } = buildService();
     const channel = new FakeChannel();
     const id = 'conn-1';
@@ -50,7 +50,7 @@ describe('SseBroadcaster', () => {
     assert.equal(channel.closed, true);
   });
 
-  it('closeAll encerra todas as conexões', () => {
+  void it('closeAll encerra todas as conexões', () => {
     const { broadcaster } = buildService();
     const channel1 = new FakeChannel();
     const channel2 = new FakeChannel();
@@ -65,8 +65,8 @@ describe('SseBroadcaster', () => {
   });
 });
 
-describe('SseResponseChannel', () => {
-  it('escreve eventos SSE no formato texto/event-stream', () => {
+void describe('SseResponseChannel', () => {
+  void it('escreve eventos SSE no formato texto/event-stream', () => {
     const response = {
       writeHead: () => {},
       write: (chunk: string) => {
@@ -91,7 +91,7 @@ describe('SseResponseChannel', () => {
     assert.match(response.body, /\n\n$/);
   });
 
-  it('fecha ao detectar erro ou close da resposta', () => {
+  void it('fecha ao detectar erro ou close da resposta', () => {
     const endCalls: unknown[] = [];
     const response = {
       writeHead: () => {},
@@ -113,8 +113,8 @@ describe('SseResponseChannel', () => {
   });
 });
 
-describe('SseService', () => {
-  it('abre uma conexão e notifica connection.opened no próprio canal', () => {
+void describe('SseService', () => {
+  void it('abre uma conexão e notifica connection.opened no próprio canal', () => {
     const { service, broadcaster } = buildService();
     const channel = new FakeChannel();
     const connectionId = service.openConnection(channel);
@@ -129,7 +129,7 @@ describe('SseService', () => {
     );
   });
 
-  it('escreve evento em conexão aberta e retorna false se inexistente', () => {
+  void it('escreve evento em conexão aberta e retorna false se inexistente', () => {
     const { service } = buildService();
     const ok = service.writeEvent('conexao-inexistente', {
       type: 'ai.delta',
@@ -138,7 +138,7 @@ describe('SseService', () => {
     assert.equal(ok, false);
   });
 
-  it('fecha uma conexão aberta e escreve connection.closed', () => {
+  void it('fecha uma conexão aberta e escreve connection.closed', () => {
     const { service } = buildService();
     const channel = new FakeChannel();
     const connectionId = service.openConnection(channel);

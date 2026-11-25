@@ -128,9 +128,9 @@ function bancoFake(linhas: Memory[] = []) {
   } as unknown;
 }
 
-describe('memory-repository', () => {
-  describe('createMemory', () => {
-    it('cria uma memória com os campos informados', async () => {
+void describe('memory-repository', () => {
+  void describe('createMemory', () => {
+    void it('cria uma memória com os campos informados', async () => {
       const db = bancoFake();
       const memoria = await createMemory(
         {
@@ -150,8 +150,8 @@ describe('memory-repository', () => {
     });
   });
 
-  describe('listMemories', () => {
-    it('ordena da mais recente para a mais antiga', async () => {
+  void describe('listMemories', () => {
+    void it('ordena da mais recente para a mais antiga', async () => {
       const db = bancoFake([
         linhaMemoria({
           id: 'a',
@@ -173,8 +173,8 @@ describe('memory-repository', () => {
     });
   });
 
-  describe('getMemory', () => {
-    it('retorna a memória quando encontrada', async () => {
+  void describe('getMemory', () => {
+    void it('retorna a memória quando encontrada', async () => {
       const db = bancoFake([
         linhaMemoria({ id: 'mem-x', userId: 'usuario-1' }),
       ]);
@@ -185,7 +185,7 @@ describe('memory-repository', () => {
       assert.equal(memoria!.id, 'mem-x');
     });
 
-    it('retorna null quando não existe', async () => {
+    void it('retorna null quando não existe', async () => {
       const db = bancoFake();
       const memoria = await getMemory('inexistente', 'usuario-1', db as any);
 
@@ -193,8 +193,8 @@ describe('memory-repository', () => {
     });
   });
 
-  describe('updateMemory', () => {
-    it('atualiza campos informados e preserva os demais', async () => {
+  void describe('updateMemory', () => {
+    void it('atualiza campos informados e preserva os demais', async () => {
       const db = bancoFake([
         linhaMemoria({
           id: 'mem-x',
@@ -217,7 +217,7 @@ describe('memory-repository', () => {
       assert.equal(atualizada!.importance, 4);
     });
 
-    it('retorna null quando não existe', async () => {
+    void it('retorna null quando não existe', async () => {
       const db = bancoFake();
       const atualizada = await updateMemory(
         'mem-x',
@@ -230,8 +230,8 @@ describe('memory-repository', () => {
     });
   });
 
-  describe('buscarMemoriasSimilares', () => {
-    it('encontra memórias que contenham as palavras do conteúdo', async () => {
+  void describe('buscarMemoriasSimilares', () => {
+    void it('encontra memórias que contenham as palavras do conteúdo', async () => {
       const db = bancoFake([
         linhaMemoria({
           content: 'O usuário está desenvolvendo um projeto em TypeScript.',
@@ -251,8 +251,8 @@ describe('memory-repository', () => {
     });
   });
 
-  describe('findRelevantMemories', () => {
-    it('recupera memórias que compartilham palavras com a mensagem', async () => {
+  void describe('findRelevantMemories', () => {
+    void it('recupera memórias que compartilham palavras com a mensagem', async () => {
       const db = bancoFake([
         linhaMemoria({ content: 'O usuário programa em TypeScript.' }),
         linhaMemoria({ content: 'Gosta de pizza.' }),
@@ -269,7 +269,7 @@ describe('memory-repository', () => {
       assert.ok(relevantes[0]!.content.includes('TypeScript'));
     });
 
-    it('respeita o limite de memórias', async () => {
+    void it('respeita o limite de memórias', async () => {
       const db = bancoFake(
         Array.from({ length: 10 }, (_, i) =>
           linhaMemoria({
@@ -289,7 +289,7 @@ describe('memory-repository', () => {
       assert.equal(relevantes.length, 3);
     });
 
-    it('não retorna memórias para mensagem trivial', async () => {
+    void it('não retorna memórias para mensagem trivial', async () => {
       const db = bancoFake([linhaMemoria({ content: 'qualquer coisa' })]);
 
       const relevantes = await findRelevantMemories(
@@ -303,8 +303,8 @@ describe('memory-repository', () => {
     });
   });
 
-  describe('deleteMemory', () => {
-    it('remove a memória', async () => {
+  void describe('deleteMemory', () => {
+    void it('remove a memória', async () => {
       const db = bancoFake([
         linhaMemoria({ id: 'mem-x', userId: 'usuario-1' }),
       ]);
