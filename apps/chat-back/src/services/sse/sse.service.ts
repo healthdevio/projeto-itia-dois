@@ -24,13 +24,16 @@ export interface SseConnectionClosed {
   connectionId: string;
 }
 
-type OwnerError = {
-  code: 'CONNECTION_NOT_FOUND';
-} | {
-  code: 'CONNECTION_CLOSED';
-} | {
-  code: 'CONNECTION_NOT_OWNER';
-};
+type OwnerError =
+  | {
+      code: 'CONNECTION_NOT_FOUND';
+    }
+  | {
+      code: 'CONNECTION_CLOSED';
+    }
+  | {
+      code: 'CONNECTION_NOT_OWNER';
+    };
 
 type GetConversationId = (userId: string) => Promise<string>;
 
@@ -111,7 +114,9 @@ export class SseService implements OnModuleDestroy {
     this.broadcaster.register(connectionId, channel);
     channel.setOwner(userId);
     this.owners.set(connectionId, userId);
-    this.logger.debug(`Conexão SSE aberta: ${connectionId} (usuário ${userId})`);
+    this.logger.debug(
+      `Conexão SSE aberta: ${connectionId} (usuário ${userId})`,
+    );
 
     // Notifica a abertura da conexão no próprio canal.
     channel.write({
@@ -243,7 +248,8 @@ export class SseService implements OnModuleDestroy {
     try {
       conversationId = await this.resolveConversationId(userId);
     } catch (error) {
-      const providerFailure = error instanceof Error && error.name === 'AIError';
+      const providerFailure =
+        error instanceof Error && error.name === 'AIError';
       this.writeEvent(connectionId, userId, {
         type: 'message.error',
         data: {
@@ -333,7 +339,8 @@ export class SseService implements OnModuleDestroy {
         throw error;
       }
 
-      const providerFailure = error instanceof Error && error.name === 'AIError';
+      const providerFailure =
+        error instanceof Error && error.name === 'AIError';
       const messageError = providerFailure
         ? error.message
         : 'Erro interno ao processar mensagem via SSE';
@@ -367,9 +374,8 @@ export class SseService implements OnModuleDestroy {
       return this.getConversationId(userId);
     }
     // Fallback para uso direto fora de testes: busca no banco de dados.
-    const { getOrCreateActiveConversation } = await import(
-      '../../repositories/conversation-repository.js'
-    );
+    const { getOrCreateActiveConversation } =
+      await import('../../repositories/conversation-repository.js');
     const conversation = await getOrCreateActiveConversation(userId);
     return conversation.id;
   }

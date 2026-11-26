@@ -190,8 +190,7 @@ export function createNvidiaProvider(
               }
               try {
                 const chunk = JSON.parse(payload) as Completion;
-                const deltaContent =
-                  chunk.choices?.[0]?.delta?.content;
+                const deltaContent = chunk.choices?.[0]?.delta?.content;
                 if (typeof deltaContent === 'string' && deltaContent !== '') {
                   fullResponse += deltaContent;
                   if (onDelta && !signal?.aborted) {
