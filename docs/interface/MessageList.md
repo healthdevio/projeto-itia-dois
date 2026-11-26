@@ -39,6 +39,17 @@ O modelo visual histórico usa `author: 'user' | 'omnia'`, enquanto o Backend ut
 
 Mensagens reais devem usar identificadores estáveis quando disponíveis.
 
+## Feedback (Front-end [10])
+
+`MessageList` recebe `feedbackStates` (mapa indexado por `message_id`) e
+`onFeedback`. A chave de renderização passou a ser `message_id`, e não
+`author + índice`. Para cada resposta da IA, o estado correspondente é passado a
+`MessageItem`; mensagens do usuário não recebem controles.
+
+Como o estado é indexado pelo identificador, atualizações do histórico, novas
+mensagens e nova conversa não transferem a avaliação de uma mensagem para outra.
+A nova conversa limpa os estados de feedback pelo hook.
+
 ## Validação
 
 A task original registrou validação de renderização, typecheck e build.

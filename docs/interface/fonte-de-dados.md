@@ -107,4 +107,6 @@ confirmada pelo Back-end. Na implementação REST ele é substituído por
   estados `idle`/`streaming`/`success`/`error`;
 - chamadas a `POST`/`DELETE /api/suggestions` quando a sugestão for selecionada;
 - SSE/streaming, se fizer parte de uma task futura;
+- contrato de feedback de mensagens (formato, identificadores, confirmação e
+  regras de duplicidade) antes de injetar o envio em `useMessageFeedback`;
 - suíte de testes de Interface.
