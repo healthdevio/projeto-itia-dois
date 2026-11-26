@@ -234,6 +234,16 @@ void describe('HostToolCatalogService', () => {
     assert.equal(host.context_requests[0].conversation_id, conversationId);
   });
 
+  void it('registra a proveniência usada na execução posterior', async () => {
+    const result = await service(createFakeHost()).getAvailableTools({
+      identity,
+      conversationId,
+    });
+
+    assert.deepEqual(result.identity, identity);
+    assert.equal(result.conversationId, conversationId);
+  });
+
   void it('propaga o AbortSignal do chamador ao adaptador', async () => {
     let signal: AbortSignal | undefined;
     const host = hostReturning(async (request) => {

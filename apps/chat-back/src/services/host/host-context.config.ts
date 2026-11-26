@@ -29,7 +29,7 @@ export const DEFAULT_HOST_CONTEXT_LIMITS: HostContextLimits = {
 /** Deadline aplicado pelo Core à chamada de contexto. */
 export const DEFAULT_HOST_CONTEXT_TIMEOUT_MS = 5000;
 
-function positiveInteger(
+export function positiveInteger(
   env: NodeJS.ProcessEnv,
   name: string,
   fallback: number,

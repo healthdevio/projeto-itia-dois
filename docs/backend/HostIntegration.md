@@ -126,20 +126,47 @@ contexto e devolve `{ tools, chat_context, discarded }`:
 - a autorização reutiliza `authorizeToolCall` das Tasks 05–06, sem reimplementar
   a decisão sobre grants.
 
-O catálogo ainda **não** é entregue ao provider de IA nem usado para executar
-ferramentas. O ponto de consumo previsto é o turno de mensagem, antes de montar
-o prompt e a requisição ao provider.
+O catálogo ainda **não** é entregue ao provider de IA: o ponto de consumo
+previsto é o turno de mensagem, antes de montar o prompt e a requisição ao
+provider. A Task 04 já pode consumi-lo para executar ferramentas.
 
 ## Execução de ferramentas
 
-Quando houver uma chamada de ferramenta, o Core deve:
+`HostToolExecutionService.executeToolCall({ identity, conversationId,
+toolCall, catalog?, signal? })` aplica o pipeline abaixo, nesta ordem:
 
-1. localizar a ferramenta no catálogo recebido do Host;
-2. validar nome, argumentos e permissões antes de executar;
-3. encaminhar ao adaptador `HostToolExecutionRequest`, contendo o principal
-   verificado e o `ToolCall`;
-4. devolver ao fluxo apenas um `HostToolOutput` JSON serializável, sem
-   credenciais ou dados fora do escopo autorizado.
+1. **escopo:** `toolCall.context.conversation_id` precisa ser a conversa
+   verificada pelo Core; divergência é recusada;
+2. **catálogo:** localiza a ferramenta em um catálogo da Task 03 carregado para
+   a mesma identidade e conversa. Se `catalog` não for informado, o serviço
+   carrega um; a proveniência (`identity`, `conversationId`) é conferida;
+3. **autorização:** reutiliza `authorizeToolCall` com os grants do mesmo
+   carregamento. Sem grant, a chamada é bloqueada sem tocar no Host;
+4. **argumentos:** reutiliza `validateToolArguments` com o JSON Schema da
+   ferramenta. Inválidos, a chamada é recusada sem tocar no Host;
+5. **execução:** `executeToolCall` (Tasks 05–08) chama o executor que encaminha
+   `HostIntegration.executeTool` com o `principal` derivado da identidade
+   verificada, o `AbortSignal` e o `tool_call.id` como chave de idempotência;
+6. **resultado:** o valor de volta é reconstruído como JSON puro e limitado em
+   tamanho antes de ser devolvido.
+
+O serviço devolve `{ success: true, output, host_called: true }` ou uma falha
+tipada com `error` (categorias do executor existente), `code`
+(`HostErrorCode`), `stage`, `uncertain` e `host_called`. `stage` distingue
+`scope`, `catalog`, `authorization`, `arguments`, `duplicate`, `host` e
+`result`; `host_called` separa bloqueio pelo Core de recusa/falha do Host.
+
+Configuração provisória por ambiente:
+
+| Variável                          | Padrão  | Aplicação                      |
+| --------------------------------- | ------- | ------------------------------ |
+| `HOST_EXECUTION_MAX_OUTPUT_BYTES` | `16384` | Resultado serializado em UTF-8 |
+| `HOST_EXECUTION_TIMEOUT_MS`       | `5000`  | Deadline da execução no Host   |
+
+Configuração inválida falha no boot, como nos limites de contexto.
+
+Essas variáveis são distintas dos `HOST_CONTEXT_*` (recebimento de contexto) e
+também são provisórias; nenhum número está fixado no contrato da Task 01.
 
 O Host recebe:
 
@@ -165,26 +192,39 @@ entre tentativas da mesma operação, e o Host pode usá-lo para não aplicar du
 vezes uma operação já concluída. O contrato não garante idempotência por si só:
 quem garante é o Host, ao deduplicar por esse identificador.
 
+A Task 04 acrescenta uma proteção **apenas em memória, por instância do
+serviço e por turno**: a chave é `(user, tenant, conversation_id, tool_call.id)`.
+Uma segunda chamada concorrente com a mesma chave recebe falha `stage: duplicate`
+e não é encaminhada. A chave é liberada ao fim da operação, então reenvios
+sequenciais continuam possíveis e dependem da idempotência do Host. Em ambiente
+com múltiplas instâncias ou processos, essa proteção não vale; não é cache nem
+idempotência distribuída.
+
 ### Timeout e cancelamento
 
 - Cada chamada pode receber um `AbortSignal`.
 - O timeout é política do adaptador, definido por configuração; não há valor
   fixado no contrato.
 - Quando o sinal é abortado, o adaptador deve rejeitar a operação em vez de
-  resolver com dados parciais.
+  resolver com dados parciais. `withDeadline` impõe o prazo mesmo se o adaptador
+  ignorar o sinal.
 - Cancelar não desfaz efeito já aplicado: nesse caso o Core trata o resultado
-  como desconhecido, e não como falha segura.
+  como desconhecido, e não como falha segura. A Task 04 marca essas falhas com
+  `uncertain: true` (`timeout` por deadline; `unknown` quando o chamador aborta).
+- A decisão de reenviar com o mesmo `tool_call.id` depende de o Host garantir
+  idempotência; ela não é tomada automaticamente pelo Core.
 
 ### Retry
 
 Regra do Core:
 
 - **não** repetir automaticamente ferramentas com efeito colateral;
-- repetir apenas operações de leitura idempotentes;
-- repetir somente falhas classificadas como `timeout` ou `host_unavailable`;
-- reenviar com o mesmo `tool_call.id`;
-- respeitar um limite de tentativas e backoff definidos quando o adaptador for
-  implementado.
+- **nenhum retry automático está implementado**: timeout, abort,
+  `host_unavailable` e duplicidade concorrente devolvem falha explícita;
+- o contrato não traz informação confiável sobre quais ferramentas são
+  somente leitura; quando essa informação existir, uma política de retry para
+  leitura idempotente poderia ser avaliada, com o mesmo `tool_call.id`, limite
+  de tentativas e backoff definidos à parte.
 
 ## Taxonomia de erros
 
@@ -219,6 +259,13 @@ pessoais ou de negócio, e nunca registrar segredos, tokens ou headers de
 autenticação. O Core já registra contagens e códigos pela Task 02 (contexto) e
 pela Task 03 (catálogo); a persistência em banco ainda não existe.
 
+A Task 04 emite um registro estruturado por chamada via `console.log`, com
+`event`, `at`, `user_id`, `tenant_id`, `tool`, `conversation_id`,
+`tool_call_id`, `duration_ms`, `outcome` e `code`. Os desfechos são `blocked`
+(parou no Core), `rejected` (Host revalidou e negou), `error`, `invalid_result` e
+`success`. O nome da ferramenta é um identificador; argumentos, resultado e
+segredos nunca entram na linha.
+
 ## Dados do Host não são confiáveis para o modelo
 
 Contexto e resultados de ferramentas entram no prompt e podem conter texto
@@ -231,7 +278,10 @@ Portanto:
 - ele não amplia permissões, não altera grants e não substitui a validação do
   Core;
 - o modelo não autoriza nada: permissões são decididas pelos grants do contexto
-  e revalidadas pelo Host, conforme as Tasks 05–08.
+  e revalidadas pelo Host, conforme as Tasks 05–08;
+- o resultado devolvido pela Task 04 é **dado externo** se entrar no prompt: não
+  amplia grants, não autoriza nova chamada e não é uma instrução. Nenhum prompt
+  é montado nesta task.
 
 ## Detalhes do contrato
 
@@ -243,7 +293,9 @@ rejeita com `forbidden`.
 no prompt e trafegam pela fronteira. Os valores devem ser decididos com Tools e
 Segurança e aplicados pelo Core antes de usar o dado no prompt. Nenhum número
 está fixado no contrato. A Task 02 aplica limites provisórios configuráveis por
-ambiente (`HOST_CONTEXT_MAX_*`) no recebimento do contexto.
+ambiente (`HOST_CONTEXT_MAX_*`) no recebimento do contexto. A Task 04 acrescenta
+`HOST_EXECUTION_MAX_OUTPUT_BYTES` (padrão `16384`) para o resultado da
+ferramenta e `HOST_EXECUTION_TIMEOUT_MS` (padrão `5000`) para a execução.
 
 **Cache do contexto e do catálogo.** Recomenda-se carregar por conversa/turno e
 não reutilizar entre usuários ou tenants. Grants podem mudar durante a sessão;
@@ -279,13 +331,18 @@ conteúdo. O `chat_context` validado é anexado ao prompt somente quando
 `HOST_CONTEXT_ENABLED=1`. A Task 03 acrescentou a camada de catálogo filtrado
 (`HostToolCatalogService`), que reutiliza esse carregamento, verifica o schema
 com Ajv e omite ferramentas sem grants; ela ainda não é chamada pelo fluxo de
-mensagens.
+mensagens. A Task 04 adicionou `HostToolExecutionService`, registrado/exportado
+por `HostModule`: Recebe uma `ToolCall` proposta pelo provider, confere escopo,
+usa o catálogo filtrado, reutiliza autorização e validação das Tasks 05–08,
+chama `executeTool` com timeout e devolve resultado limitado e tipado. O serviço
+está testado, mas **não** é chamado por `POST /api/messages`.
 
 Ainda não existe adaptador real nem transporte registrado. O provider padrão de
 `HostIntegration` rejeita chamadas com `host_unavailable` em vez de devolver
-contexto vazio, e o fluxo atual não envia catálogo de ferramentas ao provider
-nem executa ferramentas do Host. O registro do adaptador concreto é o ponto de
-substituição em `HostModule`.
+contexto vazio. O fluxo atual não envia catálogo de ferramentas ao provider,
+não executa ferramentas do Host e não tem retry seguro nem auditoria
+persistente. O registro do adaptador concreto é o ponto de substituição em
+`HostModule`.
 
 ## Referências
 
@@ -298,3 +355,4 @@ substituição em `HostModule`.
 - [Task 07 — Bloquear ferramenta não autorizada](../tasks-devops/tools-e-seguranca/task-07/Bloquear-ferramenta-nao-autorizada.md)
 - [Task 08 — Permitir execução autorizada](../tasks-devops/tools-e-seguranca/task-08/Permitir-execucao-autorizada.md)
 - [Task 03 — Receber ferramentas](../tasks-devops/integracao-com-host/task-03/Receber-ferramentas.md)
+- [Task 04 — Executar ferramenta](../tasks-devops/integracao-com-host/task-04/Executar-ferramenta.md)

@@ -12,7 +12,9 @@ catálogo em task posterior; nesta task nada é conectado ao fluxo de mensagens.
 1. `HostIntegration` continua exposta por `HOST_INTEGRATION`, sem transporte
    concreto; o provider padrão permanece explícito e seguro.
 2. `HostToolCatalogService.getAvailableTools({ identity, conversationId, signal? })`
-   devolve `{ tools, chat_context, discarded }`.
+   devolve `{ tools, chat_context, discarded, identity, conversationId }`; os
+   dois últimos campos registram a proveniência do carregamento e são conferidos
+   pela Task 04 antes de aceitar um catálogo recebido de outra camada.
 3. O mesmo carregamento de contexto fornece grants e ferramentas, evitando
    combinar permissões de um turno com catálogo de outro.
 4. JSON Schema de cada ferramenta é compilado pelo Ajv antes da exposição.
@@ -38,7 +40,7 @@ parseHostConversationContext (validação, limites, duplicados, permissões)
 Ajv: schema compilável? -> authorizeToolCall: grants suficientes?
                                    |
                                    v
-{ tools, chat_context, discarded }
+{ tools, chat_context, discarded, identity, conversationId }
 ```
 
 ## Componentes
