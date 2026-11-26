@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { ChatDataSource } from '../transport/ChatDataSource';
 import type { Conversation, Suggestion } from '../types/chat-contracts';
@@ -26,6 +26,14 @@ export function useChatData(source: ChatDataSource) {
     useState<LoadedData<Suggestion>>(INITIAL_SUGGESTIONS);
   const [history, setHistory] =
     useState<LoadedData<Conversation>>(INITIAL_HISTORY);
+  const montado = useRef(true);
+
+  useEffect(() => {
+    montado.current = true;
+    return () => {
+      montado.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let ativo = true;
@@ -65,5 +73,15 @@ export function useChatData(source: ChatDataSource) {
     };
   }, [source]);
 
-  return { suggestions, history };
+  /** Recarrega o histórico após uma rotação sem apagar os dados atuais em falha. */
+  const reloadHistory = useCallback(async () => {
+    try {
+      const items = await source.getHistory();
+      if (montado.current) setHistory({ status: 'ready', items });
+    } catch {
+      // O histórico anterior permanece visível se a atualização falhar.
+    }
+  }, [source]);
+
+  return { suggestions, history, reloadHistory };
 }

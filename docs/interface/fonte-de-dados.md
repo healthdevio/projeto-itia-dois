@@ -22,6 +22,7 @@ frontend**: os dados vêm de um adaptador mock.
 interface ChatDataSource {
   getSuggestions(): Promise<Suggestion[]>;
   getHistory(): Promise<Conversation[]>;
+  startNewConversation(): Promise<Conversation>;
 }
 ```
 
@@ -29,6 +30,10 @@ interface ChatDataSource {
 - `getHistory()` mapeia `data.history` de `GET /api/conversations/current`
   (conversas anteriores). Mensagens da conversa ativa ficam fora desta interface
   e continuam no estado local de `App.tsx`.
+- `startNewConversation()` mapeia `data` de `POST /api/conversations/rotate` e
+  devolve a `Conversation` criada pelo Back-end. A interface não monta esse
+  objeto nem gera identificadores: a fonte de dados é a única responsável por
+  devolver a conversa autoritativa.
 
 A interface devolve somente os dados do domínio. A implementação REST futura é
 responsável por desembrulhar o envelope `ApiResponse<T>`:
@@ -62,17 +67,27 @@ tardias após desmontagem.
 mockChatDataSource (temporário)
         ↓ implementa
 ChatDataSource
-        ↓ consumida por
-useChatData
-        ↓ props: LoadedData<Suggestion> / LoadedData<Conversation>
-MiniChat / ExpandedChat
-        ↓
-SuggestionList / HistoryPanel / HistoryItem
+        ├── consumida por useChatData → suggestions / history / reloadHistory
+        └── consumida por useNewConversation → status / erro / nova Conversation
+                    ↓
+              App.tsx (estado da tela)
+                    ↓
+        MiniChat / ExpandedChat → ChatHeader / SuggestionList / HistoryPanel
 ```
 
 Nenhum componente visual conhece a origem dos dados. Para trocar o mock pelo
-REST, basta passar outra implementação de `ChatDataSource` para `useChatData`:
-os componentes não mudam.
+REST, basta passar outra implementação de `ChatDataSource` aos hooks: os
+componentes não mudam.
+
+`useNewConversation` impede acionamentos concorrentes e só devolve a conversa
+após a fonte confirmar a operação. O `App` limpa mensagens e volta ao estado
+inicial somente com essa resposta; em falha, a conversa anterior é preservada e
+a tela mostra uma mensagem genérica em pt-BR.
+
+O `mockChatDataSource.startNewConversation()` é uma **simulação local**: seu
+identificador e os dados são fixtures de teste e não representam uma conversa
+confirmada pelo Back-end. Na implementação REST ele é substituído por
+`POST /api/conversations/rotate`.
 
 ## Contratos de origem
 
@@ -85,7 +100,8 @@ os componentes não mudam.
 
 ## O que falta
 
-- implementação REST de `ChatDataSource` com rotas relativas `/api/...` via Nginx;
+- implementação REST de `ChatDataSource` com rotas relativas `/api/...` via Nginx,
+  incluindo `POST /api/conversations/rotate` para `startNewConversation()`;
 - autenticação OIDC e envio do Bearer token no frontend;
 - carregamento das mensagens da conversa ativa (`data.messages`) e ligação dos
   estados `idle`/`streaming`/`success`/`error`;

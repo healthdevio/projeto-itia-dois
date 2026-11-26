@@ -47,6 +47,8 @@ const history: Conversation[] = [
   },
 ];
 
+let proximaConversaMock = 1;
+
 export const mockChatDataSource: ChatDataSource = {
   async getSuggestions() {
     return suggestions.map((suggestion) => ({ ...suggestion }));
@@ -56,5 +58,21 @@ export const mockChatDataSource: ChatDataSource = {
       ...conversation,
       messages: conversation.messages.map((message) => ({ ...message })),
     }));
+  },
+  async startNewConversation() {
+    /**
+     * SIMULAÇÃO LOCAL: este adaptador não conversa com o Back-end. O identificador
+     * e os dados abaixo são apenas fixtures de teste — não representam uma
+     * Conversation criada ou confirmada pelo servidor. A implementação REST
+     * substitui este método por `POST /api/conversations/rotate`.
+     */
+    const agora = new Date().toISOString();
+    return {
+      id: `conversa-nova-mock-${proximaConversaMock++}`,
+      state: 'idle',
+      messages: [],
+      created_at: agora,
+      updated_at: agora,
+    };
   },
 };
