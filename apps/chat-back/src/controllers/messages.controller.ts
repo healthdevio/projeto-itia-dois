@@ -82,11 +82,15 @@ export class MessagesController {
     };
 
     try {
+      const safeConfigForLog = formatChatConfig(activeConfig).replace(
+        /[\r\n]+/g,
+        ' ',
+      );
       console.log(
         `[Core] Mensagem recebida de ${message.origin} (usuário ${userId}):`,
         message.message_id,
         `· tenant ${tenantId ?? 'default'}`,
-        `· config ${formatChatConfig(activeConfig)}`,
+        `· config ${safeConfigForLog}`,
       );
       const conversation = await getOrCreateActiveConversation(userId);
       const hostContext = isHostContextEnabled()
