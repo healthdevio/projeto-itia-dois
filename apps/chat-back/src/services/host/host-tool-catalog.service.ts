@@ -26,6 +26,12 @@ export interface HostToolCatalogResult {
   tools: Tool[];
   chat_context: ChatContext;
   discarded: HostToolCatalogDiscards;
+  /**
+   * Proveniência do carregamento. A execução confere estes campos antes de
+   * aceitar um catálogo recebido de outra camada do mesmo processo.
+   */
+  identity: RequestIdentity;
+  conversationId: string;
 }
 
 /**
@@ -85,7 +91,13 @@ export class HostToolCatalogService {
         `sem_permissao=${discarded.not_allowed}`,
     );
 
-    return { tools, chat_context: context.chat_context, discarded };
+    return {
+      tools,
+      chat_context: context.chat_context,
+      discarded,
+      identity: request.identity,
+      conversationId: request.conversationId,
+    };
   }
 
   /**

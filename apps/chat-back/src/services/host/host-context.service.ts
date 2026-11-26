@@ -38,10 +38,7 @@ export class HostContextService {
     conversationId: string,
     signal?: AbortSignal,
   ): Promise<HostConversationContext> {
-    const principal: HostPrincipal = {
-      user_id: identity.userId,
-      ...(identity.tenantId ? { tenant_id: identity.tenantId } : {}),
-    };
+    const principal = toHostPrincipal(identity);
     const started = Date.now();
     const deadline = AbortSignal.timeout(this.timeoutMs);
     const combined = signal ? AbortSignal.any([signal, deadline]) : deadline;
@@ -90,11 +87,19 @@ export class HostContextService {
   }
 }
 
+/** Converte a identidade verificada pelo Core para o principal do contrato. */
+export function toHostPrincipal(identity: RequestIdentity): HostPrincipal {
+  return {
+    user_id: identity.userId,
+    ...(identity.tenantId ? { tenant_id: identity.tenantId } : {}),
+  };
+}
+
 /**
  * Impõe o deadline mesmo que o adaptador ignore o `AbortSignal`, e rejeita
  * cancelamento do chamador sem resolver com dados parciais.
  */
-function withDeadline<T>(
+export function withDeadline<T>(
   operation: Promise<T>,
   combined: AbortSignal,
   timeoutMs: number,
@@ -115,7 +120,7 @@ function withDeadline<T>(
           caller?.aborted
             ? new HostIntegrationError(
                 'unknown',
-                'Carregamento do contexto do Host cancelado',
+                'Operação com o Host cancelado pelo chamador',
               )
             : new HostIntegrationError(
                 'timeout',
