@@ -5,6 +5,7 @@ import {
   loadHostContextTimeoutMs,
 } from './host-context.config.js';
 import { createUnconfiguredHostIntegration } from './host-integration.provider.js';
+import { HostToolCatalogService } from './host-tool-catalog.service.js';
 import {
   HOST_CONTEXT_LIMITS,
   HOST_CONTEXT_TIMEOUT_MS,
@@ -22,6 +23,7 @@ import {
 @Module({
   providers: [
     HostContextService,
+    HostToolCatalogService,
     {
       provide: HOST_INTEGRATION,
       useFactory: createUnconfiguredHostIntegration,
@@ -35,6 +37,6 @@ import {
       useFactory: () => loadHostContextTimeoutMs(),
     },
   ],
-  exports: [HostContextService],
+  exports: [HostContextService, HostToolCatalogService],
 })
 export class HostModule {}
