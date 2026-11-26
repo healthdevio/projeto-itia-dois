@@ -1,6 +1,10 @@
 import { z } from 'zod';
-import type { ConversationState } from './conversation-state.js';
 import { chatConfigSchema, type ChatConfig } from './chat-config.js';
+import {
+  validateContract,
+  type ContractValidationIssue,
+} from './contract-validation.js';
+import type { ConversationState } from './conversation-state.js';
 import { suggestionsListSchema, type Suggestion } from './suggestion.js';
 
 export interface MessageStartedEvent {
@@ -95,3 +99,48 @@ export const sseEventSchema = z.discriminatedUnion('event', [
     data: messageErrorEventSchema,
   }),
 ]);
+
+export type ValidateSseEventResult =
+  | { ok: true; data: SSEEvent }
+  | { ok: false; error: string; issues: ContractValidationIssue[] };
+
+export function validateSseEvent(value: unknown): ValidateSseEventResult {
+  const result = validateContract(sseEventSchema, value, 'SSEEvent');
+  if (!result.ok) {
+    return result;
+  }
+
+  return {
+    ok: true,
+    data: result.data as unknown as SSEEvent,
+  };
+}
+
+export interface SseErrorMetadata {
+  request_id: string;
+  conversation_id: string;
+  message_id: string;
+}
+
+export function buildSafeSseErrorEvent(
+  meta: SseErrorMetadata,
+  safeMessage = 'Falha durante o streaming da resposta',
+): SSEEvent {
+  const trimmedRequestId = meta.request_id.trim() || 'unknown-request';
+  const trimmedConversationId =
+    meta.conversation_id.trim() || 'unknown-conversation';
+  const trimmedMessageId = meta.message_id.trim() || 'unknown-message';
+  const sanitizedMessage =
+    safeMessage.trim() || 'Falha durante o streaming da resposta';
+
+  return {
+    event: 'message.error',
+    data: {
+      request_id: trimmedRequestId,
+      conversation_id: trimmedConversationId,
+      message_id: trimmedMessageId,
+      state: 'error',
+      error: sanitizedMessage,
+    },
+  };
+}
