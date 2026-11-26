@@ -10,7 +10,7 @@ import {
 import request from 'supertest';
 
 import { ApiExceptionFilter } from '../../src/common/filters/api-exception.filter.js';
-import { ZodValidationPipe } from '../../src/common/pipes/zod-validation.pipe.ts';
+import { ZodValidationPipe } from '../../src/common/pipes/zod-validation.pipe.js';
 import { ContractValidationError } from '../../src/models/contract-validation.js';
 import { messageSchema } from '../../src/models/message.js';
 import { createTestApp } from '../helpers/nest-app.js';
