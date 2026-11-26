@@ -11,6 +11,15 @@ export interface AIContext {
   max_context_messages: number;
   /** Contexto já validado e limitado, recebido do Host. */
   host_context?: ChatContext;
+  relevant_memories?: RelevantMemory[];
+}
+export interface RelevantMemory {
+  id: string;
+  content: string;
+  category: string;
+  importance: number;
+  context: string | null;
+  updatedAt: string;
 }
 export const DEFAULT_CONTEXT_WINDOW = 20;
 export function buildContext(

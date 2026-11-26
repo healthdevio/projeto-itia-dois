@@ -9,7 +9,14 @@ export {
   DEFAULT_CONTEXT_WINDOW,
   withHostContext,
   type AIContext,
+  type RelevantMemory,
 } from './context.js';
+export {
+  recuperarMemoriaRelevante,
+  injetarMemoriasNoContexto,
+  renderizarMemoriasContexto,
+  avaliarEAtualizarMemoria,
+} from './memory.js';
 export {
   AI_PROVIDER_NAMES,
   createProvider,
@@ -30,6 +37,8 @@ export interface AIRequest {
   context: AIContext;
   config: ChatConfig;
   tenant?: string;
+  onDelta?: (delta: string) => void;
+  signal?: AbortSignal;
 }
 export interface AIResponse {
   response: string;
@@ -52,5 +61,7 @@ export async function sendToAI(
     context: request.context,
     config: request.config,
     tenant: request.tenant,
+    onDelta: request.onDelta,
+    signal: request.signal,
   });
 }

@@ -85,12 +85,8 @@ void describe('POST /api/messages · corpo', () => {
     }
   });
 
-  void it('responde 400 quando request_id está ausente', async () => {
-    const response = await post({
-      message_id: 'msg-1',
-      message: 'Olá',
-      origin: 'frontend',
-    });
+  void it('responde 400 listando os campos obrigatórios', async () => {
+    const response = await post({ message: 'Olá' });
 
     assert.equal(response.status, 400);
     assert.equal(response.body.success, false);
@@ -120,7 +116,7 @@ void describe('POST /api/messages · config', () => {
     assert.match(response.body.error, /config\.tone/);
   });
 
-  void it('recusa language fora dos valores permitidos', async () => {
+  void it('diz o que era válido, para a interface corrigir o campo', async () => {
     const response = await post({
       ...validBody,
       config: { language: 'fr-FR' },
@@ -137,5 +133,16 @@ void describe('POST /api/messages · config', () => {
     assert.equal(response.status, 400);
     assert.equal(response.body.success, false);
     assert.match(response.body.error, /config/);
+  });
+
+  void it('prefere o erro de config ao de campo faltando', async () => {
+    // Sem esta ordem, a interface corrigiria o campo errado primeiro.
+    const response = await post({
+      message: 'Olá',
+      config: { tone: 'sarcastico' },
+    });
+
+    assert.equal(response.status, 400);
+    assert.match(response.body.error, /config\.tone/);
   });
 });

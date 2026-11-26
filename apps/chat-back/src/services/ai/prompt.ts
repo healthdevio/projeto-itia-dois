@@ -61,6 +61,16 @@ export function toChatMessages(
       content: `Este usuário já conversou com você ${history} vez(es) antes, em outras conversas. Não mencione isso se não for relevante.`,
     });
   }
+  const memorias = context.relevant_memories;
+  if (memorias && memorias.length) {
+    const listaMemorias = memorias
+      .map((m) => `- [${m.category}] ${m.content}`)
+      .join('\n');
+    messages.push({
+      role: 'system',
+      content: `Memórias relevantes do usuário (use apenas se pertinentes à pergunta atual):\n${listaMemorias}`,
+    });
+  }
   for (const previous of context.previous_messages) {
     if (typeof previous.message !== 'string') continue;
     messages.push({
