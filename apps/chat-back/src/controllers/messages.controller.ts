@@ -42,6 +42,10 @@ import {
 export class MessagesController {
   constructor(private readonly hostContext: HostContextService) {}
 
+  private sanitizeForLog(value: unknown): string {
+    return String(value).replace(/[\r\n]+/g, ' ');
+  }
+
   @Post()
   async create(
     @Identity() identity: RequestIdentity,
@@ -82,14 +86,11 @@ export class MessagesController {
     };
 
     try {
-      const safeConfigForLog = formatChatConfig(activeConfig).replace(
-        /[\r\n]+/g,
-        ' ',
-      );
+      const safeConfigForLog = this.sanitizeForLog(formatChatConfig(activeConfig));
       console.log(
-        `[Core] Mensagem recebida de ${message.origin} (usuário ${userId}):`,
-        message.message_id,
-        `· tenant ${tenantId ?? 'default'}`,
+        `[Core] Mensagem recebida de ${this.sanitizeForLog(message.origin)} (usuário ${this.sanitizeForLog(userId)}):`,
+        this.sanitizeForLog(message.message_id),
+        `· tenant ${this.sanitizeForLog(tenantId ?? 'default')}`,
         `· config ${safeConfigForLog}`,
       );
       const conversation = await getOrCreateActiveConversation(userId);
@@ -164,7 +165,7 @@ export class MessagesController {
         // A falha do Host é explícita: a mensagem não é gravada nem respondida
         // com contexto vazio. O código é registrado, o conteúdo nunca.
         console.error(
-          `[Core] Contexto do Host indisponível para ${userId}: ${error.code}`,
+          `[Core] Contexto do Host indisponível para ${this.sanitizeForLog(userId)}: ${this.sanitizeForLog(error.code)}`,
         );
         try {
           await transitionConversationState(userId, 'error');
@@ -178,8 +179,8 @@ export class MessagesController {
 
       const providerFailure = error instanceof AIError;
       console.error(
-        `[Core] Erro ao processar mensagem de ${userId}:`,
-        providerFailure ? `[AI] ${error.message}` : error,
+        `[Core] Erro ao processar mensagem de ${this.sanitizeForLog(userId)}:`,
+        providerFailure ? `[AI] ${this.sanitizeForLog(error.message)}` : error,
       );
       try {
         await transitionConversationState(userId, 'error');
