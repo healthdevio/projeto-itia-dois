@@ -7,6 +7,7 @@ export { AIError } from './error.js';
 export {
   buildContext,
   DEFAULT_CONTEXT_WINDOW,
+  withHostContext,
   type AIContext,
   type RelevantMemory,
 } from './context.js';

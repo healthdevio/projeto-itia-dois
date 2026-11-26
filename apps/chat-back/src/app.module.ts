@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
+import { ApiExceptionFilter } from './common/filters/api-exception.filter.js';
 import { ConversationsController } from './controllers/conversations.controller.js';
 import { HealthController } from './controllers/health.controller.js';
 import { MessagesController } from './controllers/messages.controller.js';
@@ -11,7 +13,7 @@ import { SseService } from './services/sse/sse.service.js';
 import { MessageProcessingService } from './services/message-processing/index.js';
 
 @Module({
-  imports: [],
+  imports: [HostModule],
   controllers: [
     HealthController,
     ConversationsController,

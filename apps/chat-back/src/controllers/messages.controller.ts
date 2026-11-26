@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import type { ApiResponse } from '../models/api-response.js';
 import type { ChatRequest } from '../models/chat-request.js';
@@ -15,11 +15,11 @@ export class MessagesController {
 
   @Post()
   async create(
-    @Req() request: IdentityRequest,
+    @Identity() identity: RequestIdentity,
     @Body() parsed: unknown,
     @Res() response: Response,
   ): Promise<Response> {
-    const { userId, tenantId } = request.identity!;
+    const { userId, tenantId } = identity;
     if (
       typeof parsed !== 'object' ||
       parsed === null ||
@@ -32,24 +32,11 @@ export class MessagesController {
       return response.status(400).json(body);
     }
 
-    const input = parsed as ChatRequest;
-    const chatConfig = validateChatConfig(input.config);
-    if (!chatConfig.ok) {
-      const body: ApiResponse = { success: false, error: chatConfig.error };
-      return response.status(400).json(body);
-    }
-
-    if (
-      typeof input.message_id !== 'string' ||
-      !input.message_id ||
-      typeof input.message !== 'string' ||
-      !input.message ||
-      typeof input.origin !== 'string' ||
-      !input.origin
-    ) {
+    const requestValidation = validateChatRequest(parsed);
+    if (!requestValidation.ok) {
       const body: ApiResponse = {
         success: false,
-        error: 'Campos obrigatórios faltando: message_id, message, origin',
+        error: requestValidation.error,
       };
       return response.status(400).json(body);
     }
@@ -75,10 +62,26 @@ export class MessagesController {
       };
       return response.status(200).json(body);
     } catch (error) {
+      if (error instanceof HostIntegrationError) {
+        // A falha do Host é explícita: a mensagem não é gravada nem respondida
+        // com contexto vazio. O código é registrado, o conteúdo nunca.
+        console.error(
+          `[Core] Contexto do Host indisponível para ${this.sanitizeForLog(userId)}: ${this.sanitizeForLog(error.code)}`,
+        );
+        try {
+          await transitionConversationState(userId, 'error');
+        } catch {}
+        const body: ApiResponse = {
+          success: false,
+          error: hostErrorMessage(error),
+        };
+        return response.status(hostErrorHttpStatus(error)).json(body);
+      }
+
       const providerFailure = error instanceof AIError;
       console.error(
-        `[Core] Erro ao processar mensagem de ${userId}:`,
-        providerFailure ? `[AI] ${error.message}` : error,
+        `[Core] Erro ao processar mensagem de ${this.sanitizeForLog(userId)}:`,
+        providerFailure ? `[AI] ${this.sanitizeForLog(error.message)}` : error,
       );
       try {
         await this.processing.transitionToError(userId);

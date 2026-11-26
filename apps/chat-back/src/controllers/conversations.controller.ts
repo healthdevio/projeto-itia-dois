@@ -1,5 +1,7 @@
-import { Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
+import { Identity } from '../common/decorators/identity.decorator.js';
+import { IdentityGuard, type RequestIdentity } from '../middleware/identity.js';
 import type { ApiResponse } from '../models/api-response.js';
 import type { Conversation, ConversationView } from '../models/conversation.js';
 import {
@@ -7,17 +9,16 @@ import {
   getOrCreateActiveConversation,
   rotateConversation,
 } from '../repositories/conversation-repository.js';
-import { IdentityGuard, type IdentityRequest } from '../middleware/identity.js';
 
 @Controller('api/conversations')
 @UseGuards(IdentityGuard)
 export class ConversationsController {
   @Get('current')
   async current(
-    @Req() request: IdentityRequest,
+    @Identity() identity: RequestIdentity,
     @Res() response: Response,
   ): Promise<Response> {
-    const userId = request.identity!.userId;
+    const { userId } = identity;
     try {
       const view: ConversationView = await getConversationView(userId);
       const body: ApiResponse<ConversationView> = { success: true, data: view };
@@ -34,10 +35,10 @@ export class ConversationsController {
 
   @Get('active')
   async active(
-    @Req() request: IdentityRequest,
+    @Identity() identity: RequestIdentity,
     @Res() response: Response,
   ): Promise<Response> {
-    const userId = request.identity!.userId;
+    const { userId } = identity;
     try {
       const conversation: Conversation =
         await getOrCreateActiveConversation(userId);
@@ -58,10 +59,10 @@ export class ConversationsController {
 
   @Post('rotate')
   async rotate(
-    @Req() request: IdentityRequest,
+    @Identity() identity: RequestIdentity,
     @Res() response: Response,
   ): Promise<Response> {
-    const userId = request.identity!.userId;
+    const { userId } = identity;
     try {
       const conversation = await rotateConversation(userId);
       console.log(

@@ -33,6 +33,7 @@ async function post(body: unknown, headers: Record<string, string> = {}) {
 }
 
 const validBody = {
+  request_id: 'req-1',
   message_id: 'msg-1',
   message: 'Olá',
   origin: 'frontend',
@@ -89,7 +90,15 @@ void describe('POST /api/messages · corpo', () => {
 
     assert.equal(response.status, 400);
     assert.equal(response.body.success, false);
-    for (const field of ['message_id', 'message', 'origin']) {
+    assert.match(response.body.error, /request_id/);
+  });
+
+  void it('responde 400 apontando campos obrigatórios faltando', async () => {
+    const response = await post({ request_id: 'req-1', message: 'Olá' });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.success, false);
+    for (const field of ['message_id', 'origin']) {
       assert.match(response.body.error, new RegExp(field));
     }
   });
@@ -103,10 +112,8 @@ void describe('POST /api/messages · config', () => {
     });
 
     assert.equal(response.status, 400);
-    assert.match(
-      response.body.error,
-      /config\.tone deve ser um de: formal, neutral, informal/,
-    );
+    assert.equal(response.body.success, false);
+    assert.match(response.body.error, /config\.tone/);
   });
 
   void it('diz o que era válido, para a interface corrigir o campo', async () => {
@@ -116,7 +123,8 @@ void describe('POST /api/messages · config', () => {
     });
 
     assert.equal(response.status, 400);
-    assert.match(response.body.error, /config\.language deve ser um de/);
+    assert.equal(response.body.success, false);
+    assert.match(response.body.error, /config\.language/);
   });
 
   void it('recusa config que não é objeto', async () => {

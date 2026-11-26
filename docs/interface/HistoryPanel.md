@@ -2,43 +2,98 @@
 
 ## Identificação
 
-- **Task relacionada:** P1-T08 — Implementar sugestões e histórico
-- **Status da task:** **WIP / em andamento; não concluída nem integrada à `develop`**, conforme o registro fornecido
+- **Task:** Front-end [08] — Implementar sugestões e histórico
+- **Arquivo:** `apps/chat-omnia/src/interface/history/HistoryPanel.tsx`
+- **Estado:** implementado na Interface; integração com o Core **não** está feita
 
 ## Objetivo
 
-Apresentar ao usuário a área de histórico de conversas, permitindo visualizar conversas anteriores de acordo com o contrato que vier a ser definido e integrado.
+Apresentar as **conversas anteriores** do usuário, em painel lateral do chat
+expandido. Não mistura mensagens da conversa ativa com conversas passadas.
 
-## Situação documentada
+## O que é "histórico" no contrato
 
-O registro da Task 08 inclui a implementação do histórico como uma das entregas pretendidas, mas não confirma que a visualização esteja concluída na arquitetura atual.
+`GET /api/conversations/current` devolve um `ConversationView` com duas listas
+distintas:
 
-## Responsabilidades esperadas
+| Campo                                                 | Conteúdo                                              | Onde aparece na Interface      |
+| ----------------------------------------------------- | ----------------------------------------------------- | ------------------------------ |
+| `data.messages` / `data.active_conversation.messages` | mensagens da conversa **ativa**                       | `MessageList`                  |
+| `data.history`                                        | conversas **anteriores**, cada uma com suas mensagens | `HistoryPanel` / `HistoryItem` |
 
-- Apresentar os dados de histórico recebidos pela camada de estado.
-- Separar a área que organiza os itens da apresentação de cada item individual, caso essa composição exista no código.
-- Representar adequadamente estados de carregamento, ausência de conversas e erro.
-- Não executar chamadas HTTP diretamente no componente visual.
+O Back-end mantém exatamente **uma conversa ativa por usuário**; `POST
+/api/conversations/rotate` encerra a atual e cria outra. `data.history` vem da
+ordenação por `updated_at` (mais recente primeiro) com limite configurado no
+repositório.
+
+`ChatDataSource.getHistory()` mapeia `data.history`. A conversa ativa continua
+fora desta área até a task de transporte/estados do chat.
+
+## Contrato usado
+
+```ts
+interface Conversation {
+  id: string;
+  state: 'idle' | 'streaming' | 'success' | 'error';
+  messages: ConversationMessage[];
+  created_at: string;
+  updated_at: string;
+}
+```
+
+Origem: `apps/chat-back/src/models/conversation.ts`. Datas são ISO 8601 e são
+formatadas em pt-BR por `src/utils/formatDateTime.ts`, que tolera valor ausente
+ou inválido retornando `null`.
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "9f1c2a44-...",
+    "state": "idle",
+    "messages": [],
+    "active_conversation": { "...": "..." },
+    "history": [
+      {
+        "id": "4d3e913d-...",
+        "state": "idle",
+        "messages": [],
+        "created_at": "2026-09-27T10:00:00.000Z",
+        "updated_at": "2026-09-27T10:04:12.000Z"
+      }
+    ]
+  }
+}
+```
+
+## Props
+
+```ts
+interface HistoryPanelProps {
+  data: LoadedData<Conversation>;
+}
+```
+
+## Estados
+
+| `status`                | Comportamento                                                             |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `loading`               | Painel lateral com `role="status"` e `LoadingIndicator`                   |
+| `ready` com lista vazia | Não renderiza nada                                                        |
+| `ready` com itens       | `<aside aria-label="Histórico de conversas">` com `<ol>` de `HistoryItem` |
+| `error`                 | Painel com `role="alert"` e mensagem genérica em pt-BR                    |
+
+## Layout
+
+O painel aparece **somente no modo expandido**, ao lado de `MessageList`, com
+largura relativa (`w-2/5 max-w-48`). No modo compacto (`MiniChat`) ele não
+aparece, para não quebrar a janela de 320 px.
 
 ## Pendências
 
-- Confirmar o contrato atual de `Conversation` no backend.
-- Definir e implementar o carregamento do histórico pela camada de transporte.
-- Confirmar como a seleção de uma conversa deve funcionar.
-- Tratar loading, lista vazia e erro.
-- Validar typecheck/build e testes.
-- Abrir e integrar um PR para a arquitetura atual.
-
-## Arquitetura esperada
-
-```text
-Componente visual
-       ↓
-Hook / camada de estado
-       ↓
-Transport
-       ↓
-Chat Backend
-```
-
-> A fonte fornecida não confirma props, endpoint ou comportamento final do histórico. Não trate esses detalhes como definidos sem consultar o código e os contratos atuais.
+- Não há rota de "abrir conversa anterior": `HistoryItem` não é botão e não houve
+  seleção implementada.
+- Botão de rotação (`POST /api/conversations/rotate`) fica de fora: a task não
+  autoriza mexer no fluxo de conversa.
+- Cliente REST e OIDC (outra trilha).
+- Testes de Interface.
