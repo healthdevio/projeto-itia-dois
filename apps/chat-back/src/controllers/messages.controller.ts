@@ -11,7 +11,12 @@ import {
   validateChatResponse,
   type ChatResponse,
 } from '../models/chat-response.js';
-import { formatChatConfig } from '../models/chat-config.js';
+import {
+  CHAT_CONFIG_LANGUAGES,
+  CHAT_CONFIG_RESPONSE_LENGTHS,
+  CHAT_CONFIG_TONES,
+  type ChatConfig,
+} from '../models/chat-config.js';
 import { HostIntegrationError } from '../models/host-integration.js';
 import type { Message } from '../models/message.js';
 import {
@@ -47,6 +52,22 @@ export class MessagesController {
       .replace(/\r\n|\r|\n/g, ' ')
       .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]+/g, ' ')
       .trim();
+  }
+
+  private formatSafeConfigForLog(config: ChatConfig): string {
+    const language = CHAT_CONFIG_LANGUAGES.includes(config.language)
+      ? config.language
+      : 'pt-BR';
+    const tone = CHAT_CONFIG_TONES.includes(config.tone)
+      ? config.tone
+      : 'neutral';
+    const responseLength = CHAT_CONFIG_RESPONSE_LENGTHS.includes(
+      config.response_length,
+    )
+      ? config.response_length
+      : 'standard';
+
+    return `${language} · ${tone} · ${responseLength}`;
   }
 
   @Post()
@@ -93,9 +114,7 @@ export class MessagesController {
       const safeUserIdForLog = this.sanitizeForLog(userId);
       const safeMessageIdForLog = this.sanitizeForLog(message.message_id);
       const safeTenantForLog = this.sanitizeForLog(tenantId ?? 'default');
-      const safeConfigForLog = this.sanitizeForLog(
-        formatChatConfig(activeConfig),
-      );
+      const safeConfigForLog = this.formatSafeConfigForLog(activeConfig);
       console.log(
         '[Core] Mensagem recebida de %s (usuário %s): %s · tenant %s · config %s',
         safeOriginForLog,
