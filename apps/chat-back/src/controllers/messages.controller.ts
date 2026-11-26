@@ -43,7 +43,9 @@ export class MessagesController {
   constructor(private readonly hostContext: HostContextService) {}
 
   private sanitizeForLog(value: unknown): string {
-    return String(value).replace(/[\r\n]+/g, ' ');
+    return String(value)
+      .replace(/[\u0000-\u001F\u007F]+/g, ' ')
+      .trim();
   }
 
   @Post()
@@ -86,15 +88,18 @@ export class MessagesController {
     };
 
     try {
-      const safeOriginForLog = message.origin.replace(/[\r\n]/g, '');
+      const safeOriginForLog = this.sanitizeForLog(message.origin);
+      const safeUserIdForLog = this.sanitizeForLog(userId);
       const safeMessageIdForLog = this.sanitizeForLog(message.message_id);
+      const safeTenantForLog = this.sanitizeForLog(tenantId ?? 'default');
+      const safeConfigForLog = this.sanitizeForLog(formatChatConfig(activeConfig));
       console.log(
-        '[Core] Mensagem recebida de %s (usuário %s):',
+        '[Core] Mensagem recebida de %s (usuário %s): %s · tenant %s · config %s',
         safeOriginForLog,
-        userId,
+        safeUserIdForLog,
         safeMessageIdForLog,
-        `· tenant ${tenantId ?? 'default'}`,
-        `· config ${formatChatConfig(chatConfig.config)}`,
+        safeTenantForLog,
+        safeConfigForLog,
       );
       const conversation = await getOrCreateActiveConversation(userId);
       const hostContext = isHostContextEnabled()
