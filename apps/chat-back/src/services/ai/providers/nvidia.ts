@@ -21,6 +21,9 @@ interface Completion {
     message?: {
       content?: string;
     };
+    delta?: {
+      content?: string;
+    };
   }[];
 }
 interface NvidiaConfig {
@@ -103,6 +106,122 @@ export function createNvidiaProvider(
     }
     return content.trim();
   }
+
+  /**
+   * Chamada streaming (SSE da NVIDIA).
+   * Lê o corpo da resposta como `ReadableStream<Uint8Array>` e emite cada
+   * fragmento de `choices[0].delta.content` via `onDelta` à medida que chega.
+   * Acumula o conteúdo completo para persistência posterior.
+   */
+  async function completeStream(
+    messages: ChatMessage[],
+    maxTokens: number,
+    onDelta?: (delta: string) => void,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    let response: Response;
+    try {
+      response = await fetch(`${config.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          Authorization: `Bearer ${config.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages,
+          max_tokens: maxTokens,
+          stream: true,
+        }),
+        signal,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw error;
+      }
+      const reason =
+        error instanceof Error && error.name === 'TimeoutError'
+          ? `tempo esgotado após ${config.timeoutMs}ms`
+          : error instanceof Error
+            ? error.message
+            : 'erro desconhecido';
+      throw new Error(`Falha ao chamar a Nvidia: ${reason}`);
+    }
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      throw new Error(`NVIDIA ${response.status}: ${detail.slice(0, 500)}`);
+    }
+
+    const body = response.body;
+    if (!body) {
+      throw new Error('NVIDIA respondeu sem corpo de streaming.');
+    }
+
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullResponse = '';
+    let done = false;
+
+    try {
+      while (!done) {
+        if (signal?.aborted) {
+          void reader.cancel();
+          const error = new Error('Operação cancelada pelo cliente');
+          error.name = 'AbortError';
+          throw error;
+        }
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        if (value) {
+          buffer += decoder.decode(value, { stream: true });
+          // Processa linhas completas terminadas por newline.
+          let newlineIndex: number;
+          while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+            const line = buffer.slice(0, newlineIndex);
+            buffer = buffer.slice(newlineIndex + 1);
+            const trimmed = line.trim();
+            if (trimmed.startsWith('data:')) {
+              const payload = trimmed.slice(5).trim();
+              if (payload === '[DONE]') {
+                done = true;
+                break;
+              }
+              try {
+                const chunk = JSON.parse(payload) as Completion;
+                const deltaContent =
+                  chunk.choices?.[0]?.delta?.content;
+                if (typeof deltaContent === 'string' && deltaContent !== '') {
+                  fullResponse += deltaContent;
+                  if (onDelta && !signal?.aborted) {
+                    onDelta(deltaContent);
+                  }
+                }
+              } catch {
+                // Ignora linhas de dados malformadas do stream.
+              }
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    if (signal?.aborted) {
+      const error = new Error('Operação cancelada pelo cliente');
+      error.name = 'AbortError';
+      throw error;
+    }
+
+    if (fullResponse.trim() === '') {
+      throw new Error('NVIDIA não retornou conteúdo no stream.');
+    }
+
+    return fullResponse.trim();
+  }
+
   async function suggest(
     reply: string,
     ask: string,
@@ -129,21 +248,33 @@ export function createNvidiaProvider(
       context,
       config: chatConfig,
       tenant,
+      onDelta,
+      signal,
     }: AIProviderRequest): Promise<AIProviderResponse> {
       const started = Date.now();
       const template = resolvePrompt(tenant);
-      const response = await complete(
-        toChatMessages(
-          message,
-          context,
-          chatConfig,
-          template,
-          config.ignoreConfig,
-        ),
-        config.maxTokens,
+      const messages = toChatMessages(
+        message,
+        context,
+        chatConfig,
+        template,
+        config.ignoreConfig,
       );
+
+      let response: string;
+      if (onDelta) {
+        response = await completeStream(
+          messages,
+          config.maxTokens,
+          onDelta,
+          signal,
+        );
+      } else {
+        response = await complete(messages, config.maxTokens);
+      }
+
       let suggestions: AIProviderResponse['suggestions'] = null;
-      if (!config.noSuggestions) {
+      if (!config.noSuggestions && !signal?.aborted) {
         try {
           const raw = await suggest(response, message, tenant);
           suggestions = raw === null ? null : readSuggestions(raw);

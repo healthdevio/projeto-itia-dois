@@ -6,6 +6,7 @@ export class SseResponseChannel implements SseChannel {
   private readonly response: Response;
   private closed = false;
   private readonly controller = new AbortController();
+  private userId: string | undefined;
 
   constructor(response: Response) {
     this.id = randomUUID();
@@ -24,6 +25,14 @@ export class SseResponseChannel implements SseChannel {
 
   get abortSignal(): AbortSignal {
     return this.controller.signal;
+  }
+
+  get ownerId(): string | undefined {
+    return this.userId;
+  }
+
+  setOwner(userId: string): void {
+    this.userId = userId;
   }
 
   write(event: SseEvent): boolean {
@@ -50,9 +59,13 @@ export class SseResponseChannel implements SseChannel {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    this.controller.abort();
     try {
       this.response.end();
     } catch {}
-    this.controller.abort();
+  }
+
+  abort(): void {
+    this.close();
   }
 }

@@ -10,7 +10,10 @@ export interface SseEvent {
 export interface SseChannel {
   write(event: SseEvent): boolean;
   close(): void;
+  abort(): void;
   readonly abortSignal: AbortSignal;
+  ownerId?: string;
+  setOwner(userId: string): void;
 }
 
 export class SseBroadcaster extends EventEmitter {
@@ -42,9 +45,14 @@ export class SseBroadcaster extends EventEmitter {
     return this.connections.get(id);
   }
 
+  getOwnerId(id: SseConnectionId): string | undefined {
+    const channel = this.connections.get(id);
+    return channel?.ownerId;
+  }
+
   closeAll(): void {
     for (const [id, channel] of this.connections) {
-      channel.close();
+      channel.abort();
       this.connections.delete(id);
       this.emit('disconnection', id);
     }

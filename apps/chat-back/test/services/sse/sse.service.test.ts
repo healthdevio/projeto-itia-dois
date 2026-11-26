@@ -15,6 +15,7 @@ class FakeChannel implements SseChannel {
   closed = false;
   private readonly controller = new AbortController();
   readonly abortSignal = this.controller.signal;
+  private userId: string | undefined;
 
   write(event: { type: string; data: unknown }): boolean {
     if (this.closed) return false;
@@ -25,6 +26,19 @@ class FakeChannel implements SseChannel {
   close(): void {
     this.closed = true;
     this.controller.abort();
+  }
+
+  abort(): void {
+    this.closed = true;
+    this.controller.abort();
+  }
+
+  get ownerId(): string | undefined {
+    return this.userId;
+  }
+
+  setOwner(userId: string): void {
+    this.userId = userId;
   }
 }
 

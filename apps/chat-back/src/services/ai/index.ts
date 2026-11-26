@@ -36,6 +36,8 @@ export interface AIRequest {
   context: AIContext;
   config: ChatConfig;
   tenant?: string;
+  onDelta?: (delta: string) => void;
+  signal?: AbortSignal;
 }
 export interface AIResponse {
   response: string;
@@ -58,5 +60,7 @@ export async function sendToAI(
     context: request.context,
     config: request.config,
     tenant: request.tenant,
+    onDelta: request.onDelta,
+    signal: request.signal,
   });
 }

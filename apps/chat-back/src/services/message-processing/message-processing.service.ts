@@ -24,6 +24,8 @@ import {
   sendToAI,
 } from '../ai/index.js';
 
+type OnDelta = (delta: string) => void;
+
 /**
  * Resultado centralizado do processamento de uma mensagem de chat.
  *
@@ -32,6 +34,7 @@ import {
  */
 export interface MessageProcessingResult {
   message_id: string;
+  request_id: string;
   ai_response: string;
   state: ConversationState;
   suggestions: Suggestion[];
@@ -50,6 +53,8 @@ export interface MessageProcessingResult {
  * - controlar os estados da conversa;
  * - resolver as sugestões da conversa;
  * - avaliar e atualizar memória permanente após a resposta (I.A [11]).
+ * - transmitir deltas incrementais da resposta da IA (quando fornecido `onDelta`);
+ * - suportar cancelamento via `AbortSignal`.
  *
  * Não lida com transporte (HTTP nem SSE): apenas com a lógica de processamento.
  * Os componentes de transporte (`MessagesController`, `SseService`) ficam
@@ -60,6 +65,18 @@ export class MessageProcessingService {
   private readonly logger = new Logger(MessageProcessingService.name);
 
   /**
+   * Verifica se o sinal de abort foi acionado. Lança um `AbortError` quando
+   * o processamento deve ser cancelado (cliente desconectado).
+   */
+  private throwIfAborted(signal: AbortSignal | undefined): void {
+    if (signal?.aborted) {
+      const error = new Error('Operação cancelada pelo cliente');
+      error.name = 'AbortError';
+      throw error;
+    }
+  }
+
+  /**
    * Processa uma mensagem de chat do ponto de vista da persistência e da IA.
    *
    * Pressupõe que `request` já foi validado (config e campos obrigatórios)
@@ -68,14 +85,20 @@ export class MessageProcessingService {
    * @param userId identificador do usuário autenticado (isolamento obrigatório)
    * @param request dados da requisição de chat já validados
    * @param tenant tenant opcional para seleção de prompt
+   * @param onDelta callback opcional para deltas incrementais da resposta da IA
+   * @param signal sinal de abort para cancelamento na desconexão do cliente
    * @returns resultado estruturado com resposta da IA, estado e sugestões
    */
   async processMessage(
     userId: string,
     request: ChatRequest,
     tenant?: string,
+    onDelta?: OnDelta,
+    signal?: AbortSignal,
   ): Promise<MessageProcessingResult> {
     const chatConfig = this.resolveConfig(request.config);
+
+    this.throwIfAborted(signal);
 
     const message: Message = {
       message_id: request.message_id,
@@ -92,6 +115,8 @@ export class MessageProcessingService {
     );
 
     const conversation = await getOrCreateActiveConversation(userId);
+
+    this.throwIfAborted(signal);
 
     // I.A [10] — Recuperar memória relevante antes de montar o contexto da IA.
     const memórias = await recuperarMemoriaRelevante(userId, request.message);
@@ -115,7 +140,11 @@ export class MessageProcessingService {
       context: contextoComMemoria,
       config: chatConfig,
       tenant,
+      onDelta,
+      signal,
     });
+
+    this.throwIfAborted(signal);
 
     const aiMessage: Message = {
       message_id: `${message.message_id}-ai`,
@@ -144,6 +173,7 @@ export class MessageProcessingService {
 
     return {
       message_id: message.message_id,
+      request_id: request.request_id,
       ai_response: aiResponse.response,
       state: 'success',
       suggestions,

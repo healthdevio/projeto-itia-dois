@@ -5,69 +5,74 @@ import type { ConversationState } from '../../models/conversation.js';
 import type { SseChannel } from './broadcaster.js';
 import { SseBroadcaster } from './broadcaster.js';
 import { MessageProcessingService } from '../message-processing/index.js';
-import { validateChatConfig } from '../../models/chat-config.js';
-import {
-  getOrCreateActiveConversation,
-  transitionConversationState,
-} from '../../repositories/conversation-repository.js';
+import { transitionConversationState } from '../../repositories/conversation-repository.js';
 
-/**
- * Eventos enviados pelo canal SSE do chat.
- *
- * Estes tipos de evento estão alinhados ao fluxo de processamento da Mia AI:
- * a conexão é aberta, a conversa transita para `streaming`, eventos
- * progressivos (delta de resposta) podem ser enviados, e a conexão se encerra
- * com um evento final contendo o `ChatResponse` completo.
- */
 export type SseEventType =
   | 'connection.opened'
-  | 'conversation.started'
-  | 'conversation.state'
-  | 'ai.delta'
-  | 'ai.complete'
-  | 'ai.error'
-  | 'connection.closed';
+  | 'message.started'
+  | 'message.delta'
+  | 'message.completed'
+  | 'message.error'
+  | 'connection.closed'
+  | 'conversation.state';
 
 export interface SseConnectionOpened {
   connectionId: string;
-  conversationId: string;
-}
-
-export interface SseConversationStarted {
-  conversationId: string;
-  messageId: string;
-}
-
-export interface SseConversationState {
-  conversationId: string;
-  state: ConversationState;
-}
-
-export interface SseAiDelta {
-  conversationId: string;
-  messageId: string;
-  delta: string;
-}
-
-export interface SseAiComplete {
-  conversationId: string;
-  response: ChatResponse;
-}
-
-export interface SseAiError {
-  conversationId: string;
-  error: string;
 }
 
 export interface SseConnectionClosed {
   connectionId: string;
-  conversationId?: string;
+}
+
+type OwnerError = {
+  code: 'CONNECTION_NOT_FOUND';
+} | {
+  code: 'CONNECTION_CLOSED';
+} | {
+  code: 'CONNECTION_NOT_OWNER';
+};
+
+type GetConversationId = (userId: string) => Promise<string>;
+
+export interface MessageStartedEvent {
+  request_id: string;
+  conversation_id: string;
+  message_id: string;
+  state: Extract<ConversationState, 'streaming'>;
+}
+
+export interface MessageDeltaEvent {
+  request_id: string;
+  conversation_id: string;
+  message_id: string;
+  delta: string;
+}
+
+export interface MessageCompletedEvent {
+  request_id: string;
+  conversation_id: string;
+  message_id: string;
+  state: Extract<ConversationState, 'success'>;
+  suggestions: import('../../models/suggestion.js').Suggestion[];
+  config: import('../../models/chat-config.js').ChatConfig;
+}
+
+export interface MessageErrorEvent {
+  request_id: string;
+  conversation_id: string;
+  message_id: string;
+  state: Extract<ConversationState, 'error'>;
+  error: string;
 }
 
 /**
  * Gerencia conexões SSE ativas e envia eventos de streaming para o cliente.
  *
- * Cada conexão aberta fica registrada no `SseBroadcaster` sob um id gerado.
+ * Cada conexão aberta fica registrada no `SseBroadcaster` sob um id gerado
+ * e associada ao `userId` do proprietário autenticado. O isolamento entre
+ * conexões é garantido pelo fato de cada canal escrever apenas para o seu
+ * próprio cliente, e pela validação de propriedade em `assertOwner`.
+ *
  * Serviços externos (ex.: processamento da Mia AI) podem escrever eventos em
  * uma conexão aberta chamando `writeEvent(connectionId, event)`.
  *
@@ -79,11 +84,20 @@ export interface SseConnectionClosed {
 @Injectable()
 export class SseService implements OnModuleDestroy {
   private readonly logger = new Logger(SseService.name);
+  private readonly owners = new Map<string, string>(); // connectionId -> userId
+  private getConversationId?: GetConversationId;
 
   constructor(
     private readonly broadcaster: SseBroadcaster,
     private readonly processing: MessageProcessingService,
   ) {}
+
+  /**
+   * Injetar (ou sobrescrever em testes) a função de resolução do conversation_id.
+   */
+  setGetConversationId(fn: GetConversationId): void {
+    this.getConversationId = fn;
+  }
 
   /**
    * Abre uma nova conexão SSE e retorna seu canal, já registrado.
@@ -92,10 +106,12 @@ export class SseService implements OnModuleDestroy {
    * conectado. Quando o cliente desconectar, o canal é fechado automaticamente
    * e removido do broadcaster.
    */
-  openConnection(channel: SseChannel): string {
+  openConnection(channel: SseChannel, userId: string): string {
     const connectionId = `sse-${crypto.randomUUID()}`;
     this.broadcaster.register(connectionId, channel);
-    this.logger.debug(`Conexão SSE aberta: ${connectionId}`);
+    channel.setOwner(userId);
+    this.owners.set(connectionId, userId);
+    this.logger.debug(`Conexão SSE aberta: ${connectionId} (usuário ${userId})`);
 
     // Notifica a abertura da conexão no próprio canal.
     channel.write({
@@ -116,8 +132,33 @@ export class SseService implements OnModuleDestroy {
       type: 'connection.closed',
       data: { connectionId } as SseConnectionClosed,
     });
+    channel.close();
     this.broadcaster.unregister(connectionId);
+    this.owners.delete(connectionId);
     this.logger.debug(`Conexão SSE encerrada: ${connectionId}`);
+  }
+
+  /**
+   * Valida o proprietário de uma conexão.
+   * Lança um erro tipado quando a conexão não existe, está encerrada ou não
+   * pertence ao usuário solicitante.
+   */
+  private assertOwner(
+    connectionId: string,
+    userId: string,
+  ): { ok: true; channel: SseChannel } | { ok: false; error: OwnerError } {
+    const channel = this.broadcaster.get(connectionId);
+    if (!channel) {
+      return { ok: false, error: { code: 'CONNECTION_NOT_FOUND' } };
+    }
+    const owner = this.owners.get(connectionId) ?? channel.ownerId;
+    if (!owner || owner !== userId) {
+      return { ok: false, error: { code: 'CONNECTION_NOT_OWNER' } };
+    }
+    if (channel.abortSignal.aborted) {
+      return { ok: false, error: { code: 'CONNECTION_CLOSED' } };
+    }
+    return { ok: true, channel };
   }
 
   /**
@@ -128,13 +169,18 @@ export class SseService implements OnModuleDestroy {
    */
   writeEvent(
     connectionId: string,
+    userId: string,
     event: { type: SseEventType; data: unknown },
   ): boolean {
-    const channel = this.broadcaster.get(connectionId);
-    if (!channel || channel.abortSignal.aborted) return false;
+    const validation = this.assertOwner(connectionId, userId);
+    if (!validation.ok) {
+      return false;
+    }
+    const { channel } = validation;
     const ok = channel.write({ type: event.type, data: event.data });
     if (!ok) {
       this.broadcaster.unregister(connectionId);
+      this.owners.delete(connectionId);
     }
     return ok;
   }
@@ -150,9 +196,9 @@ export class SseService implements OnModuleDestroy {
     await transitionConversationState(userId, to);
     if (connectionId) {
       const active = await this.getActiveConversation(userId);
-      this.writeEvent(connectionId, {
+      this.writeEvent(connectionId, userId, {
         type: 'conversation.state',
-        data: { conversationId: active.id, state: to } as SseConversationState,
+        data: { conversationId: active.id, state: to },
       });
     }
   }
@@ -162,113 +208,170 @@ export class SseService implements OnModuleDestroy {
    * cliente e devolvendo o `ChatResponse` completo no evento final.
    *
    * Fluxo:
-   * 1. Valida o `ChatRequest`.
+   * 1. Valida o `ChatRequest` e a propriedade da conexão.
    * 2. Abre (ou retoma) a conversa ativa do usuário.
-   * 3. Transita para `streaming` e notifica o cliente.
-   * 4. Encaminha a mensagem à Mia AI.
-   * 5. Grava a resposta da AI e transita para `success`.
-   * 6. Envia o evento `ai.complete` com o `ChatResponse` completo.
+   * 3. Emite `message.started` com o `conversation_id` real.
+   * 4. Encaminha a mensagem à IA via `MessageProcessingService`, com `onDelta`
+   *    para transmissão incremental e `signal` para cancelamento.
+   * 5. Emite `message.completed` com o `ChatResponse` completo.
    *
-   * Em caso de falha, transita para `error` e envia o evento `ai.error`.
-   * Qualquer exceção inesperada resulta em 500 com evento de erro.
+   * Em caso de falha ou cancelamento, transita para `error` sem persistir
+   * resposta incompleta como concluída.
    */
   async streamMessage(
     userId: string,
     request: ChatRequest,
     connectionId: string,
   ): Promise<ChatResponse> {
-    // Valida configuração antes de tocar no banco.
-    const chatConfig = validateChatConfig(request.config);
-    if (!chatConfig.ok) {
-      this.writeEvent(connectionId, {
-        type: 'ai.error',
-        data: { error: chatConfig.error } as SseAiError,
-      });
-      throw new Error(chatConfig.error);
-    }
-
-    if (
-      typeof request.message_id !== 'string' ||
-      !request.message_id ||
-      typeof request.message !== 'string' ||
-      !request.message ||
-      typeof request.origin !== 'string' ||
-      !request.origin
-    ) {
-      this.writeEvent(connectionId, {
-        type: 'ai.error',
-        data: {
-          error: 'Campos obrigatórios faltando: message_id, message, origin',
-        } as SseAiError,
-      });
-      throw new Error(
-        'Campos obrigatórios faltando: message_id, message, origin',
+    const validation = this.assertOwner(connectionId, userId);
+    if (!validation.ok) {
+      const error = new Error(
+        validation.error.code === 'CONNECTION_NOT_FOUND'
+          ? 'Conexão SSE não encontrada'
+          : validation.error.code === 'CONNECTION_NOT_OWNER'
+            ? 'Conexão SSE não pertence a este usuário'
+            : 'Conexão SSE encerrada',
       );
+      (error as { code?: string }).code = validation.error.code;
+      throw error;
+    }
+    const { channel } = validation;
+    const signal = channel.abortSignal;
+
+    // Obtém o conversation_id real ANTES de emitir o evento started.
+    let conversationId: string;
+    try {
+      conversationId = await this.resolveConversationId(userId);
+    } catch (error) {
+      const providerFailure = error instanceof Error && error.name === 'AIError';
+      this.writeEvent(connectionId, userId, {
+        type: 'message.error',
+        data: {
+          request_id: request.request_id,
+          conversation_id: '',
+          message_id: request.message_id,
+          state: 'error',
+          error: providerFailure
+            ? error.message
+            : 'Erro ao recuperar conversa ativa',
+        },
+      });
+      throw error;
     }
 
-    let conversationId: string | undefined;
+    this.writeEvent(connectionId, userId, {
+      type: 'message.started',
+      data: {
+        request_id: request.request_id,
+        conversation_id: conversationId,
+        message_id: request.message_id,
+        state: 'streaming',
+      },
+    });
+
+    let fullResponse = '';
+    let suggestions: ChatResponse['suggestions'] = [];
+    let config: ChatResponse['config'];
+
     try {
-      const conversation = await getOrCreateActiveConversation(userId);
-      conversationId = conversation.id;
-
-      this.writeEvent(connectionId, {
-        type: 'conversation.started',
-        data: {
-          conversationId,
-          messageId: request.message_id,
-        } as SseConversationStarted,
-      });
-
-      await this.transitionState(userId, 'streaming', connectionId);
-
-      const result = await this.processing.processMessage(
+      const response = await this.processing.processMessage(
         userId,
         request,
         undefined,
+        // onDelta: acumula o conteúdo completo e emite eventos delta para a conexão.
+        (delta: string) => {
+          fullResponse += delta;
+          this.writeEvent(connectionId, userId, {
+            type: 'message.delta',
+            data: {
+              request_id: request.request_id,
+              conversation_id: conversationId,
+              message_id: request.message_id,
+              delta,
+            },
+          });
+        },
+        signal,
       );
 
-      const response: ChatResponse = {
-        request_id: request.request_id,
-        conversation_id: result.conversation_id,
-        message_id: result.message_id,
-        ai_response: result.ai_response,
-        state: result.state,
-        suggestions: result.suggestions,
-        config: result.config,
-      };
+      // Quando onDelta não é usado (provedor sem streaming), usamos o resultado direto.
+      fullResponse = response.ai_response || fullResponse;
+      suggestions = response.suggestions;
+      config = response.config;
 
-      this.writeEvent(connectionId, {
-        type: 'ai.complete',
+      if (signal.aborted) {
+        const error = new Error('Operação cancelada pelo cliente');
+        error.name = 'AbortError';
+        throw error;
+      }
+
+      this.writeEvent(connectionId, userId, {
+        type: 'message.completed',
         data: {
-          conversationId: result.conversation_id,
-          response,
-        } as SseAiComplete,
+          request_id: response.request_id,
+          conversation_id: response.conversation_id,
+          message_id: response.message_id,
+          state: response.state,
+          suggestions,
+          config,
+        },
       });
 
       return response;
     } catch (error) {
-      try {
-        if (conversationId) {
-          await this.processing.transitionToError(userId);
-          if (connectionId) {
-            this.writeEvent(connectionId, {
-              type: 'conversation.state',
-              data: { conversationId, state: 'error' } as SseConversationState,
-            });
-          }
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Não persiste resposta incompleta como concluída.
+        // Não transmite eventos após o encerramento (writeEvent já retornará false).
+        this.logger.debug(
+          `Processamento cancelado para conexão ${connectionId} (usuário ${userId})`,
+        );
+        try {
+          await transitionConversationState(userId, 'error');
+        } catch {
+          // Estado já pode estar em error; não propaga.
         }
-      } catch {}
-      const providerFailure =
-        error instanceof Error && error.name === 'AIError';
+        throw error;
+      }
+
+      const providerFailure = error instanceof Error && error.name === 'AIError';
       const messageError = providerFailure
         ? error.message
         : 'Erro interno ao processar mensagem via SSE';
-      this.writeEvent(connectionId, {
-        type: 'ai.error',
-        data: { error: messageError } as SseAiError,
+
+      this.writeEvent(connectionId, userId, {
+        type: 'message.error',
+        data: {
+          request_id: request.request_id,
+          conversation_id: conversationId,
+          message_id: request.message_id,
+          state: 'error',
+          error: messageError,
+        },
       });
+
+      try {
+        await this.processing.transitionToError(userId);
+      } catch {
+        // Estado já pode estar em error; não propaga.
+      }
       throw error;
     }
+  }
+
+  /**
+   * Obtém o identificador real da conversa ativa antes de iniciar o processamento.
+   * Usa a função injetada (produção ou teste) ou um fallback padrão no banco.
+   */
+  private async resolveConversationId(userId: string): Promise<string> {
+    if (this.getConversationId) {
+      return this.getConversationId(userId);
+    }
+    // Fallback para uso direto fora de testes: busca no banco de dados.
+    const { getOrCreateActiveConversation } = await import(
+      '../../repositories/conversation-repository.js'
+    );
+    const conversation = await getOrCreateActiveConversation(userId);
+    return conversation.id;
   }
 
   async onModuleDestroy(): Promise<void> {

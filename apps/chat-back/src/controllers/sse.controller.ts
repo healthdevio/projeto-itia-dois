@@ -61,11 +61,11 @@ export class SseController implements OnModuleDestroy {
   ): Promise<void> {
     const { userId } = request.identity!;
     const channel = new SseResponseChannel(response);
-    const connectionId = this.sseService.openConnection(channel);
+    const connectionId = this.sseService.openConnection(channel, userId);
 
     // Remove a conexão do broadcaster quando o cliente encerra a resposta.
     response.on('close', () => {
-      this.broadcaster.unregister(connectionId);
+      this.sseService.closeConnection(connectionId);
       this.logger.debug(
         `Cliente desconectado do SSE (usuário ${userId}, conexão ${connectionId})`,
       );
