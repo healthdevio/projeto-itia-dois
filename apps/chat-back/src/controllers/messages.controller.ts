@@ -135,7 +135,9 @@ export class MessagesController {
       const responseValidation = validateChatResponse(candidateResponse);
       if (!responseValidation.ok) {
         console.error(
-          `[Core] ChatResponse inválido gerado para ${userId} (request_id=${input.request_id}):`,
+          '[Core] ChatResponse inválido gerado para %s (request_id=%s):',
+          userId,
+          input.request_id,
           responseValidation.issues,
         );
         try {
