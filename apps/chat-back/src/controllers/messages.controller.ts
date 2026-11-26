@@ -92,7 +92,9 @@ export class MessagesController {
       const safeUserIdForLog = this.sanitizeForLog(userId);
       const safeMessageIdForLog = this.sanitizeForLog(message.message_id);
       const safeTenantForLog = this.sanitizeForLog(tenantId ?? 'default');
-      const safeConfigForLog = this.sanitizeForLog(formatChatConfig(activeConfig));
+      const safeConfigForLog = this.sanitizeForLog(
+        formatChatConfig(activeConfig),
+      );
       console.log(
         '[Core] Mensagem recebida de %s (usuário %s): %s · tenant %s · config %s',
         safeOriginForLog,
