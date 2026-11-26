@@ -13,7 +13,9 @@ import {
 } from '../../src/repositories/memory-repository.js';
 
 function linhaMemoria(parcial: Partial<Memory>): Memory {
-  const base = new Date('2026-01-01T00:00:00.000Z');
+  // A interface pública do repositório serializa datas como ISO string;
+  // o banco (e o fake abaixo) trabalha com instâncias de Date.
+  const base = new Date('2026-01-01T00:00:00.000Z').toISOString();
   return {
     id: 'mem-1',
     userId: 'usuario-1',
@@ -35,10 +37,8 @@ function linhaMemoria(parcial: Partial<Memory>): Memory {
 function bancoFake(linhas: Memory[] = []) {
   const store = linhas.map((m) => ({
     ...m,
-    createdAt:
-      m.createdAt instanceof Date ? m.createdAt : new Date(m.createdAt),
-    updatedAt:
-      m.updatedAt instanceof Date ? m.updatedAt : new Date(m.updatedAt),
+    createdAt: new Date(m.createdAt),
+    updatedAt: new Date(m.updatedAt),
   }));
 
   const ordem = () =>
@@ -75,16 +75,18 @@ function bancoFake(linhas: Memory[] = []) {
       return {
         values: (linha: Partial<Memory>) => {
           const agora = new Date();
-          const nova: Memory = linhaMemoria({
-            id: linha.id ?? `mem-${store.length + 1}`,
-            userId: linha.userId ?? '',
-            content: linha.content ?? '',
-            category: linha.category ?? 'geral',
-            importance: linha.importance ?? 1,
-            context: linha.context ?? null,
+          const nova = {
+            ...linhaMemoria({
+              id: linha.id ?? `mem-${store.length + 1}`,
+              userId: linha.userId ?? '',
+              content: linha.content ?? '',
+              category: linha.category ?? 'geral',
+              importance: linha.importance ?? 1,
+              context: linha.context ?? null,
+            }),
             createdAt: agora,
             updatedAt: agora,
-          });
+          };
           store.push(nova);
           return {
             returning() {
@@ -156,12 +158,12 @@ void describe('memory-repository', () => {
         linhaMemoria({
           id: 'a',
           content: 'mais antiga',
-          updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+          updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
         }),
         linhaMemoria({
           id: 'b',
           content: 'mais recente',
-          updatedAt: new Date('2026-02-01T00:00:00.000Z'),
+          updatedAt: new Date('2026-02-01T00:00:00.000Z').toISOString(),
         }),
       ]);
 
