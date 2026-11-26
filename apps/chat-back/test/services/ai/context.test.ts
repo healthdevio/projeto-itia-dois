@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  buildContext,
   DEFAULT_CONTEXT_WINDOW,
+  buildContext,
+  withHostContext,
 } from '../../../src/services/ai/context.js';
 import type { ConversationMessage } from '../../../src/models/conversation.js';
 
@@ -66,5 +67,20 @@ void describe('buildContext', () => {
 
     assert.notEqual(context.history_ids, ids);
     assert.deepEqual(context.history_ids, ids);
+  });
+
+  void it('anexa o contexto do Host sem mutar o contexto original', () => {
+    const original = buildContext('c1', 'idle', [], []);
+    const updated = withHostContext(original, { current_page: '/clientes' });
+
+    assert.notEqual(updated, original);
+    assert.equal(original.host_context, undefined);
+    assert.deepEqual(updated.host_context, { current_page: '/clientes' });
+  });
+
+  void it('mantém o mesmo contexto quando não há contexto do Host', () => {
+    const original = buildContext('c1', 'idle', [], []);
+
+    assert.equal(withHostContext(original, undefined), original);
   });
 });

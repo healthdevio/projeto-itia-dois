@@ -218,7 +218,8 @@ rejeita com `forbidden`.
 **Limites de tamanho.** Contexto e resultado precisam de limite, porque entram
 no prompt e trafegam pela fronteira. Os valores devem ser decididos com Tools e
 Segurança e aplicados pelo Core antes de usar o dado no prompt. Nenhum número
-está fixado no contrato.
+está fixado no contrato. A Task 02 aplica limites provisórios configuráveis por
+ambiente (`HOST_CONTEXT_MAX_*`) no recebimento do contexto.
 
 **Cache do contexto.** Recomenda-se carregar por conversa/turno e não reutilizar
 entre usuários. Grants podem mudar durante a sessão; cache longo pode manter
@@ -246,11 +247,17 @@ Core --validação/autorização--> Adaptador do Host --execução--> Sistema Ho
 
 ## Estado da implementação
 
-Os tipos formalizam o contrato, mas ainda não existe adaptador registrado no
-Core. O fluxo atual de mensagens não carrega `ChatContext` nem catálogo de
-ferramentas para o provider e não executa ferramentas do Host. A implementação
-dessas etapas é posterior; este contrato não altera endpoints, autenticação,
-provider de IA ou configuração Docker.
+Os tipos formalizam o contrato. A Task 02 adicionou o recebimento controlado de
+contexto no Core: principal derivado da identidade verificada, deadline e
+cancelamento, validação estrutural, limites configuráveis e auditoria sem
+conteúdo. O `chat_context` validado é anexado ao prompt somente quando
+`HOST_CONTEXT_ENABLED=1`.
+
+Ainda não existe adaptador real nem transporte registrado. O provider padrão de
+`HostIntegration` rejeita chamadas com `host_unavailable` em vez de devolver
+contexto vazio, e o fluxo atual não envia catálogo de ferramentas ao provider
+nem executa ferramentas do Host. O registro do adaptador concreto é o ponto de
+substituição em `HostModule`.
 
 ## Referências
 

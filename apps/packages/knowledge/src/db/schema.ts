@@ -6,6 +6,7 @@ import {
   jsonb,
   integer,
   primaryKey,
+  vector,
 } from 'drizzle-orm/pg-core';
 
 export const knowledgeBases = pgTable('knowledge_bases', {
@@ -72,6 +73,8 @@ export const knowledgeChunks = pgTable('knowledge_chunks', {
   chunkIndex: integer('chunk_index').notNull(),
 
   metadata: jsonb('metadata'),
+
+  embedding: vector('embedding', { dimensions: 2048 }),
 
   createdAt: timestamp('created_at', {
     withTimezone: true,

@@ -12,6 +12,7 @@ import {
   type ChatResponse,
 } from '../models/chat-response.js';
 import { formatChatConfig } from '../models/chat-config.js';
+import { HostIntegrationError } from '../models/host-integration.js';
 import type { Message } from '../models/message.js';
 import {
   appendMessage,
@@ -23,11 +24,24 @@ import {
   getActiveSuggestions,
   replaceActiveSuggestions,
 } from '../repositories/suggestion-repository.js';
-import { AIError, buildContext, sendToAI } from '../services/ai/index.js';
+import {
+  AIError,
+  buildContext,
+  sendToAI,
+  withHostContext,
+} from '../services/ai/index.js';
+import { isHostContextEnabled } from '../services/host/host-context.config.js';
+import { HostContextService } from '../services/host/host-context.service.js';
+import {
+  hostErrorHttpStatus,
+  hostErrorMessage,
+} from '../services/host/host-error-response.js';
 
 @Controller('api/messages')
 @UseGuards(IdentityGuard)
 export class MessagesController {
+  constructor(private readonly hostContext: HostContextService) {}
+
   @Post()
   async create(
     @Identity() identity: RequestIdentity,
@@ -75,11 +89,17 @@ export class MessagesController {
         `· config ${formatChatConfig(activeConfig)}`,
       );
       const conversation = await getOrCreateActiveConversation(userId);
-      const context = buildContext(
-        conversation.id,
-        conversation.state,
-        conversation.messages,
-        await getHistoryIds(userId),
+      const hostContext = isHostContextEnabled()
+        ? await this.hostContext.load({ userId, tenantId }, conversation.id)
+        : undefined;
+      const context = withHostContext(
+        buildContext(
+          conversation.id,
+          conversation.state,
+          conversation.messages,
+          await getHistoryIds(userId),
+        ),
+        hostContext?.chat_context,
       );
       await appendMessage(message, 'user', conversation.id);
       await transitionConversationState(userId, 'streaming');
@@ -134,6 +154,22 @@ export class MessagesController {
       };
       return response.status(200).json(body);
     } catch (error) {
+      if (error instanceof HostIntegrationError) {
+        // A falha do Host é explícita: a mensagem não é gravada nem respondida
+        // com contexto vazio. O código é registrado, o conteúdo nunca.
+        console.error(
+          `[Core] Contexto do Host indisponível para ${userId}: ${error.code}`,
+        );
+        try {
+          await transitionConversationState(userId, 'error');
+        } catch {}
+        const body: ApiResponse = {
+          success: false,
+          error: hostErrorMessage(error),
+        };
+        return response.status(hostErrorHttpStatus(error)).json(body);
+      }
+
       const providerFailure = error instanceof AIError;
       console.error(
         `[Core] Erro ao processar mensagem de ${userId}:`,

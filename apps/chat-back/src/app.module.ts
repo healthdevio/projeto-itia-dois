@@ -7,9 +7,10 @@ import { MessagesController } from './controllers/messages.controller.js';
 import { SuggestionsController } from './controllers/suggestions.controller.js';
 import { CoreLifecycleService } from './core-lifecycle.service.js';
 import { IdentityGuard } from './middleware/identity.js';
+import { HostModule } from './services/host/host.module.js';
 
 @Module({
-  imports: [],
+  imports: [HostModule],
   controllers: [
     HealthController,
     ConversationsController,
