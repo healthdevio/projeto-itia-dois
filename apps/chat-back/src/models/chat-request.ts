@@ -35,6 +35,10 @@ export type ValidateChatRequestResult =
   | { ok: true; data: ValidatedChatRequest }
   | { ok: false; error: string; issues: ContractValidationIssue[] };
 
+function sanitizeForLog(value: string): string {
+  return value.replace(/[\u0000-\u001F\u007F]+/g, ' ').trim();
+}
+
 export function validateChatRequest(value: unknown): ValidateChatRequestResult {
   const result = validateContract(chatRequestSchema, value, 'ChatRequest');
   if (!result.ok) {
@@ -51,6 +55,11 @@ export function validateChatRequest(value: unknown): ValidateChatRequestResult {
     ok: true,
     data: {
       ...parsed,
+      message_id: sanitizeForLog(parsed.message_id),
+      request_id: sanitizeForLog(parsed.request_id),
+      conversation_id: parsed.conversation_id
+        ? sanitizeForLog(parsed.conversation_id)
+        : undefined,
       config: normalizedConfig,
     },
   };
