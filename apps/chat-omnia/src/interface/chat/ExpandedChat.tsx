@@ -1,4 +1,6 @@
-import ChatHeader from '../components/ChatHeader';
+import ChatHeader, {
+  type NewConversationControl,
+} from '../components/ChatHeader';
 import ChatInput from '../components/ChatInput';
 import HistoryPanel from '../history/HistoryPanel';
 import MessageList from '../messages/MessageList';
@@ -17,6 +19,7 @@ interface ExpandedChatProps {
   suggestions: LoadedData<Suggestion>;
   onSelectSuggestion: (suggestion: Suggestion) => void;
   history: LoadedData<Conversation>;
+  newConversation: NewConversationControl;
 }
 
 function ExpandedChat({
@@ -28,6 +31,7 @@ function ExpandedChat({
   suggestions,
   onSelectSuggestion,
   history,
+  newConversation,
 }: ExpandedChatProps) {
   const handleSendMessage = (content: string) => {
     onSendMessage({ content, author: 'user' });
@@ -35,7 +39,11 @@ function ExpandedChat({
 
   return (
     <section className="fixed bottom-20 right-4 flex h-[calc(100vh-6rem)] max-h-[600px] w-[600px] flex-col overflow-hidden rounded-lg border bg-background shadow-lg">
-      <ChatHeader isExpanded={isExpanded} onToggleExpanded={onToggleExpanded} />
+      <ChatHeader
+        isExpanded={isExpanded}
+        onToggleExpanded={onToggleExpanded}
+        newConversation={newConversation}
+      />
       <ChatStateView state={state} />
       <div className="flex min-h-0 flex-1">
         <MessageList messages={messages} />

@@ -1,4 +1,6 @@
-import ChatHeader from '../components/ChatHeader';
+import ChatHeader, {
+  type NewConversationControl,
+} from '../components/ChatHeader';
 import ChatInput from '../components/ChatInput';
 import MessageList from '../messages/MessageList';
 import type { MessageProps } from '../messages/MessageItem';
@@ -15,6 +17,7 @@ interface MiniChatProps {
   state: 'greeting' | 'idle' | 'thinking' | 'error';
   suggestions: LoadedData<Suggestion>;
   onSelectSuggestion: (suggestion: Suggestion) => void;
+  newConversation: NewConversationControl;
 }
 
 function MiniChat({
@@ -25,6 +28,7 @@ function MiniChat({
   state,
   suggestions,
   onSelectSuggestion,
+  newConversation,
 }: MiniChatProps) {
   const handleSendMessage = (content: string) => {
     onSendMessage({ content, author: 'user' });
@@ -32,7 +36,11 @@ function MiniChat({
 
   return (
     <section className="fixed bottom-20 right-4 flex h-96 w-80 flex-col overflow-hidden rounded-lg border bg-background shadow-lg">
-      <ChatHeader isExpanded={isExpanded} onToggleExpanded={onToggleExpanded} />
+      <ChatHeader
+        isExpanded={isExpanded}
+        onToggleExpanded={onToggleExpanded}
+        newConversation={newConversation}
+      />
       <ChatStateView state={state} />
       <MessageList messages={messages} />
       <SuggestionList data={suggestions} onSelect={onSelectSuggestion} />
