@@ -6,7 +6,6 @@ import { IdentityGuard, type IdentityRequest } from '../middleware/identity.js';
 import { AIError } from '../services/ai/index.js';
 import { MessageProcessingService } from '../services/message-processing/index.js';
 import type { ChatResponse } from '../models/chat-response.js';
-import { validateChatConfig } from '../models/chat-config.js';
 
 @Controller('api/messages')
 @UseGuards(IdentityGuard)
