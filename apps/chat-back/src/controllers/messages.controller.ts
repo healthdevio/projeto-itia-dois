@@ -86,7 +86,9 @@ export class MessagesController {
     };
 
     try {
-      const safeConfigForLog = this.sanitizeForLog(formatChatConfig(activeConfig));
+      const safeConfigForLog = this.sanitizeForLog(
+        formatChatConfig(activeConfig),
+      );
       console.log(
         `[Core] Mensagem recebida de ${this.sanitizeForLog(message.origin)} (usuário ${this.sanitizeForLog(userId)}):`,
         this.sanitizeForLog(message.message_id),
