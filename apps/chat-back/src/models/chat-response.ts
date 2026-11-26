@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { chatConfigSchema, type ChatConfig } from './chat-config.js';
 import {
+  validateContract,
+  type ContractValidationIssue,
+} from './contract-validation.js';
+import {
   conversationStateSchema,
   type ConversationState,
 } from './conversation.js';
@@ -25,3 +29,21 @@ export const chatResponseSchema = z.object({
   suggestions: suggestionsListSchema,
   config: chatConfigSchema,
 });
+
+export type ValidateChatResponseResult =
+  | { ok: true; data: ChatResponse }
+  | { ok: false; error: string; issues: ContractValidationIssue[] };
+
+export function validateChatResponse(
+  value: unknown,
+): ValidateChatResponseResult {
+  const result = validateContract(chatResponseSchema, value, 'ChatResponse');
+  if (!result.ok) {
+    return result;
+  }
+
+  return {
+    ok: true,
+    data: result.data as unknown as ChatResponse,
+  };
+}
