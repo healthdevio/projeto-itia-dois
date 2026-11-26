@@ -91,6 +91,54 @@ void describe('toChatMessages', () => {
     assert.equal(messages.at(-1)?.content, 'oi');
   });
 
+  void it('inclui o contexto do Host como dado, não como instrução', () => {
+    const messages = toChatMessages(
+      'oi',
+      context({
+        host_context: {
+          user: { display_name: 'Ana' },
+          permissions: ['customer.read'],
+        },
+      }),
+      config,
+      DEFAULT_PROMPT,
+    );
+
+    const hostMessage = messages[1];
+
+    assert.equal(hostMessage.role, 'system');
+    assert.match(hostMessage.content, /dados não confiáveis/);
+    assert.match(hostMessage.content, /não como instrução/);
+    assert.match(hostMessage.content, /"display_name":"Ana"/);
+    assert.match(hostMessage.content, /customer\.read/);
+  });
+
+  void it('não cria mensagem para contexto do Host vazio', () => {
+    const messages = toChatMessages(
+      'oi',
+      context({ host_context: {} }),
+      config,
+      DEFAULT_PROMPT,
+    );
+
+    assert.equal(messages.filter((m) => m.role === 'system').length, 1);
+  });
+
+  void it('coloca o contexto do Host antes do aviso de histórico', () => {
+    const messages = toChatMessages(
+      'oi',
+      context({
+        host_context: { current_page: '/clientes' },
+        history_ids: ['h1'],
+      }),
+      config,
+      DEFAULT_PROMPT,
+    );
+
+    assert.match(messages[1].content, /sistema hospedeiro/);
+    assert.match(messages[2].content, /1 vez/);
+  });
+
   void it('leva as mensagens passadas mantendo a ordem', () => {
     const messages = toChatMessages(
       'agora',
