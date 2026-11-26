@@ -1,11 +1,19 @@
-import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
-import { formatChatConfig, validateChatConfig } from '../models/chat-config.js';
+import { Identity } from '../common/decorators/identity.decorator.js';
+import { IdentityGuard, type RequestIdentity } from '../middleware/identity.js';
 import type { ApiResponse } from '../models/api-response.js';
+import {
+  validateChatRequest,
+  type ChatRequest,
+} from '../models/chat-request.js';
+import {
+  validateChatResponse,
+  type ChatResponse,
+} from '../models/chat-response.js';
+import { formatChatConfig } from '../models/chat-config.js';
 import { HostIntegrationError } from '../models/host-integration.js';
 import type { Message } from '../models/message.js';
-import type { ChatRequest } from '../models/chat-request.js';
-import { IdentityGuard, type IdentityRequest } from '../middleware/identity.js';
 import {
   appendMessage,
   getHistoryIds,
@@ -28,20 +36,23 @@ import {
   hostErrorHttpStatus,
   hostErrorMessage,
 } from '../services/host/host-error-response.js';
-import type { ChatResponse } from '../models/chat-response.js';
 
 @Controller('api/messages')
 @UseGuards(IdentityGuard)
 export class MessagesController {
   constructor(private readonly hostContext: HostContextService) {}
 
+  private sanitizeForLog(value: unknown): string {
+    return String(value).replace(/[\r\n]+/g, ' ');
+  }
+
   @Post()
   async create(
-    @Req() request: IdentityRequest,
+    @Identity() identity: RequestIdentity,
     @Body() parsed: unknown,
     @Res() response: Response,
   ): Promise<Response> {
-    const { userId, tenantId } = request.identity!;
+    const { userId, tenantId } = identity;
     if (
       typeof parsed !== 'object' ||
       parsed === null ||
@@ -54,27 +65,17 @@ export class MessagesController {
       return response.status(400).json(body);
     }
 
-    const input = parsed as ChatRequest;
-    const chatConfig = validateChatConfig(input.config);
-    if (!chatConfig.ok) {
-      const body: ApiResponse = { success: false, error: chatConfig.error };
-      return response.status(400).json(body);
-    }
-
-    if (
-      typeof input.message_id !== 'string' ||
-      !input.message_id ||
-      typeof input.message !== 'string' ||
-      !input.message ||
-      typeof input.origin !== 'string' ||
-      !input.origin
-    ) {
+    const requestValidation = validateChatRequest(parsed);
+    if (!requestValidation.ok) {
       const body: ApiResponse = {
         success: false,
-        error: 'Campos obrigatórios faltando: message_id, message, origin',
+        error: requestValidation.error,
       };
       return response.status(400).json(body);
     }
+
+    const input: ChatRequest = requestValidation.data;
+    const activeConfig = requestValidation.data.config;
 
     const message: Message = {
       message_id: input.message_id,
@@ -85,11 +86,14 @@ export class MessagesController {
     };
 
     try {
+      const safeConfigForLog = this.sanitizeForLog(
+        formatChatConfig(activeConfig),
+      );
       console.log(
-        `[Core] Mensagem recebida de ${message.origin} (usuário ${userId}):`,
-        message.message_id,
-        `· tenant ${tenantId ?? 'default'}`,
-        `· config ${formatChatConfig(chatConfig.config)}`,
+        `[Core] Mensagem recebida de ${this.sanitizeForLog(message.origin)} (usuário ${this.sanitizeForLog(userId)}):`,
+        this.sanitizeForLog(message.message_id),
+        `· tenant ${this.sanitizeForLog(tenantId ?? 'default')}`,
+        `· config ${safeConfigForLog}`,
       );
       const conversation = await getOrCreateActiveConversation(userId);
       const hostContext = isHostContextEnabled()
@@ -109,7 +113,7 @@ export class MessagesController {
       const aiResponse = await sendToAI({
         message,
         context,
-        config: chatConfig.config,
+        config: activeConfig,
         tenant: tenantId,
       });
       const aiMessage: Message = {
@@ -124,17 +128,39 @@ export class MessagesController {
           ? await getActiveSuggestions(userId)
           : await replaceActiveSuggestions(userId, aiResponse.suggestions);
       await transitionConversationState(userId, 'success');
+
+      const candidateResponse: ChatResponse = {
+        request_id: input.request_id,
+        conversation_id: conversation.id,
+        message_id: message.message_id,
+        ai_response: aiResponse.response,
+        state: 'success',
+        suggestions,
+        config: activeConfig,
+      };
+
+      const responseValidation = validateChatResponse(candidateResponse);
+      if (!responseValidation.ok) {
+        const safeRequestIdForLog = input.request_id.replace(/[\r\n]+/g, ' ');
+        console.error(
+          '[Core] ChatResponse inválido gerado para %s (request_id=%s):',
+          userId,
+          safeRequestIdForLog,
+          responseValidation.issues,
+        );
+        try {
+          await transitionConversationState(userId, 'error');
+        } catch {}
+        const invalidBody: ApiResponse = {
+          success: false,
+          error: 'Erro interno ao formatar resposta do chat',
+        };
+        return response.status(500).json(invalidBody);
+      }
+
       const body: ApiResponse<ChatResponse> = {
         success: true,
-        data: {
-          request_id: input.request_id,
-          conversation_id: conversation.id,
-          message_id: message.message_id,
-          ai_response: aiResponse.response,
-          state: 'success',
-          suggestions,
-          config: chatConfig.config,
-        },
+        data: responseValidation.data,
       };
       return response.status(200).json(body);
     } catch (error) {
@@ -142,7 +168,7 @@ export class MessagesController {
         // A falha do Host é explícita: a mensagem não é gravada nem respondida
         // com contexto vazio. O código é registrado, o conteúdo nunca.
         console.error(
-          `[Core] Contexto do Host indisponível para ${userId}: ${error.code}`,
+          `[Core] Contexto do Host indisponível para ${this.sanitizeForLog(userId)}: ${this.sanitizeForLog(error.code)}`,
         );
         try {
           await transitionConversationState(userId, 'error');
@@ -156,8 +182,8 @@ export class MessagesController {
 
       const providerFailure = error instanceof AIError;
       console.error(
-        `[Core] Erro ao processar mensagem de ${userId}:`,
-        providerFailure ? `[AI] ${error.message}` : error,
+        `[Core] Erro ao processar mensagem de ${this.sanitizeForLog(userId)}:`,
+        providerFailure ? `[AI] ${this.sanitizeForLog(error.message)}` : error,
       );
       try {
         await transitionConversationState(userId, 'error');
