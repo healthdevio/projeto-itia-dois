@@ -193,7 +193,7 @@ export function createNvidiaProvider(
                 const deltaContent = chunk.choices?.[0]?.delta?.content;
                 if (typeof deltaContent === 'string' && deltaContent !== '') {
                   fullResponse += deltaContent;
-                  if (onDelta && !signal?.aborted) {
+                  if (!signal?.aborted) {
                     onDelta(deltaContent);
                   }
                 }
