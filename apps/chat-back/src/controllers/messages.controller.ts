@@ -73,7 +73,9 @@ export class MessagesController {
     try {
       const safeOriginForLog = message.origin.replace(/[\r\n]/g, '');
       console.log(
-        `[Core] Mensagem recebida de ${safeOriginForLog} (usuário ${userId}):`,
+        '[Core] Mensagem recebida de %s (usuário %s):',
+        safeOriginForLog,
+        userId,
         message.message_id,
         `· tenant ${tenantId ?? 'default'}`,
         `· config ${formatChatConfig(chatConfig.config)}`,
