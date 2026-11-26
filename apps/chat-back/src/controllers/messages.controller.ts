@@ -139,10 +139,11 @@ export class MessagesController {
 
       const responseValidation = validateChatResponse(candidateResponse);
       if (!responseValidation.ok) {
+        const safeRequestIdForLog = input.request_id.replace(/[\r\n]+/g, ' ');
         console.error(
           '[Core] ChatResponse inválido gerado para %s (request_id=%s):',
           userId,
-          input.request_id,
+          safeRequestIdForLog,
           responseValidation.issues,
         );
         try {
