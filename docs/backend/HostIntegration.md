@@ -106,6 +106,30 @@ const hostContext: HostConversationContext = {
 };
 ```
 
+### Catálogo filtrado pelo Core
+
+A Task 03 introduz `HostToolCatalogService`, que usa o mesmo carregamento de
+contexto e devolve `{ tools, chat_context, discarded }`:
+
+- o principal vem da identidade verificada pelo Core, nunca do cliente;
+- `HostContextService` aplica deadline, cancelamento, limites e validação
+  estrutural antes do catálogo ser considerado;
+- `input_schema` precisa ser compilável pelo Ajv; schema inválido é **descartado**
+  e contabilizado em `discarded.invalid_schema`, sem registrar seu conteúdo;
+- ferramentas cujas permissões não estão todas nos grants do `chat_context` são
+  **omitidas** (`discarded.not_allowed`): ausência de grant nunca concede acesso;
+- ferramentas com `required_permissions: []` são expostas;
+- nomes duplicados e permissões em formato inválido são **rejeitados** pelo parser
+  com `unknown`, pois uma resposta estruturalmente inválida não é confiável;
+- falha do Host (`host_unavailable`, `timeout` etc.) propaga `HostIntegrationError`
+  tipada: nunca vira catálogo vazio silencioso. Catálogo vazio legítimo é sucesso;
+- a autorização reutiliza `authorizeToolCall` das Tasks 05–06, sem reimplementar
+  a decisão sobre grants.
+
+O catálogo ainda **não** é entregue ao provider de IA nem usado para executar
+ferramentas. O ponto de consumo previsto é o turno de mensagem, antes de montar
+o prompt e a requisição ao provider.
+
 ## Execução de ferramentas
 
 Quando houver uma chamada de ferramenta, o Core deve:
@@ -192,8 +216,8 @@ O Core deve registrar, por chamada:
 
 Nunca registrar argumentos ou resultados completos, que podem conter dados
 pessoais ou de negócio, e nunca registrar segredos, tokens ou headers de
-autenticação. Este documento define o requisito; o registro não está
-implementado nesta task.
+autenticação. O Core já registra contagens e códigos pela Task 02 (contexto) e
+pela Task 03 (catálogo); a persistência em banco ainda não existe.
 
 ## Dados do Host não são confiáveis para o modelo
 
@@ -221,9 +245,10 @@ Segurança e aplicados pelo Core antes de usar o dado no prompt. Nenhum número
 está fixado no contrato. A Task 02 aplica limites provisórios configuráveis por
 ambiente (`HOST_CONTEXT_MAX_*`) no recebimento do contexto.
 
-**Cache do contexto.** Recomenda-se carregar por conversa/turno e não reutilizar
-entre usuários. Grants podem mudar durante a sessão; cache longo pode manter
-acesso revogado. A autorização de execução continua sendo revalidada pelo Host.
+**Cache do contexto e do catálogo.** Recomenda-se carregar por conversa/turno e
+não reutilizar entre usuários ou tenants. Grants podem mudar durante a sessão;
+cache longo pode manter acesso revogado. A autorização de execução continua sendo
+revalidada pelo Host. Nenhum cache persistente foi implementado.
 
 **Versão.** `HOST_INTEGRATION_CONTRACT_VERSION` identifica a versão do contrato.
 Uma mudança incompatível deve incrementá-la, e o adaptador informa ao Host qual
@@ -251,7 +276,10 @@ Os tipos formalizam o contrato. A Task 02 adicionou o recebimento controlado de
 contexto no Core: principal derivado da identidade verificada, deadline e
 cancelamento, validação estrutural, limites configuráveis e auditoria sem
 conteúdo. O `chat_context` validado é anexado ao prompt somente quando
-`HOST_CONTEXT_ENABLED=1`.
+`HOST_CONTEXT_ENABLED=1`. A Task 03 acrescentou a camada de catálogo filtrado
+(`HostToolCatalogService`), que reutiliza esse carregamento, verifica o schema
+com Ajv e omite ferramentas sem grants; ela ainda não é chamada pelo fluxo de
+mensagens.
 
 Ainda não existe adaptador real nem transporte registrado. O provider padrão de
 `HostIntegration` rejeita chamadas com `host_unavailable` em vez de devolver
@@ -269,3 +297,4 @@ substituição em `HostModule`.
 - [Task 06 — Implementar autorização](../tasks-devops/tools-e-seguranca/task-06/Implementar-autorizacao.md)
 - [Task 07 — Bloquear ferramenta não autorizada](../tasks-devops/tools-e-seguranca/task-07/Bloquear-ferramenta-nao-autorizada.md)
 - [Task 08 — Permitir execução autorizada](../tasks-devops/tools-e-seguranca/task-08/Permitir-execucao-autorizada.md)
+- [Task 03 — Receber ferramentas](../tasks-devops/integracao-com-host/task-03/Receber-ferramentas.md)
