@@ -28,6 +28,16 @@ Esse formato é histórico e não deve ser considerado automaticamente o contrat
 - Usar uma identidade estável para cada mensagem quando o contrato atual disponibilizar um identificador.
 - Evitar usar apenas o conteúdo ou o autor como identidade de renderização.
 
+## Feedback (Front-end [10])
+
+O componente aceita `message_id`, `feedback` e `onFeedback` opcionais e delega
+os controles a `MessageFeedback`. Eles só são renderizados em respostas da IA
+(`author === 'omnia'`) com identificador estável e callback disponível.
+
+O identificador local `msg-local-<n>` é criado no `App` no momento da mensagem,
+não a cada renderização, e serve apenas para isolar o estado visual. Quando o
+Back-end passar a fornecer `message_id`, esse valor deve ser usado no lugar.
+
 ## Validação
 
 A documentação histórica da task registra testes de renderização de mensagens e validações com typecheck/build.

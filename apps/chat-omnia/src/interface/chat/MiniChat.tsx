@@ -3,21 +3,27 @@ import ChatHeader, {
 } from '../components/ChatHeader';
 import ChatInput from '../components/ChatInput';
 import MessageList from '../messages/MessageList';
-import type { MessageProps } from '../messages/MessageItem';
+import type { ChatMessage, MessageProps } from '../messages/MessageItem';
 import ChatStateView from '../states/ChatStateView';
 import SuggestionList from '../suggestions/SuggestionList';
 import type { LoadedData } from '../../hooks/useChatData';
+import type {
+  FeedbackRating,
+  MessageFeedbackState,
+} from '../../hooks/useMessageFeedback';
 import type { Suggestion } from '../../types/chat-contracts';
 
 interface MiniChatProps {
   isExpanded: boolean;
   onToggleExpanded: () => void;
-  messages: MessageProps[];
+  messages: ChatMessage[];
   onSendMessage: (message: MessageProps) => void;
   state: 'greeting' | 'idle' | 'thinking' | 'error';
   suggestions: LoadedData<Suggestion>;
   onSelectSuggestion: (suggestion: Suggestion) => void;
   newConversation: NewConversationControl;
+  feedbackStates: Record<string, MessageFeedbackState>;
+  onFeedback: (messageId: string, rating: FeedbackRating) => void;
 }
 
 function MiniChat({
@@ -29,6 +35,8 @@ function MiniChat({
   suggestions,
   onSelectSuggestion,
   newConversation,
+  feedbackStates,
+  onFeedback,
 }: MiniChatProps) {
   const handleSendMessage = (content: string) => {
     onSendMessage({ content, author: 'user' });
@@ -42,7 +50,11 @@ function MiniChat({
         newConversation={newConversation}
       />
       <ChatStateView state={state} />
-      <MessageList messages={messages} />
+      <MessageList
+        messages={messages}
+        feedbackStates={feedbackStates}
+        onFeedback={onFeedback}
+      />
       <SuggestionList data={suggestions} onSelect={onSelectSuggestion} />
       <ChatInput onSendMessage={handleSendMessage} />
     </section>

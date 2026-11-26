@@ -30,7 +30,8 @@ App
 └── ExpandedChat              janela expandida, 600 de largura, altura da tela
     ├── ChatHeader            título e botão de expandir
     ├── ChatStateView         greeting, idle, thinking ou error
-    ├── MessageList → MessageItem
+    ├── MessageList → MessageItem → MessageFeedback
+    │                              avaliação visual de respostas da IA
     ├── SuggestionList        esboço, devolve null
     ├── HistoryPanel          esboço, devolve null
     └── ChatInput             campo e envio por Enter
