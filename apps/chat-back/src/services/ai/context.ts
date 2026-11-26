@@ -9,6 +9,8 @@ export interface AIContext {
   previous_messages: ConversationMessage[];
   history_ids: string[];
   max_context_messages: number;
+  /** Contexto já validado e limitado, recebido do Host. */
+  host_context?: ChatContext;
   relevant_memories?: RelevantMemory[];
 }
 export interface RelevantMemory {

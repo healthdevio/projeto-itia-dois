@@ -11,6 +11,7 @@ import { IdentityGuard } from './middleware/identity.js';
 import { SseBroadcaster } from './services/sse/broadcaster.js';
 import { SseService } from './services/sse/sse.service.js';
 import { MessageProcessingService } from './services/message-processing/index.js';
+import { HostModule } from './services/host/host.module.js';
 
 @Module({
   imports: [HostModule],
@@ -24,6 +25,10 @@ import { MessageProcessingService } from './services/message-processing/index.js
   providers: [
     CoreLifecycleService,
     IdentityGuard,
+    {
+      provide: APP_FILTER,
+      useClass: ApiExceptionFilter,
+    },
     SseBroadcaster,
     SseService,
     MessageProcessingService,

@@ -1,16 +1,32 @@
 import { Body, Controller, Post, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
+import { Identity } from '../common/decorators/identity.decorator.js';
+import { IdentityGuard, type RequestIdentity } from '../middleware/identity.js';
 import type { ApiResponse } from '../models/api-response.js';
-import type { ChatRequest } from '../models/chat-request.js';
-import { IdentityGuard, type IdentityRequest } from '../middleware/identity.js';
+import {
+  validateChatRequest,
+  type ChatRequest,
+} from '../models/chat-request.js';
+import {
+  validateChatResponse,
+  type ChatResponse,
+} from '../models/chat-response.js';
+import { HostIntegrationError } from '../models/host-integration.js';
 import { AIError } from '../services/ai/index.js';
 import { MessageProcessingService } from '../services/message-processing/index.js';
-import type { ChatResponse } from '../models/chat-response.js';
+import {
+  hostErrorHttpStatus,
+  hostErrorMessage,
+} from '../services/host/host-error-response.js';
 
 @Controller('api/messages')
 @UseGuards(IdentityGuard)
 export class MessagesController {
   constructor(private readonly processing: MessageProcessingService) {}
+
+  private sanitizeForLog(value: unknown): string {
+    return String(value).replace(/[\r\n]+/g, ' ');
+  }
 
   @Post()
   async create(
@@ -40,6 +56,8 @@ export class MessagesController {
       return response.status(400).json(body);
     }
 
+    const input: ChatRequest = requestValidation.data;
+
     try {
       const result = await this.processing.processMessage(
         userId,
@@ -47,17 +65,37 @@ export class MessagesController {
         tenantId,
       );
 
+      const candidateResponse: ChatResponse = {
+        request_id: input.request_id,
+        conversation_id: result.conversation_id,
+        message_id: result.message_id,
+        ai_response: result.ai_response,
+        state: result.state,
+        suggestions: result.suggestions,
+        config: result.config,
+      };
+
+      const responseValidation = validateChatResponse(candidateResponse);
+      if (!responseValidation.ok) {
+        console.error(
+          '[Core] ChatResponse inválido gerado para %s (request_id=%s):',
+          this.sanitizeForLog(userId),
+          this.sanitizeForLog(input.request_id),
+          responseValidation.issues,
+        );
+        try {
+          await this.processing.transitionToError(userId);
+        } catch {}
+        const body: ApiResponse = {
+          success: false,
+          error: 'Erro interno ao formatar resposta do chat',
+        };
+        return response.status(500).json(body);
+      }
+
       const body: ApiResponse<ChatResponse> = {
         success: true,
-        data: {
-          request_id: input.request_id,
-          conversation_id: result.conversation_id,
-          message_id: result.message_id,
-          ai_response: result.ai_response,
-          state: result.state,
-          suggestions: result.suggestions,
-          config: result.config,
-        },
+        data: responseValidation.data,
       };
       return response.status(200).json(body);
     } catch (error) {
@@ -68,7 +106,7 @@ export class MessagesController {
           `[Core] Contexto do Host indisponível para ${this.sanitizeForLog(userId)}: ${this.sanitizeForLog(error.code)}`,
         );
         try {
-          await transitionConversationState(userId, 'error');
+          await this.processing.transitionToError(userId);
         } catch {}
         const body: ApiResponse = {
           success: false,

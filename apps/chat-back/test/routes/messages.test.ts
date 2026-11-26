@@ -131,7 +131,8 @@ void describe('POST /api/messages · config', () => {
     const response = await post({ ...validBody, config: 'formal' });
 
     assert.equal(response.status, 400);
-    assert.match(response.body.error, /config deve ser um objeto/);
+    assert.equal(response.body.success, false);
+    assert.match(response.body.error, /config/);
   });
 
   void it('prefere o erro de config ao de campo faltando', async () => {

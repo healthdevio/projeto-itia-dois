@@ -194,7 +194,7 @@ export function createNvidiaProvider(
                 if (typeof deltaContent === 'string' && deltaContent !== '') {
                   fullResponse += deltaContent;
                   if (!signal?.aborted) {
-                    onDelta(deltaContent);
+                    onDelta?.(deltaContent);
                   }
                 }
               } catch {

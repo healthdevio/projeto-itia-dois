@@ -22,7 +22,10 @@ import {
   injetarMemoriasNoContexto,
   recuperarMemoriaRelevante,
   sendToAI,
+  withHostContext,
 } from '../ai/index.js';
+import { isHostContextEnabled } from '../host/host-context.config.js';
+import { HostContextService } from '../host/host-context.service.js';
 
 type OnDelta = (delta: string) => void;
 
@@ -63,6 +66,8 @@ export interface MessageProcessingResult {
 @Injectable()
 export class MessageProcessingService {
   private readonly logger = new Logger(MessageProcessingService.name);
+
+  constructor(private readonly hostContext: HostContextService) {}
 
   /**
    * Verifica se o sinal de abort foi acionado. Lança um `AbortError` quando
@@ -118,14 +123,28 @@ export class MessageProcessingService {
 
     this.throwIfAborted(signal);
 
+    // O contexto do Host é carregado antes de gravar a mensagem: uma falha
+    // explícita não pode ser substituída por um contexto vazio.
+    const hostContext = isHostContextEnabled()
+      ? await this.hostContext.load(
+          { userId, tenantId: tenant },
+          conversation.id,
+        )
+      : undefined;
+
+    this.throwIfAborted(signal);
+
     // I.A [10] — Recuperar memória relevante antes de montar o contexto da IA.
     const memórias = await recuperarMemoriaRelevante(userId, request.message);
 
-    const contextoBase = buildContext(
-      conversation.id,
-      conversation.state,
-      conversation.messages,
-      await getHistoryIds(userId),
+    const contextoBase = withHostContext(
+      buildContext(
+        conversation.id,
+        conversation.state,
+        conversation.messages,
+        await getHistoryIds(userId),
+      ),
+      hostContext?.chat_context,
     );
     const contextoComMemoria = injetarMemoriasNoContexto(
       contextoBase,

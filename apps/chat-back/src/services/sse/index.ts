@@ -5,10 +5,9 @@ export { SseService } from './sse.service.js';
 export type {
   SseEventType,
   SseConnectionOpened,
-  SseConversationStarted,
-  SseConversationState,
-  SseAiDelta,
-  SseAiComplete,
-  SseAiError,
+  MessageStartedEvent,
+  MessageDeltaEvent,
+  MessageCompletedEvent,
+  MessageErrorEvent,
   SseConnectionClosed,
 } from './sse.service.js';

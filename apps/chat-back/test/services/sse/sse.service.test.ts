@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import type { Response as ExpressResponse } from 'express';
 
 import { SseBroadcaster } from '../../../src/services/sse/broadcaster.js';
+import type { MessageProcessingService } from '../../../src/services/message-processing/index.js';
 import { SseResponseChannel } from '../../../src/services/sse/channel.js';
 import { SseService } from '../../../src/services/sse/sse.service.js';
 import type { SseChannel } from '../../../src/services/sse/broadcaster.js';
@@ -44,7 +46,10 @@ class FakeChannel implements SseChannel {
 
 function buildService(): { service: SseService; broadcaster: SseBroadcaster } {
   const broadcaster = new SseBroadcaster();
-  const service = new SseService(broadcaster);
+  // Estes testes cobrem apenas o transporte; o processamento compartilhado
+  // é exercitado nos testes de MessageProcessingService.
+  const processing = {} as unknown as MessageProcessingService;
+  const service = new SseService(broadcaster, processing);
   return { service, broadcaster };
 }
 
@@ -90,16 +95,18 @@ void describe('SseResponseChannel', () => {
       end: () => {},
       on: () => {},
       body: '',
-    } as unknown as Response;
+    };
 
-    const channel = new SseResponseChannel(response);
+    const channel = new SseResponseChannel(
+      response as unknown as ExpressResponse,
+    );
     const ok = channel.write({
-      type: 'ai.delta',
+      type: 'message.delta',
       data: { conversationId: 'c1', delta: 'olá' },
     });
 
     assert.equal(ok, true);
-    assert.match(response.body, /event: ai\.delta/);
+    assert.match(response.body, /event: message\.delta/);
     assert.match(response.body, /data: \{/);
     assert.match(response.body, /olá/);
     assert.match(response.body, /\n\n$/);
@@ -107,17 +114,28 @@ void describe('SseResponseChannel', () => {
 
   void it('fecha ao detectar erro ou close da resposta', () => {
     const endCalls: unknown[] = [];
-    const response = {
+    const response: {
+      writeHead: () => void;
+      write: () => boolean;
+      end: () => void;
+      on: (event: string, handler: () => void) => void;
+      _onClose?: () => void;
+      _onError?: () => void;
+    } = {
       writeHead: () => {},
       write: () => true,
-      end: () => endCalls.push('end'),
+      end: () => {
+        endCalls.push('end');
+      },
       on: (event: string, handler: () => void) => {
         if (event === 'close') response._onClose = handler;
         if (event === 'error') response._onError = handler;
       },
-    } as unknown as Response & { _onClose?: () => void; _onError?: () => void };
+    };
 
-    const channel = new SseResponseChannel(response);
+    const channel = new SseResponseChannel(
+      response as unknown as ExpressResponse,
+    );
     channel.close();
     assert.equal(endCalls.length, 1);
 
@@ -131,7 +149,7 @@ void describe('SseService', () => {
   void it('abre uma conexão e notifica connection.opened no próprio canal', () => {
     const { service, broadcaster } = buildService();
     const channel = new FakeChannel();
-    const connectionId = service.openConnection(channel);
+    const connectionId = service.openConnection(channel, 'user-1');
 
     assert.equal(connectionId.startsWith('sse-'), true);
     assert.equal(broadcaster.has(connectionId), true);
@@ -145,8 +163,8 @@ void describe('SseService', () => {
 
   void it('escreve evento em conexão aberta e retorna false se inexistente', () => {
     const { service } = buildService();
-    const ok = service.writeEvent('conexao-inexistente', {
-      type: 'ai.delta',
+    const ok = service.writeEvent('conexao-inexistente', 'user-1', {
+      type: 'message.delta',
       data: { conversationId: 'c1', delta: 'x' },
     });
     assert.equal(ok, false);
@@ -155,7 +173,7 @@ void describe('SseService', () => {
   void it('fecha uma conexão aberta e escreve connection.closed', () => {
     const { service } = buildService();
     const channel = new FakeChannel();
-    const connectionId = service.openConnection(channel);
+    const connectionId = service.openConnection(channel, 'user-1');
 
     service.closeConnection(connectionId);
     assert.equal(channel.closed, true);
@@ -163,12 +181,3 @@ void describe('SseService', () => {
     assert.equal(last.type, 'connection.closed');
   });
 });
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-interface Response {
-  writeHead: (status: number, headers: Record<string, string>) => void;
-  write: (chunk: string) => boolean;
-  end: () => void;
-  on: (event: string, handler: () => void) => void;
-  body: string;
-}
