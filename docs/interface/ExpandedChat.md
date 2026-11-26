@@ -24,6 +24,31 @@ ExpandedChat
 
 Os componentes `ChatHeader`, `MessageList`, `ChatInput` e `ChatStateView` foram descritos como reutilizados nas visualizações compacta e expandida.
 
+## Composição atual (Front-end [08])
+
+```text
+ExpandedChat
+├── ChatHeader
+├── ChatStateView
+├── (MessageList | HistoryPanel)   ← lado a lado
+├── SuggestionList                 ← novo
+└── ChatInput
+```
+
+Props adicionadas:
+
+```ts
+suggestions: LoadedData<Suggestion>;
+onSelectSuggestion: (suggestion: Suggestion) => void;
+history: LoadedData<Conversation>;
+```
+
+`MessageList` e `HistoryPanel` compartilham a altura disponível (`flex-1` com
+`min-h-0`); o painel de histórico usa largura relativa (`w-2/5 max-w-48`) e
+scroll próprio. Sugestões ficam acima do input, iguais no modo compacto. O
+histórico corresponde a `data.history` (conversas anteriores), nunca às mensagens
+da conversa ativa.
+
 ## Layout registrado
 
 A documentação histórica registra classes Tailwind como `h-[calc(100vh-6rem)]`, `max-h-[600px]` e `w-[600px]`. Elas devem ser conferidas no código atual, pois podem ter mudado após ajustes responsivos.

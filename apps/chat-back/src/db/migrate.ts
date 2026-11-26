@@ -75,7 +75,11 @@ try {
   if (error instanceof Error && error.cause) {
     console.error(
       '[Core] Causa:',
-      error.cause instanceof Error ? error.cause.message : String(error.cause),
+      error.cause instanceof Error
+        ? error.cause.message
+        : typeof error.cause === 'string'
+          ? error.cause
+          : JSON.stringify(error.cause),
     );
   }
 

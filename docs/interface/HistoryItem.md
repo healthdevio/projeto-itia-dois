@@ -2,29 +2,39 @@
 
 ## Identificação
 
-- **Task relacionada:** P1-T08 — Implementar sugestões e histórico
-- **Status da task:** **WIP / em andamento; não concluída nem integrada à `develop`**, conforme o registro fornecido
+- **Task:** Front-end [08] — Implementar sugestões e histórico
+- **Arquivo:** `apps/chat-omnia/src/interface/history/HistoryItem.tsx`
+- **Estado:** implementado na Interface; integração com o Core **não** está feita
 
 ## Objetivo
 
-Representar um item individual da lista de histórico de conversas, caso essa composição esteja presente na implementação atual.
+Representar **uma conversa anterior** dentro do `HistoryPanel`. Não é botão:
+o contrato atual não expõe uma rota para reabrir uma conversa encerrada.
 
-## Situação documentada
+## Props
 
-O documento original da Task 08 lista o histórico como parte do escopo, mas não fornece o contrato completo do item nem confirma sua implementação final.
+```ts
+interface HistoryItemProps {
+  conversation: Conversation;
+}
+```
 
-## Responsabilidade esperada
+## Campos exibidos (todos presentes no contrato)
 
-- Apresentar os dados de uma conversa anterior recebidos por props.
-- Manter a apresentação separada do carregamento e da comunicação com o Backend.
-- Expor uma interação de seleção somente conforme o comportamento definido pela arquitetura atual.
-- Evitar inventar campos, datas ou identificadores que não estejam no contrato.
+| Exibição                                               | Origem                              |
+| ------------------------------------------------------ | ----------------------------------- |
+| Data da última alteração (pt-BR, em `<time dateTime>`) | `conversation.updated_at`           |
+| Data de criação, quando diferente da última alteração  | `conversation.created_at`           |
+| Contagem de mensagens (`N mensagem`/`N mensagens`)     | `conversation.messages.length`      |
+| Prévia da última mensagem com autor (`Você` / `Omnia`) | `messages.at(-1).message` e `.role` |
+
+`formatDateTime` retorna `null` para datas ausentes ou inválidas; nesse caso a
+data não é renderizada e aparece o rótulo genérico "Conversa anterior". O texto
+da mensagem vem do Back-end e é renderizado como **texto**, nunca como HTML.
 
 ## Pendências
 
-- Confirmar o modelo `Conversation` atual.
-- Confirmar as props e o comportamento no `HistoryItem.tsx`.
-- Definir o comportamento de seleção com `HistoryPanel`.
-- Validar acessibilidade, estados visuais e testes conforme aplicável.
-
-> A documentação de origem não especifica o contrato final do item. Verifique o arquivo `.tsx` e os modelos atuais antes de detalhar campos ou callbacks.
+- Definir seleção/reabertura de conversa quando o Back-end expuser esse suporte.
+- Confirmar se a prévia da última mensagem é desejada pelo produto (ela usa
+  somente campos do contrato, mas é uma decisão de apresentação).
+- Testes de Interface.

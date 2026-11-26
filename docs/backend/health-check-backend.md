@@ -1,6 +1,6 @@
 # Health Check do Backend
 
-**Arquivo:** `apps/chat-back/src/index.ts`
+**Arquivo:** `apps/chat-back/src/controllers/health.controller.ts`
 **Endpoints:** `GET /health`, `GET /health/ready`, `GET /health/live`
 **Propósito:** Monitoring, Kubernetes/Swarm probes, frontend status indicator
 
@@ -20,7 +20,10 @@
 
 ## Implementação
 
-As rotas foram adicionadas em `apps/chat-back/src/index.ts` após os imports. O nginx (`apps/docker/nginx.conf`) já proxyava `/health` para o Backend. Agora o backend responde corretamente, liberando o endpoint.
+As rotas ficam em `apps/chat-back/src/controllers/health.controller.ts`. O nginx
+(`apps/docker/nginx.conf`) encaminha `/health`, `/health/ready` e `/health/live`
+para o Core preservando o caminho, então cada endpoint mantém a sua semântica
+(inclusive o 503 do readiness).
 
 ## Checklist de Deploy
 

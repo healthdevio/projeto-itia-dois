@@ -3,6 +3,9 @@ import ChatInput from '../components/ChatInput';
 import MessageList from '../messages/MessageList';
 import type { MessageProps } from '../messages/MessageItem';
 import ChatStateView from '../states/ChatStateView';
+import SuggestionList from '../suggestions/SuggestionList';
+import type { LoadedData } from '../../hooks/useChatData';
+import type { Suggestion } from '../../types/chat-contracts';
 
 interface MiniChatProps {
   isExpanded: boolean;
@@ -10,6 +13,8 @@ interface MiniChatProps {
   messages: MessageProps[];
   onSendMessage: (message: MessageProps) => void;
   state: 'greeting' | 'idle' | 'thinking' | 'error';
+  suggestions: LoadedData<Suggestion>;
+  onSelectSuggestion: (suggestion: Suggestion) => void;
 }
 
 function MiniChat({
@@ -18,6 +23,8 @@ function MiniChat({
   messages,
   onSendMessage,
   state,
+  suggestions,
+  onSelectSuggestion,
 }: MiniChatProps) {
   const handleSendMessage = (content: string) => {
     onSendMessage({ content, author: 'user' });
@@ -28,6 +35,7 @@ function MiniChat({
       <ChatHeader isExpanded={isExpanded} onToggleExpanded={onToggleExpanded} />
       <ChatStateView state={state} />
       <MessageList messages={messages} />
+      <SuggestionList data={suggestions} onSelect={onSelectSuggestion} />
       <ChatInput onSendMessage={handleSendMessage} />
     </section>
   );

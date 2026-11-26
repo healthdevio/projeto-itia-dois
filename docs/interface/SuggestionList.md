@@ -2,67 +2,83 @@
 
 ## Identificação
 
-- **Task relacionada:** P1-T08 — Implementar sugestões e histórico
-- **Status da task:** **WIP / em andamento; não concluída nem integrada à `develop`**, conforme o registro fornecido
+- **Task:** Front-end [08] — Implementar sugestões e histórico
+- **Arquivo:** `apps/chat-omnia/src/interface/suggestions/SuggestionList.tsx`
+- **Estado:** implementada na Interface; integração com o Core **não** está feita
 
 ## Objetivo
 
-Apresentar sugestões de interação que ajudem o usuário a iniciar ou continuar uma conversa.
+Apresentar as sugestões devolvidas pelo Back-end e expor a seleção ao chamador.
+O componente **não decide** o que a sugestão faz: ele apenas chama `onSelect`.
 
-## Contrato conhecido
+## Contrato usado
 
-A documentação fornecida registra o modelo de sugestão com:
-
-```text
-Suggestion
-├── suggestion_id
-└── text
+```ts
+interface Suggestion {
+  suggestion_id: string;
+  text: string;
+}
 ```
 
-O backend documentado disponibiliza `GET /api/suggestions`, `POST /api/suggestions` e `DELETE /api/suggestions`, com o header `X-User-Id`. Confirme os contratos atuais no backend antes de implementar ou alterar o consumo.
+Origem: `apps/chat-back/src/models/suggestion.ts`. O Back-end limita a lista a
+8 sugestões por conversa, o texto a 500 caracteres e o `suggestion_id` a 128.
+O `suggestion_id` é único **dentro da conversa**, não globalmente.
 
-## Histórico do WIP
+A fonte é `GET /api/suggestions`, cujo envelope é:
 
-O commit WIP `9cd9e42` (`wip: implementação inicial da task 08`) alterou `App.tsx` e `MiniChat.tsx`, adicionou `SuggestionItem.tsx` e criou `transport/rest/suggestions.ts`. O registro menciona uma tentativa de usar `getSuggestions()` para consultar `GET /api/suggestions`.
-
-Foi identificado o erro:
-
-```text
-Property 'suggestions' does not exist on type 'IntrinsicAttributes'
+```json
+{
+  "success": true,
+  "data": { "suggestions": [{ "suggestion_id": "sg-1", "text": "Ver meus detalhes" }] }
+}
 ```
 
-A documentação atribui o problema à ausência das props necessárias em `SuggestionList`. O WIP deve ser revisado contra a arquitetura atual `apps/chat-omnia`, não copiado cegamente.
+Nesta task os dados vêm de um adaptador mock (ver
+[fonte de dados](fonte-de-dados.md)); não há cliente REST nem OIDC no frontend.
 
-## Decisões pendentes
+## Props
 
-- Definir props e tipos de `SuggestionList`.
-- Definir se selecionar uma sugestão preenche o campo de entrada ou dispara o envio.
-- Definir estados de carregamento, lista vazia e erro.
-- Alinhar o modelo da Interface com o contrato do Backend.
-
-## Arquitetura esperada
-
-```text
-Componentes React
-       ↓
-Hook / camada de estado
-       ↓
-Transport REST
-       ↓
-Chat Backend
+```ts
+interface SuggestionListProps {
+  data: LoadedData<Suggestion>;
+  onSelect: (suggestion: Suggestion) => void;
+}
 ```
 
-A comunicação HTTP não deve ficar diretamente dentro do componente visual.
+`LoadedData<T>` é estado da Interface (`src/hooks/useChatData.ts`), não contrato
+do Back-end: `{ status: 'loading' | 'ready' | 'error', items: T[], error?: string }`.
 
-## Critérios de conclusão
+| Prop       | Papel                                                                  |
+| ---------- | ---------------------------------------------------------------------- |
+| `data`     | Estado de carregamento e lista de sugestões recebida da fonte de dados |
+| `onSelect` | Callback chamado com a sugestão escolhida; o chamador decide o efeito  |
 
-- [ ] Sugestões carregadas pela camada de transporte.
-- [ ] Sugestões renderizadas.
-- [ ] Seleção de sugestão funcionando.
-- [ ] Estados loading/empty/error tratados.
-- [ ] Contratos alinhados com o Backend.
-- [ ] Sem HTTP dentro dos componentes visuais.
-- [ ] Typecheck/build e testes apropriados aprovados.
-- [ ] PR aberto e integrado à `develop`.
+## Estados
 
-> O documento reflete o estado WIP descrito na fonte. Confirme a branch e o código atuais antes de atualizar o status.
+| `status`                | Comportamento                                        |
+| ----------------------- | ---------------------------------------------------- |
+| `loading`               | Área com `role="status"` e `LoadingIndicator`        |
+| `ready` com lista vazia | Não renderiza nada — sem ruído visual                |
+| `ready` com itens       | `<ul>` semântica com `<button>` por sugestão         |
+| `error`                 | Área com `role="alert"` e mensagem genérica em pt-BR |
+
+## Acessibilidade e segurança
+
+- lista semântica (`section` + `ul` + `li`) e botões reais, navegáveis por Tab;
+- `aria-label` no botão (`Enviar sugestão: <texto>`) e na seção;
+- foco visível via `focus-visible:ring-2`;
+- `text` é renderizado como **texto** (nenhum `dangerouslySetInnerHTML`);
+- o conteúdo do Back-end não é interpretado como instrução nem amplia permissões.
+
+## Comportamento em `App.tsx`
+
+`onSelect` chama `addMessage({ content: suggestion.text, author: 'user' })`,
+reaproveitando o envio local já existente. Não há limpeza das sugestões nem
+chamada a `DELETE /api/suggestions`: isso depende do transporte REST.
+
+## Pendências
+
+- Cliente REST, OIDC e token (outra trilha).
+- `POST`/`DELETE /api/suggestions` não são chamados por esta task.
+- Integração dos estados `thinking`/`error` com o Core.
+- Testes de Interface (o projeto ainda não tem framework configurado).

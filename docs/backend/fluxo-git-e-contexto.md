@@ -1,8 +1,13 @@
 # Fluxo de Trabalho Git e Contexto do Projeto — Chat Omnia
 
+> **Documento histórico (2026-10-21).** Registra o fluxo e o contexto daquela
+> data. O backend foi renomeado de `apps/chat-core` para `apps/chat-back` e
+> migrou de Hono para NestJS; os caminhos abaixo já apontam para a estrutura
+> atual, mas as mudanças listadas são registro histórico, não estado corrente.
+
 ## Data: 2026-10-21
 
-## Branch atual: `develop` | Remote: `itia`
+## Branch citada na época: `develop` | Remote: `itia`
 
 ---
 
@@ -53,7 +58,7 @@ git push -u itia feat/nome-da-tarefa
 
 ### Stack e Arquitetura
 
-- **Monorepo** com dois apps principais: `chat-core` (backend NestJS/TypeScript) e `chat-omnia` (frontend React)
+- **Monorepo** com dois apps principais: `chat-back` (backend NestJS/TypeScript) e `chat-omnia` (frontend React)
 - **Banco de Dados**: PostgreSQL 16 com pgvector, gerenciado por Docker Swarm
 - **Infraestrutura**: Docker Swarm (Portainer), registry privado `registry.cloud.grupopw2c.com.br`
 - **API Gateway**: Nginx (proxy para o Backend na porta 80)
@@ -61,18 +66,17 @@ git push -u itia feat/nome-da-tarefa
 
 ### Arquivos Modificados Recentemente
 
-| Arquivo                                | Tipo de alteração | Descrição                                                                                 |
-| -------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------- |
-| `apps/chat-core/src/index.ts`          | Código            | Adição de rotas `/health`, `/health/ready`, `/health/live`; mudança de porta 3001 para 80 |
-| `apps/docker/nginx.conf`               | Configuração      | Atualização do upstream de `core:3001` para `core:80` em 2 locations                      |
-| `apps/docker/pw2c/docker-stack.yml`    | Configuração      | `CORE_PORT` mudou de `'3001'` para `'80'`                                                 |
-| `apps/chat-core/tsconfig.json`         | Configuração      | Adição de `"types": ["node"]`                                                             |
-| `apps/chat-core/tsconfig.test.json`    | Configuração      | Adição de `"types": ["node"]`                                                             |
-| `apps/chat-core/tsconfig.json`         | Configuração      | Adição de `"types": ["node"]`                                                             |
-| `docs/backend/health-check-backend.md` | Nova documentação | Documentação das rotas de health check do Backend                                         |
-| `docs/backend/fluxo-git-e-contexto.md` | Nova documentação | Este arquivo - fluxo de git e contexto do projeto                                         |
-| `apps/docker/pw2c/.env`                | Novo arquivo      | Variáveis de ambiente da stack PW2C                                                       |
-| `apps/docker/pw2c/stack.env.example`   | Removido          | Template removido conforme solicitação                                                    |
+| Arquivo                                | Tipo de alteração | Descrição                                                                                |
+| -------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------- |
+| `apps/chat-back/src/main.ts`           | Código            | Bootstrap do NestJS; rotas de health em `src/controllers/health.controller.ts`; porta 80 |
+| `apps/docker/nginx.conf`               | Configuração      | Atualização do upstream de `core:3001` para `core:80` em 2 locations                     |
+| `apps/docker/pw2c/docker-stack.yml`    | Configuração      | `CORE_PORT` mudou de `'3001'` para `'80'`                                                |
+| `apps/chat-back/tsconfig.json`         | Configuração      | Adição de `"types": ["node"]`                                                            |
+| `apps/chat-back/tsconfig.test.json`    | Configuração      | Adição de `"types": ["node"]`                                                            |
+| `docs/backend/health-check-backend.md` | Nova documentação | Documentação das rotas de health check do Backend                                        |
+| `docs/backend/fluxo-git-e-contexto.md` | Nova documentação | Este arquivo - fluxo de git e contexto do projeto                                        |
+| `apps/docker/pw2c/.env`                | Novo arquivo      | Variáveis de ambiente da stack PW2C                                                      |
+| `apps/docker/pw2c/stack.env.example`   | Removido          | Template removido conforme solicitação                                                   |
 
 ### Variáveis de Ambiente Críticas (no Portainer)
 
@@ -191,10 +195,6 @@ develop
 
 ---
 
-**Última atualização:** 2026-10-21  
-**Versão:** 1.0  
+**Última atualização:** 2026-11-23 (revisão de caminhos e codificação)
+**Versão:** 1.1
 **Mantido por:** Equipe Chat Omnia
- 
- # #   V e r s � o :   1 . 1 
- 
- 
