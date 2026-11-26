@@ -87,11 +87,12 @@ export class MessagesController {
 
     try {
       const safeOriginForLog = message.origin.replace(/[\r\n]/g, '');
+      const safeMessageIdForLog = this.sanitizeForLog(message.message_id);
       console.log(
         '[Core] Mensagem recebida de %s (usuário %s):',
         safeOriginForLog,
         userId,
-        message.message_id,
+        safeMessageIdForLog,
         `· tenant ${tenantId ?? 'default'}`,
         `· config ${formatChatConfig(chatConfig.config)}`,
       );
