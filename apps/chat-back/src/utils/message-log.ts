@@ -17,17 +17,21 @@ export interface DadosLogMensagemRecebida {
   responseLength: unknown;
 }
 
-/** Aplica a sanitização a todos os valores externos presentes no registro. */
+/**
+ * Aplica a sanitização a todos os valores externos presentes no registro. A
+ * remoção de `\r`/`\n` também aparece em cada valor para que o CodeQL a reconheça
+ * diretamente no caminho do argumento do log.
+ */
 export function valoresLogMensagemRecebida(
   dados: DadosLogMensagemRecebida,
 ): string[] {
   return [
-    sanitizeForLog(dados.origin),
-    sanitizeForLog(dados.userId),
-    sanitizeForLog(dados.messageId),
-    sanitizeForLog(dados.language),
-    sanitizeForLog(dados.tone),
-    sanitizeForLog(dados.responseLength),
+    sanitizeForLog(dados.origin).replace(/\r\n|\r|\n/g, ' '),
+    sanitizeForLog(dados.userId).replace(/\r\n|\r|\n/g, ' '),
+    sanitizeForLog(dados.messageId).replace(/\r\n|\r|\n/g, ' '),
+    sanitizeForLog(dados.language).replace(/\r\n|\r|\n/g, ' '),
+    sanitizeForLog(dados.tone).replace(/\r\n|\r|\n/g, ' '),
+    sanitizeForLog(dados.responseLength).replace(/\r\n|\r|\n/g, ' '),
   ];
 }
 
@@ -35,5 +39,16 @@ export function valoresLogMensagemRecebida(
 export function registrarMensagemRecebida(
   dados: DadosLogMensagemRecebida,
 ): void {
-  console.log(FORMATO_MENSAGEM_RECEBIDA, ...valoresLogMensagemRecebida(dados));
+  const [origin, userId, messageId, language, tone, responseLength] =
+    valoresLogMensagemRecebida(dados);
+
+  console.log(
+    FORMATO_MENSAGEM_RECEBIDA,
+    origin,
+    userId,
+    messageId,
+    language,
+    tone,
+    responseLength,
+  );
 }
