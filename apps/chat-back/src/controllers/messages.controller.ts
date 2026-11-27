@@ -18,6 +18,7 @@ import {
   hostErrorHttpStatus,
   hostErrorMessage,
 } from '../services/host/host-error-response.js';
+import { sanitizeForLog } from '../utils/sanitize-for-log.js';
 
 @Controller('api/messages')
 @UseGuards(IdentityGuard)
@@ -89,8 +90,8 @@ export class MessagesController {
       if (!responseValidation.ok) {
         console.error(
           '[Core] ChatResponse inválido gerado para %s (request_id=%s):',
-          this.sanitizeForLog(userId),
-          this.sanitizeForLog(input.request_id),
+          sanitizeForLog(userId),
+          sanitizeForLog(input.request_id),
           responseValidation.issues,
         );
         try {
@@ -130,7 +131,9 @@ export class MessagesController {
         // A falha do Host é explícita: a mensagem não é gravada nem respondida
         // com contexto vazio. O código é registrado, o conteúdo nunca.
         console.error(
-          `[Core] Contexto do Host indisponível para ${this.sanitizeForLog(userId)}: ${this.sanitizeForLog(error.code)}`,
+          '[Core] Contexto do Host indisponível para %s: %s',
+          sanitizeForLog(userId),
+          sanitizeForLog(error.code),
         );
         try {
           await this.processing.transitionToError(userId);
@@ -144,8 +147,9 @@ export class MessagesController {
 
       const providerFailure = error instanceof AIError;
       console.error(
-        `[Core] Erro ao processar mensagem de ${this.sanitizeForLog(userId)}:`,
-        providerFailure ? `[AI] ${this.sanitizeForLog(error.message)}` : error,
+        '[Core] Erro ao processar mensagem de %s:',
+        sanitizeForLog(userId),
+        providerFailure ? `[AI] ${sanitizeForLog(error.message)}` : error,
       );
       try {
         await this.processing.transitionToError(userId);
