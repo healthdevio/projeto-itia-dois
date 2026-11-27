@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
+import { format } from 'node:util';
 
 import type { INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
@@ -29,6 +30,10 @@ interface RecordedCall {
 let app: INestApplication;
 let lastCall: RecordedCall | null = null;
 let transitionedToErrorFor: string[] = [];
+let erros: unknown[][] = [];
+let avisos: unknown[][] = [];
+const consoleErrorOriginal = console.error;
+const consoleWarnOriginal = console.warn;
 let nextHandler: (
   userId: string,
   req: ChatRequest,
@@ -63,6 +68,13 @@ const processingStub = {
 };
 
 before(async () => {
+  console.error = (...args: unknown[]) => {
+    erros.push(args);
+  };
+  console.warn = (...args: unknown[]) => {
+    avisos.push(args);
+  };
+
   const moduleRef = await Test.createTestingModule({
     controllers: [MessagesController],
     providers: [
@@ -84,11 +96,15 @@ before(async () => {
 
 after(async () => {
   await app.close();
+  console.error = consoleErrorOriginal;
+  console.warn = consoleWarnOriginal;
 });
 
 beforeEach(() => {
   lastCall = null;
   transitionedToErrorFor = [];
+  erros = [];
+  avisos = [];
   nextHandler = async (_userId, req) => defaultResult(req);
 });
 
@@ -156,6 +172,35 @@ void describe('POST /api/messages · fluxo REST completo', () => {
     assert.deepEqual(transitionedToErrorFor, ['ana']);
   });
 
+  void it('não injeta linha nem formato no log de ChatResponse inválido (#23)', async () => {
+    nextHandler = async (_userId, req) => ({
+      ...defaultResult(req),
+      conversation_id: '',
+    });
+
+    const ataque = 'req\n[Core] falso (request_id=%s)';
+    const response = await postRest({ ...validPayload, request_id: ataque });
+
+    assert.equal(response.status, 500);
+    assert.equal(erros.length, 1);
+    assert.equal(
+      erros[0][0],
+      '[Core] ChatResponse inválido gerado para %s (request_id=%s):',
+    );
+
+    const linha = format(...erros[0]);
+    const prefixo = linha.slice(0, linha.indexOf(': ['));
+    // O array `issues` é inspecionado com quebras pelo Node; a parte com dados
+    // do cliente, porém, precisa ser uma única linha.
+    assert.equal(
+      prefixo,
+      '[Core] ChatResponse inválido gerado para ana (request_id=req [Core] falso (request_id=%s))',
+    );
+    // eslint-disable-next-line no-control-regex -- verifica a ausência de quebras injetadas
+    assert.doesNotMatch(prefixo, /[\r\n]/);
+    assert.ok(linha.includes('%s'), '%s do cliente permanece como texto');
+  });
+
   void it('mapeia AIError para 502 e transita conversa para error', async () => {
     nextHandler = async () => {
       throw new AIError('Provider de IA temporariamente indisponível');
@@ -186,6 +231,30 @@ void describe('POST /api/messages · fluxo REST completo', () => {
       error: 'Requisição cancelada pelo cliente',
     });
     assert.deepEqual(transitionedToErrorFor, ['ana']);
+  });
+
+  void it('registra cancelamento sem quebra de linha nem formato controlado (#25)', async () => {
+    nextHandler = async () => {
+      const error = new Error('Operação cancelada pelo cliente');
+      error.name = 'AbortError';
+      throw error;
+    };
+
+    const ataque = 'req\r\n[Core] cancelado: %s';
+    const response = await postRest({ ...validPayload, request_id: ataque });
+
+    assert.equal(response.status, 499);
+    assert.equal(avisos.length, 1);
+    assert.equal(
+      avisos[0][0],
+      '[Core] Requisição REST cancelada pelo cliente para %s (request_id=%s)',
+    );
+    assert.equal(
+      format(...avisos[0]),
+      '[Core] Requisição REST cancelada pelo cliente para ana (request_id=req [Core] cancelado: %s)',
+    );
+    // eslint-disable-next-line no-control-regex -- verifica a ausência de quebras no registro
+    assert.doesNotMatch(format(...avisos[0]), /[\r\n]/);
   });
 
   void it('oculta detalhes internos em erro inesperado e retorna 500 seguro', async () => {

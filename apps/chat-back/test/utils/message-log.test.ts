@@ -39,6 +39,33 @@ void describe('registrarMensagemRecebida', () => {
     assert.equal(chamadas.length, 1);
     assert.equal(chamadas[0][0], FORMATO_MENSAGEM_RECEBIDA);
     assert.equal(typeof chamadas[0][0], 'string');
+    assert.equal(
+      chamadas[0].length,
+      7,
+      'formato mais seis argumentos, sem array ou spread',
+    );
+    for (const valor of chamadas[0].slice(1)) {
+      assert.equal(typeof valor, 'string');
+    }
+  });
+
+  void it('reduz CRLF a um espaço em todos os campos', () => {
+    registrarMensagemRecebida({
+      origin: 'web\r\nfalso',
+      userId: 'user\r\n1',
+      messageId: 'msg\r\n2',
+      language: 'pt\r\nBR',
+      tone: 'formal\r\n%d',
+      responseLength: 'short\r\n',
+    });
+
+    assert.equal(chamadas.length, 1);
+    assert.equal(
+      format(...chamadas[0]),
+      '[Core] Mensagem recebida de web falso (usuário user 1): msg 2 · config pt BR · formal %d · short ',
+    );
+    // eslint-disable-next-line no-control-regex -- verifica a ausência de quebras no registro
+    assert.doesNotMatch(format(...chamadas[0]), /[\r\n]/);
   });
 
   void it('não permite quebra de linha nem formato controlado pelo cliente', () => {
