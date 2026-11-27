@@ -49,7 +49,7 @@ function MiniChat({
         onToggleExpanded={onToggleExpanded}
         newConversation={newConversation}
       />
-      <ChatStateView state={state} />
+      <ChatStateView state={state} mensagensCount={messages.length} />
       <MessageList
         messages={messages}
         feedbackStates={feedbackStates}

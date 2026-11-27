@@ -52,7 +52,7 @@ function ExpandedChat({
         onToggleExpanded={onToggleExpanded}
         newConversation={newConversation}
       />
-      <ChatStateView state={state} />
+      <ChatStateView state={state} mensagensCount={messages.length} />
       <div className="flex min-h-0 flex-1">
         <MessageList
           messages={messages}
