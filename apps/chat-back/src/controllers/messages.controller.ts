@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Inject, Post, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { Identity } from '../common/decorators/identity.decorator.js';
 import { IdentityGuard, type RequestIdentity } from '../middleware/identity.js';
@@ -22,10 +22,17 @@ import {
 @Controller('api/messages')
 @UseGuards(IdentityGuard)
 export class MessagesController {
-  constructor(private readonly processing: MessageProcessingService) {}
+  constructor(
+    @Inject(MessageProcessingService)
+    private readonly processing: MessageProcessingService,
+  ) {}
 
   private sanitizeForLog(value: unknown): string {
     return String(value).replace(/[\r\n]+/g, ' ');
+  }
+
+  private sanitizeHeaderValue(value: string): string {
+    return value.replace(/[\r\n]+/g, '');
   }
 
   @Post()
@@ -35,17 +42,6 @@ export class MessagesController {
     @Res() response: Response,
   ): Promise<Response> {
     const { userId, tenantId } = identity;
-    if (
-      typeof parsed !== 'object' ||
-      parsed === null ||
-      Array.isArray(parsed)
-    ) {
-      const body: ApiResponse = {
-        success: false,
-        error: 'Corpo da requisição inválido',
-      };
-      return response.status(400).json(body);
-    }
 
     const requestValidation = validateChatRequest(parsed);
     if (!requestValidation.ok) {
@@ -57,12 +53,26 @@ export class MessagesController {
     }
 
     const input: ChatRequest = requestValidation.data;
+    response.setHeader(
+      'X-Request-Id',
+      this.sanitizeHeaderValue(input.request_id),
+    );
+
+    const abortController = new AbortController();
+    const handleClose = () => {
+      if (!response.writableEnded) {
+        abortController.abort();
+      }
+    };
+    response.on('close', handleClose);
 
     try {
       const result = await this.processing.processMessage(
         userId,
         input,
         tenantId,
+        undefined,
+        abortController.signal,
       );
 
       const candidateResponse: ChatResponse = {
@@ -99,6 +109,23 @@ export class MessagesController {
       };
       return response.status(200).json(body);
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn(
+          `[Core] Requisição REST cancelada pelo cliente para ${this.sanitizeForLog(userId)} (request_id=${this.sanitizeForLog(input.request_id)})`,
+        );
+        try {
+          await this.processing.transitionToError(userId);
+        } catch {}
+        if (response.writableEnded) {
+          return response;
+        }
+        const body: ApiResponse = {
+          success: false,
+          error: 'Requisição cancelada pelo cliente',
+        };
+        return response.status(499).json(body);
+      }
+
       if (error instanceof HostIntegrationError) {
         // A falha do Host é explícita: a mensagem não é gravada nem respondida
         // com contexto vazio. O código é registrado, o conteúdo nunca.
@@ -130,6 +157,8 @@ export class MessagesController {
           : 'Erro interno ao processar mensagem',
       };
       return response.status(providerFailure ? 502 : 500).json(body);
+    } finally {
+      response.off('close', handleClose);
     }
   }
 }
