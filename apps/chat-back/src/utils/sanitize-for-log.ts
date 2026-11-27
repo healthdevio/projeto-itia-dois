@@ -22,7 +22,10 @@ export function sanitizeForLog(value: unknown, maxLength = 200): string {
     texto = '[valor não conversível]';
   }
 
-  const semControle = texto.replace(CARACTERES_PROBLEMATICOS, ' ');
+  // Barreira explícita: remoção global de \r e \n diretamente sobre a string
+  // de origem, no formato reconhecido pela análise do CodeQL.
+  const semQuebras = texto.replace(/\r\n|\r|\n/g, ' ');
+  const semControle = semQuebras.replace(CARACTERES_PROBLEMATICOS, ' ');
   const limite =
     Number.isFinite(maxLength) && maxLength >= 0
       ? Math.floor(maxLength)

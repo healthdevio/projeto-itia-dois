@@ -28,10 +28,6 @@ export class MessagesController {
     private readonly processing: MessageProcessingService,
   ) {}
 
-  private sanitizeForLog(value: unknown): string {
-    return String(value).replace(/[\r\n]+/g, ' ');
-  }
-
   private sanitizeHeaderValue(value: string): string {
     return value.replace(/[\r\n]+/g, '');
   }
@@ -88,10 +84,12 @@ export class MessagesController {
 
       const responseValidation = validateChatResponse(candidateResponse);
       if (!responseValidation.ok) {
+        // Barreira explícita no ponto do log, além do helper compartilhado:
+        // o CodeQL precisa ver a remoção de \r/\n no argumento do console.
         console.error(
           '[Core] ChatResponse inválido gerado para %s (request_id=%s):',
-          sanitizeForLog(userId),
-          sanitizeForLog(input.request_id),
+          sanitizeForLog(userId).replace(/\r\n|\r|\n/g, ' '),
+          sanitizeForLog(input.request_id).replace(/\r\n|\r|\n/g, ' '),
           responseValidation.issues,
         );
         try {
@@ -112,7 +110,9 @@ export class MessagesController {
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         console.warn(
-          `[Core] Requisição REST cancelada pelo cliente para ${this.sanitizeForLog(userId)} (request_id=${this.sanitizeForLog(input.request_id)})`,
+          '[Core] Requisição REST cancelada pelo cliente para %s (request_id=%s)',
+          sanitizeForLog(userId).replace(/\r\n|\r|\n/g, ' '),
+          sanitizeForLog(input.request_id).replace(/\r\n|\r|\n/g, ' '),
         );
         try {
           await this.processing.transitionToError(userId);

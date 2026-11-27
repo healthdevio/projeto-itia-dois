@@ -8,9 +8,18 @@ void describe('sanitizeForLog', () => {
     const entrada = 'web\r\n[Core] falso\t\u001b[31m\u0000fim';
     const resultado = sanitizeForLog(entrada);
 
-    assert.equal(resultado, 'web  [Core] falso  [31m fim');
+    assert.equal(resultado, 'web [Core] falso  [31m fim');
     // eslint-disable-next-line no-control-regex -- verifica a remoção dos controles
     assert.doesNotMatch(resultado, /[\r\n\t\u0000\u001b]/);
+  });
+
+  void it('remove LF, CR e CRLF de forma global, com uma única substituição', () => {
+    assert.equal(sanitizeForLog('a\nb'), 'a b');
+    assert.equal(sanitizeForLog('a\rb'), 'a b');
+    assert.equal(sanitizeForLog('a\r\nb'), 'a b');
+    assert.equal(sanitizeForLog('a\r\nb\nc\rd'), 'a b c d');
+    // eslint-disable-next-line no-control-regex -- verifica a remoção das quebras
+    assert.doesNotMatch(sanitizeForLog('a\r\nb\nc\rd'), /[\r\n]/);
   });
 
   void it('substitui DEL e os separadores de linha Unicode', () => {
@@ -38,6 +47,15 @@ void describe('sanitizeForLog', () => {
     assert.equal(resultado.length, 200);
     assert.ok(resultado.endsWith('…'));
     assert.equal(resultado.slice(0, 199), 'a'.repeat(199));
+  });
+
+  void it('não reintroduz quebras de linha depois do truncamento', () => {
+    const resultado = sanitizeForLog(`${'a'.repeat(199)}\n${'b'.repeat(20)}`);
+
+    assert.equal(resultado.length, 200);
+    assert.ok(resultado.endsWith('…'));
+    // eslint-disable-next-line no-control-regex -- verifica a barreira após o truncamento
+    assert.doesNotMatch(resultado, /[\r\n]/);
   });
 
   void it('respeita maxLength informado', () => {
