@@ -32,6 +32,13 @@ Esses são os estados visuais descritos no registro da Task 07; confirme os valo
 
 A documentação histórica registra o `ChatStateView` dentro de `MiniChat` e `ExpandedChat`.
 
+### Comportamento com histórico
+
+O componente recebe `mensagensCount`. Com mensagens no histórico, o estado
+`greeting` ("Como posso ajudar?") **não é renderizado**, liberando toda a área
+central para a lista rolável. Os estados `thinking` e `error` passam a ser avisos
+compactos (`shrink-0`) e não reduzem a área de scroll das mensagens.
+
 ## Diferença em relação ao Backend
 
 O Backend pode usar estados e transições diferentes, incluindo `streaming` e `success`. Não se deve renomear estados visualmente sem definir o mapeamento oficial entre os contratos do Backend e da Interface.

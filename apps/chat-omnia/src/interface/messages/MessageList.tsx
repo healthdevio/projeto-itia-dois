@@ -17,7 +17,7 @@ function MessageList({
   onFeedback,
 }: MessageListProps) {
   return (
-    <main className="flex-1 overflow-y-auto px-4 py-3">
+    <main className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
       {messages.map((message) => {
         const isIA = message.author === 'omnia';
         const feedback = isIA
