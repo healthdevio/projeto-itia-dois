@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { ChatConfig } from '../../models/chat-config.js';
 import type { ChatRequest } from '../../models/chat-request.js';
 import type { ConversationState } from '../../models/conversation.js';
@@ -26,6 +26,7 @@ import {
 } from '../ai/index.js';
 import { isHostContextEnabled } from '../host/host-context.config.js';
 import { HostContextService } from '../host/host-context.service.js';
+import { registrarMensagemRecebida } from '../../utils/message-log.js';
 
 type OnDelta = (delta: string) => void;
 
@@ -65,8 +66,6 @@ export interface MessageProcessingResult {
  */
 @Injectable()
 export class MessageProcessingService {
-  private readonly logger = new Logger(MessageProcessingService.name);
-
   constructor(private readonly hostContext: HostContextService) {}
 
   /**
@@ -113,11 +112,14 @@ export class MessageProcessingService {
       date: request.date || new Date().toISOString(),
     };
 
-    this.logger.log(
-      `[Core] Mensagem recebida de ${message.origin} (usuário ${userId}):` +
-        ` ${message.message_id} · config ${chatConfig.language} ·` +
-        ` ${chatConfig.tone} · ${chatConfig.response_length}`,
-    );
+    registrarMensagemRecebida({
+      origin: message.origin,
+      userId,
+      messageId: message.message_id,
+      language: chatConfig.language,
+      tone: chatConfig.tone,
+      responseLength: chatConfig.response_length,
+    });
 
     const conversation = await getOrCreateActiveConversation(userId);
 
