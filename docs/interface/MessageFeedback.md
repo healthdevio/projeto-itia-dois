@@ -49,6 +49,12 @@ hook. **Nesta branch não há contrato de feedback**, logo nenhuma função é
 injetada: o clique apenas destaca a escolha (`selected`) e nada é enviado ou
 persistido.
 
+Se uma implementação de transporte for injetada no futuro, uma rejeição do
+envio deixa o estado como `error`, preserva a avaliação escolhida e exibe a
+mensagem genérica. Os botões ficam habilitados nesse estado, então clicar na
+mesma avaliação permite tentar novamente. Falhas síncronas do adaptador também
+são convertidas para esse estado.
+
 ## Associação com a mensagem
 
 A chave de estado é sempre `message_id`, nunca o índice da lista nem a posição

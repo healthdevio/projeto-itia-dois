@@ -62,7 +62,8 @@ export function useMessageFeedback(submitFeedback?: SubmitMessageFeedback) {
       if (atual.status === 'submitted') return;
       if (atual.status === 'selected' && atual.rating === rating) return;
 
-      if (!submitFeedback) {
+      const enviarFeedback = submitFeedback;
+      if (!enviarFeedback) {
         definirEstado(messageId, { status: 'selected', rating });
         return;
       }
@@ -71,7 +72,8 @@ export function useMessageFeedback(submitFeedback?: SubmitMessageFeedback) {
       const geracaoAtual = geracao.current;
       definirEstado(messageId, { status: 'submitting', rating });
 
-      submitFeedback(messageId, rating)
+      Promise.resolve()
+        .then(() => enviarFeedback(messageId, rating))
         .then(() => {
           if (geracao.current === geracaoAtual) {
             definirEstado(messageId, { status: 'submitted', rating });
@@ -80,7 +82,7 @@ export function useMessageFeedback(submitFeedback?: SubmitMessageFeedback) {
         .catch(() => {
           if (geracao.current === geracaoAtual) {
             definirEstado(messageId, {
-              status: 'selected',
+              status: 'error',
               rating,
               error: ERRO_GENERICO,
             });

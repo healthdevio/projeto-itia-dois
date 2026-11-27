@@ -77,3 +77,22 @@ persistência.
 Histórico, sugestões, nova conversa, envio local e renderização de mensagens
 foram preservados. O feedback de uma mensagem não afeta outra e é descartado ao
 iniciar nova conversa.
+
+## Atualização de tratamento de falha
+
+Na continuação da Task 10, o hook passou a entrar no estado `error` após uma
+falha de envio, preservando a avaliação e a mensagem genérica em pt-BR. Como os
+botões não ficam bloqueados nesse estado, o usuário pode tentar novamente com
+Like ou Dislike. Exceções síncronas da função injetada também seguem o mesmo
+tratamento.
+
+O adaptador continua não sendo fornecido: não existe contrato/endpoint de
+feedback no Back-end. O clique atual apenas destaca a escolha na interface e
+não declara persistência. A continuação foi feita na branch local
+`feat/frontend-message-feedback-followup`, pois `feat/frontend-message-feedback`
+já existia em outro worktree e seu histórico estava integrado em `develop`.
+
+Validações da continuação: typecheck, lint, build, Prettier nos arquivos
+alterados e `git diff --check` passaram. `format:check` global não passou:
+Prettier sinalizou `apps/chat-omnia/README.md` e os arquivos gerados em `dist/`.
+A suíte de testes de interface continua inexistente.
