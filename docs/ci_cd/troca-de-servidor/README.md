@@ -65,14 +65,14 @@ Ver [`README.md`](README.md) para o relato completo.
 
 ---
 
-## O que não mudou
+## O que não mudou na migração (estado da época)
 
 |                 |                                                      |
 | --------------- | ---------------------------------------------------- |
 | Código-fonte    | nenhum arquivo de `apps/` foi alterado pela migração |
 | Schema do banco | `conversations`, `messages`, `suggestions`           |
 | Contrato da API | rotas, header `X-User-Id`, formato de resposta       |
-| Validação       | os 4 jobs da CI, os 95 testes do Backend             |
+| Validação       | os 4 jobs da CI, os 95 testes do Backend (122 hoje)  |
 | Fluxo de branch | `develop` recebe PR, `main` recebe promoção          |
 
 A migração é de infraestrutura. O `Dockerfile.core` ganhou o `entrypoint.sh` como

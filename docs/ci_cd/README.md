@@ -20,6 +20,7 @@ Como os componentes se conectam:
 | Documento                                           | Conteúdo                                                       |
 | --------------------------------------------------- | -------------------------------------------------------------- |
 | [Visão geral](visao-geral.md)                       | Gatilhos e etapas atuais dos workflows                         |
+| [Lint e Node no CI](lint-e-node-no-ci.md)           | Node 26, lint do backend e validação da pipeline               |
 | [Decisões](decisoes.md)                             | Justificativas históricas da configuração de deploy            |
 | [Pré-requisitos](pre-requisitos.md)                 | Configuração do cluster e credenciais                          |
 | [Publicação](publicacao.md)                         | Build e publicação de imagens                                  |

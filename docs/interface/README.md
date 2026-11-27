@@ -29,6 +29,7 @@ Os documentos de componentes usam o mesmo nome do arquivo React correspondente (
 - [`SuggestionList.md`](SuggestionList.md) — apresentação e seleção de sugestões.
 - [`HistoryPanel.md`](HistoryPanel.md) — área de apresentação do histórico.
 - [`HistoryItem.md`](HistoryItem.md) — item individual do histórico.
+- [`fonte-de-dados.md`](fonte-de-dados.md) — `ChatDataSource`, adaptador mock e ponto de troca pelo REST.
 
 ### Aplicação e arquitetura
 
@@ -38,7 +39,7 @@ Os documentos de componentes usam o mesmo nome do arquivo React correspondente (
 
 ## Status e precisão
 
-A documentação distingue o que está registrado nas tasks anteriores do que ainda precisa ser confirmado no código atual. Em particular, a Task P1-T08 — sugestões e histórico — permanece **WIP / em andamento**, não concluída nem integrada à `develop`, conforme o registro fornecido.
+A documentação distingue o que está registrado nas tasks anteriores do que foi confirmado no código atual. A Task P1-T08 — sugestões e histórico — teve sua implementação de Interface concluída no working tree, mas **a integração com o Core não está feita**: os dados vêm de fixtures locais, não de REST/OIDC.
 
 As descrições de props e detalhes de implementação devem ser conferidas nos arquivos `.tsx` atuais antes de serem tratadas como contratos definitivos. Não se deve presumir que uma descrição histórica continua exatamente igual após refatorações.
 

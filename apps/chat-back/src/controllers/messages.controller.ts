@@ -1,130 +1,158 @@
-import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Inject, Post, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
-import { formatChatConfig, validateChatConfig } from '../models/chat-config.js';
+import { Identity } from '../common/decorators/identity.decorator.js';
+import { IdentityGuard, type RequestIdentity } from '../middleware/identity.js';
 import type { ApiResponse } from '../models/api-response.js';
-import type { Message } from '../models/message.js';
-import type { ChatRequest } from '../models/chat-request.js';
-import { IdentityGuard, type IdentityRequest } from '../middleware/identity.js';
 import {
-  appendMessage,
-  getHistoryIds,
-  getOrCreateActiveConversation,
-  transitionConversationState,
-} from '../repositories/conversation-repository.js';
+  validateChatRequest,
+  type ChatRequest,
+} from '../models/chat-request.js';
 import {
-  getActiveSuggestions,
-  replaceActiveSuggestions,
-} from '../repositories/suggestion-repository.js';
-import { AIError, buildContext, sendToAI } from '../services/ai/index.js';
-import type { ChatResponse } from '../models/chat-response.js';
+  validateChatResponse,
+  type ChatResponse,
+} from '../models/chat-response.js';
+import { HostIntegrationError } from '../models/host-integration.js';
+import { AIError } from '../services/ai/index.js';
+import { MessageProcessingService } from '../services/message-processing/index.js';
+import {
+  hostErrorHttpStatus,
+  hostErrorMessage,
+} from '../services/host/host-error-response.js';
+import { sanitizeForLog } from '../utils/sanitize-for-log.js';
 
 @Controller('api/messages')
 @UseGuards(IdentityGuard)
 export class MessagesController {
+  constructor(
+    @Inject(MessageProcessingService)
+    private readonly processing: MessageProcessingService,
+  ) {}
+
+  private sanitizeForLog(value: unknown): string {
+    return String(value).replace(/[\r\n]+/g, ' ');
+  }
+
+  private sanitizeHeaderValue(value: string): string {
+    return value.replace(/[\r\n]+/g, '');
+  }
+
   @Post()
   async create(
-    @Req() request: IdentityRequest,
+    @Identity() identity: RequestIdentity,
     @Body() parsed: unknown,
     @Res() response: Response,
   ): Promise<Response> {
-    const { userId, tenantId } = request.identity!;
-    if (
-      typeof parsed !== 'object' ||
-      parsed === null ||
-      Array.isArray(parsed)
-    ) {
+    const { userId, tenantId } = identity;
+
+    const requestValidation = validateChatRequest(parsed);
+    if (!requestValidation.ok) {
       const body: ApiResponse = {
         success: false,
-        error: 'Corpo da requisição inválido',
+        error: requestValidation.error,
       };
       return response.status(400).json(body);
     }
 
-    const input = parsed as ChatRequest;
-    const chatConfig = validateChatConfig(input.config);
-    if (!chatConfig.ok) {
-      const body: ApiResponse = { success: false, error: chatConfig.error };
-      return response.status(400).json(body);
-    }
+    const input: ChatRequest = requestValidation.data;
+    response.setHeader(
+      'X-Request-Id',
+      this.sanitizeHeaderValue(input.request_id),
+    );
 
-    if (
-      typeof input.message_id !== 'string' ||
-      !input.message_id ||
-      typeof input.message !== 'string' ||
-      !input.message ||
-      typeof input.origin !== 'string' ||
-      !input.origin
-    ) {
-      const body: ApiResponse = {
-        success: false,
-        error: 'Campos obrigatórios faltando: message_id, message, origin',
-      };
-      return response.status(400).json(body);
-    }
-
-    const message: Message = {
-      message_id: input.message_id,
-      message: input.message,
-      metadata: input.metadata,
-      origin: input.origin,
-      date: input.date || new Date().toISOString(),
+    const abortController = new AbortController();
+    const handleClose = () => {
+      if (!response.writableEnded) {
+        abortController.abort();
+      }
     };
+    response.on('close', handleClose);
 
     try {
-      console.log(
-        `[Core] Mensagem recebida de ${message.origin} (usuário ${userId}):`,
-        message.message_id,
-        `· tenant ${tenantId ?? 'default'}`,
-        `· config ${formatChatConfig(chatConfig.config)}`,
+      const result = await this.processing.processMessage(
+        userId,
+        input,
+        tenantId,
+        undefined,
+        abortController.signal,
       );
-      const conversation = await getOrCreateActiveConversation(userId);
-      const context = buildContext(
-        conversation.id,
-        conversation.state,
-        conversation.messages,
-        await getHistoryIds(userId),
-      );
-      await appendMessage(message, 'user', conversation.id);
-      await transitionConversationState(userId, 'streaming');
-      const aiResponse = await sendToAI({
-        message,
-        context,
-        config: chatConfig.config,
-        tenant: tenantId,
-      });
-      const aiMessage: Message = {
-        message_id: `${message.message_id}-ai`,
-        message: aiResponse.response,
-        date: new Date().toISOString(),
-        origin: 'ai',
+
+      const candidateResponse: ChatResponse = {
+        request_id: input.request_id,
+        conversation_id: result.conversation_id,
+        message_id: result.message_id,
+        ai_response: result.ai_response,
+        state: result.state,
+        suggestions: result.suggestions,
+        config: result.config,
       };
-      await appendMessage(aiMessage, 'assistant', conversation.id);
-      const suggestions =
-        aiResponse.suggestions === null
-          ? await getActiveSuggestions(userId)
-          : await replaceActiveSuggestions(userId, aiResponse.suggestions);
-      await transitionConversationState(userId, 'success');
+
+      const responseValidation = validateChatResponse(candidateResponse);
+      if (!responseValidation.ok) {
+        console.error(
+          '[Core] ChatResponse inválido gerado para %s (request_id=%s):',
+          sanitizeForLog(userId),
+          sanitizeForLog(input.request_id),
+          responseValidation.issues,
+        );
+        try {
+          await this.processing.transitionToError(userId);
+        } catch {}
+        const body: ApiResponse = {
+          success: false,
+          error: 'Erro interno ao formatar resposta do chat',
+        };
+        return response.status(500).json(body);
+      }
+
       const body: ApiResponse<ChatResponse> = {
         success: true,
-        data: {
-          request_id: input.request_id,
-          conversation_id: conversation.id,
-          message_id: message.message_id,
-          ai_response: aiResponse.response,
-          state: 'success',
-          suggestions,
-          config: chatConfig.config,
-        },
+        data: responseValidation.data,
       };
       return response.status(200).json(body);
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn(
+          `[Core] Requisição REST cancelada pelo cliente para ${this.sanitizeForLog(userId)} (request_id=${this.sanitizeForLog(input.request_id)})`,
+        );
+        try {
+          await this.processing.transitionToError(userId);
+        } catch {}
+        if (response.writableEnded) {
+          return response;
+        }
+        const body: ApiResponse = {
+          success: false,
+          error: 'Requisição cancelada pelo cliente',
+        };
+        return response.status(499).json(body);
+      }
+
+      if (error instanceof HostIntegrationError) {
+        // A falha do Host é explícita: a mensagem não é gravada nem respondida
+        // com contexto vazio. O código é registrado, o conteúdo nunca.
+        console.error(
+          '[Core] Contexto do Host indisponível para %s: %s',
+          sanitizeForLog(userId),
+          sanitizeForLog(error.code),
+        );
+        try {
+          await this.processing.transitionToError(userId);
+        } catch {}
+        const body: ApiResponse = {
+          success: false,
+          error: hostErrorMessage(error),
+        };
+        return response.status(hostErrorHttpStatus(error)).json(body);
+      }
+
       const providerFailure = error instanceof AIError;
       console.error(
-        `[Core] Erro ao processar mensagem de ${userId}:`,
-        providerFailure ? `[AI] ${error.message}` : error,
+        '[Core] Erro ao processar mensagem de %s:',
+        sanitizeForLog(userId),
+        providerFailure ? `[AI] ${sanitizeForLog(error.message)}` : error,
       );
       try {
-        await transitionConversationState(userId, 'error');
+        await this.processing.transitionToError(userId);
       } catch {}
       const body: ApiResponse = {
         success: false,
@@ -133,6 +161,8 @@ export class MessagesController {
           : 'Erro interno ao processar mensagem',
       };
       return response.status(providerFailure ? 502 : 500).json(body);
+    } finally {
+      response.off('close', handleClose);
     }
   }
 }

@@ -1,6 +1,11 @@
+import { z } from 'zod';
+import { chatConfigSchema, type ChatConfig } from './chat-config.js';
+import {
+  validateContract,
+  type ContractValidationIssue,
+} from './contract-validation.js';
 import type { ConversationState } from './conversation-state.js';
-import type { ChatConfig } from './chat-config.js';
-import type { Suggestion } from './suggestion.js';
+import { suggestionsListSchema, type Suggestion } from './suggestion.js';
 
 export interface MessageStartedEvent {
   request_id: string;
@@ -50,3 +55,92 @@ export type SSEEvent =
       event: 'message.error';
       data: MessageErrorEvent;
     };
+
+const sseCorrelationSchema = z.object({
+  request_id: z.string().trim().min(1, 'request_id é obrigatório'),
+  conversation_id: z.string().trim().min(1, 'conversation_id é obrigatório'),
+  message_id: z.string().trim().min(1, 'message_id é obrigatório'),
+});
+
+export const messageStartedEventSchema = sseCorrelationSchema.extend({
+  state: z.literal('streaming'),
+});
+
+export const messageDeltaEventSchema = sseCorrelationSchema.extend({
+  delta: z.string(),
+});
+
+export const messageCompletedEventSchema = sseCorrelationSchema.extend({
+  state: z.literal('success'),
+  suggestions: suggestionsListSchema,
+  config: chatConfigSchema,
+});
+
+export const messageErrorEventSchema = sseCorrelationSchema.extend({
+  state: z.literal('error'),
+  error: z.string().trim().min(1, 'error é obrigatório'),
+});
+
+export const sseEventSchema = z.discriminatedUnion('event', [
+  z.object({
+    event: z.literal('message.started'),
+    data: messageStartedEventSchema,
+  }),
+  z.object({
+    event: z.literal('message.delta'),
+    data: messageDeltaEventSchema,
+  }),
+  z.object({
+    event: z.literal('message.completed'),
+    data: messageCompletedEventSchema,
+  }),
+  z.object({
+    event: z.literal('message.error'),
+    data: messageErrorEventSchema,
+  }),
+]);
+
+export type ValidateSseEventResult =
+  | { ok: true; data: SSEEvent }
+  | { ok: false; error: string; issues: ContractValidationIssue[] };
+
+export function validateSseEvent(value: unknown): ValidateSseEventResult {
+  const result = validateContract(sseEventSchema, value, 'SSEEvent');
+  if (!result.ok) {
+    return result;
+  }
+
+  return {
+    ok: true,
+    data: result.data as unknown as SSEEvent,
+  };
+}
+
+export interface SseErrorMetadata {
+  request_id: string;
+  conversation_id: string;
+  message_id: string;
+}
+
+export function buildSafeSseErrorEvent(
+  meta: SseErrorMetadata,
+  safeMessage = 'Falha durante o streaming da resposta',
+): SSEEvent {
+  const trimmedRequestId = meta.request_id.trim() || 'unknown-request';
+  const trimmedConversationId =
+    meta.conversation_id.trim() || 'unknown-conversation';
+  const trimmedMessageId = meta.message_id.trim() || 'unknown-message';
+  const sanitizedMessage =
+    safeMessage.trim() || 'Falha durante o streaming da resposta';
+
+  return {
+    event: 'message.error',
+    data: {
+      request_id: trimmedRequestId,
+      conversation_id: trimmedConversationId,
+      message_id: trimmedMessageId,
+      state: 'error',
+      error: sanitizedMessage,
+    },
+  };
+}

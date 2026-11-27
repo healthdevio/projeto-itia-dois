@@ -10,6 +10,8 @@ export interface AIProviderRequest {
   context: AIContext;
   config: ChatConfig;
   tenant?: string;
+  onDelta?: (delta: string) => void;
+  signal?: AbortSignal;
 }
 export interface AIProviderResponse {
   response: string;

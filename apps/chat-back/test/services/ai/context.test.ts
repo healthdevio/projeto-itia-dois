@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  buildContext,
   DEFAULT_CONTEXT_WINDOW,
+  buildContext,
+  withHostContext,
 } from '../../../src/services/ai/context.js';
 import type { ConversationMessage } from '../../../src/models/conversation.js';
 
@@ -18,8 +19,8 @@ function message(index: number): ConversationMessage {
 
 const history = Array.from({ length: 50 }, (_, i) => message(i));
 
-describe('buildContext', () => {
-  it('leva a conversa, o estado e os ids do histórico', () => {
+void describe('buildContext', () => {
+  void it('leva a conversa, o estado e os ids do histórico', () => {
     const context = buildContext('c1', 'idle', [], ['h1', 'h2']);
 
     assert.equal(context.conversation_id, 'c1');
@@ -28,14 +29,14 @@ describe('buildContext', () => {
     assert.deepEqual(context.history_ids, ['h1', 'h2']);
   });
 
-  it('corta na janela padrão', () => {
+  void it('corta na janela padrão', () => {
     const context = buildContext('c1', 'idle', history, []);
 
     assert.equal(context.max_context_messages, DEFAULT_CONTEXT_WINDOW);
     assert.equal(context.previous_messages.length, DEFAULT_CONTEXT_WINDOW);
   });
 
-  it('mantém as mensagens mais recentes, que são as relevantes', () => {
+  void it('mantém as mensagens mais recentes, que são as relevantes', () => {
     const context = buildContext('c1', 'idle', history, []);
 
     assert.deepEqual(
@@ -45,7 +46,7 @@ describe('buildContext', () => {
     assert.equal(context.previous_messages[0].message, `mensagem 30`);
   });
 
-  it('respeita a janela informada', () => {
+  void it('respeita a janela informada', () => {
     const context = buildContext('c1', 'idle', history, [], 3);
 
     assert.deepEqual(
@@ -54,17 +55,32 @@ describe('buildContext', () => {
     );
   });
 
-  it('não duplica a lista recebida, para quem chamou poder seguir mutando', () => {
+  void it('não duplica a lista recebida, para quem chamou poder seguir mutando', () => {
     const context = buildContext('c1', 'idle', history, []);
 
     assert.notEqual(context.previous_messages, history);
   });
 
-  it('copia a lista de ids do histórico', () => {
+  void it('copia a lista de ids do histórico', () => {
     const ids = ['h1'];
     const context = buildContext('c1', 'idle', [], ids);
 
     assert.notEqual(context.history_ids, ids);
     assert.deepEqual(context.history_ids, ids);
+  });
+
+  void it('anexa o contexto do Host sem mutar o contexto original', () => {
+    const original = buildContext('c1', 'idle', [], []);
+    const updated = withHostContext(original, { current_page: '/clientes' });
+
+    assert.notEqual(updated, original);
+    assert.equal(original.host_context, undefined);
+    assert.deepEqual(updated.host_context, { current_page: '/clientes' });
+  });
+
+  void it('mantém o mesmo contexto quando não há contexto do Host', () => {
+    const original = buildContext('c1', 'idle', [], []);
+
+    assert.equal(withHostContext(original, undefined), original);
   });
 });

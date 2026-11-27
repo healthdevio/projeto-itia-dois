@@ -30,7 +30,8 @@ App
 └── ExpandedChat              janela expandida, 600 de largura, altura da tela
     ├── ChatHeader            título e botão de expandir
     ├── ChatStateView         greeting, idle, thinking ou error
-    ├── MessageList → MessageItem
+    ├── MessageList → MessageItem → MessageFeedback
+    │                              avaliação visual de respostas da IA
     ├── SuggestionList        esboço, devolve null
     ├── HistoryPanel          esboço, devolve null
     └── ChatInput             campo e envio por Enter
@@ -110,14 +111,14 @@ Detalhamento em [`docs/ci_cd/deploy.md`](../../docs/ci_cd/deploy.md).
 
 | Documento                                                                   | Assunto                            |
 | --------------------------------------------------------------------------- | ---------------------------------- |
-| [estrutura_componentes.md](../../docs/interface/estrutura_componentes.md)   | Os componentes e o que cada um faz |
-| [chat_expandido.md](../../docs/interface/chat_expandido.md)                 | A janela expandida                 |
-| [mini_chat.md](../../docs/interface/mini_chat.md)                           | A janela compacta                  |
-| [botao_flutuante.md](../../docs/interface/botao_flutuante.md)               | O botão que abre o chat            |
-| [mensagens_e_envio.md](../../docs/interface/mensagens_e_envio.md)           | Mensagens e envio                  |
-| [estados_visuais.md](../../docs/interface/estados_visuais.md)               | Os quatro estados                  |
-| [sugestoes_e_historicos.md](../../docs/interface/sugestoes_e_historicos.md) | Sugestões e histórico              |
-| [configuracao_ambiente.md](../../docs/interface/configuracao_ambiente.md)   | Configuração da interface          |
+| [estrutura_componentes.md](../../docs/interface/estrutura_componentes.md) | Os componentes e o que cada um faz |
+| [ExpandedChat.md](../../docs/interface/ExpandedChat.md) | A janela expandida |
+| [MiniChat.md](../../docs/interface/MiniChat.md) | A janela compacta |
+| [FloatingChatButton.md](../../docs/interface/FloatingChatButton.md) | O botão que abre o chat |
+| [MessageList.md](../../docs/interface/MessageList.md), [MessageItem.md](../../docs/interface/MessageItem.md), [ChatInput.md](../../docs/interface/ChatInput.md) | Mensagens, itens e envio |
+| [ChatStateView.md](../../docs/interface/ChatStateView.md), [LoadingIndicator.md](../../docs/interface/LoadingIndicator.md) | Os quatro estados e o carregamento |
+| [SuggestionList.md](../../docs/interface/SuggestionList.md), [HistoryPanel.md](../../docs/interface/HistoryPanel.md), [HistoryItem.md](../../docs/interface/HistoryItem.md) | Sugestões e histórico |
+| [configuracao_ambiente.md](../../docs/interface/configuracao_ambiente.md) | Configuração da interface |
 
-O contrato do backend está em [`docs/core/`](../../docs/core/README.md), e a
+O contrato do backend está em [`docs/backend/`](../../docs/backend/README.md), e a
 pipeline em [`docs/ci_cd/`](../../docs/ci_cd/README.md).

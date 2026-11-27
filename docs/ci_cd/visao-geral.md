@@ -15,7 +15,7 @@ O CD usa `workflow_run`, faz checkout do mesmo commit aprovado pela CI e só con
 
 ## CI
 
-O workflow valida o frontend `apps/chat-omnia`, backend `apps/chat-back`, testes do backend, formatação Prettier e build das imagens. Em PRs, aplica o formato e, quando necessário, um job separado envia o patch à branch do mesmo repositório; PRs de forks precisam aplicar o patch manualmente. CodeQL, Dependency Review, Gitleaks e Workflow Security rodam em workflows separados. A CI usa Node 24; confira os Dockerfiles para as versões atuais de build.
+O workflow valida o frontend `apps/chat-omnia`, backend `apps/chat-back`, testes do backend, formatação Prettier e build das imagens. Em PRs, aplica o formato e, quando necessário, um job separado envia o patch à branch do mesmo repositório; PRs de forks precisam aplicar o patch manualmente. CodeQL, Dependency Review, Gitleaks e Workflow Security rodam em workflows separados. A CI usa Node 26 — mesma versão dos Dockerfiles.
 
 ## CD
 
