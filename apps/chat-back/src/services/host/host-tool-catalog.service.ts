@@ -8,6 +8,7 @@ import type { ToolCall } from '../../models/tool-call.js';
 import { isToolSchemaCompilable } from '../tools/tool-arguments-validator.js';
 import { authorizeToolCall } from '../tools/tool-authorization.js';
 import { HostContextService } from './host-context.service.js';
+import { sanitizeForLog } from '../../utils/sanitize-for-log.js';
 
 export interface HostToolCatalogRequest {
   /** Identidade verificada pelo Core, nunca enviada pelo cliente. */
@@ -83,12 +84,7 @@ export class HostToolCatalogService {
     }
 
     console.log(
-      `[Host] catálogo · usuário ${request.identity.userId} · ` +
-        `tenant ${request.identity.tenantId ?? 'default'} · ` +
-        `conversa ${request.conversationId} · ` +
-        `${tools.length}/${context.tools.length} ferramentas expostas · ` +
-        `schema_invalido=${discarded.invalid_schema} · ` +
-        `sem_permissao=${discarded.not_allowed}`,
+      `[Host] catálogo: ${JSON.stringify({ userId: sanitizeForLog(request.identity.userId), tenantId: sanitizeForLog(request.identity.tenantId), conversationId: sanitizeForLog(request.conversationId), exposedCount: tools.length, availableCount: context.tools.length, invalidSchemaCount: discarded.invalid_schema, deniedCount: discarded.not_allowed })}`,
     );
 
     return {

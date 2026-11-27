@@ -84,13 +84,16 @@ export class MessagesController {
 
       const responseValidation = validateChatResponse(candidateResponse);
       if (!responseValidation.ok) {
-        // Barreira explícita no ponto do log, além do helper compartilhado:
-        // o CodeQL precisa ver a remoção de \r/\n no argumento do console.
         console.error(
-          '[Core] ChatResponse inválido gerado para %s (request_id=%s):',
-          sanitizeForLog(userId).replace(/\r\n|\r|\n/g, ' '),
-          sanitizeForLog(input.request_id).replace(/\r\n|\r|\n/g, ' '),
-          responseValidation.issues,
+          '[Core] ChatResponse inválido gerado: %s',
+          JSON.stringify({
+            userId: sanitizeForLog(userId),
+            requestId: sanitizeForLog(input.request_id),
+            issues: responseValidation.issues.map((issue) => ({
+              path: sanitizeForLog(issue.path),
+              message: sanitizeForLog(issue.message),
+            })),
+          }),
         );
         try {
           await this.processing.transitionToError(userId);
@@ -110,9 +113,11 @@ export class MessagesController {
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         console.warn(
-          '[Core] Requisição REST cancelada pelo cliente para %s (request_id=%s)',
-          sanitizeForLog(userId).replace(/\r\n|\r|\n/g, ' '),
-          sanitizeForLog(input.request_id).replace(/\r\n|\r|\n/g, ' '),
+          '[Core] Requisição REST cancelada pelo cliente: %s',
+          JSON.stringify({
+            userId: sanitizeForLog(userId),
+            requestId: sanitizeForLog(input.request_id),
+          }),
         );
         try {
           await this.processing.transitionToError(userId);
@@ -131,9 +136,11 @@ export class MessagesController {
         // A falha do Host é explícita: a mensagem não é gravada nem respondida
         // com contexto vazio. O código é registrado, o conteúdo nunca.
         console.error(
-          '[Core] Contexto do Host indisponível para %s: %s',
-          sanitizeForLog(userId),
-          sanitizeForLog(error.code),
+          '[Core] Contexto do Host indisponível: %s',
+          JSON.stringify({
+            userId: sanitizeForLog(userId),
+            code: sanitizeForLog(error.code),
+          }),
         );
         try {
           await this.processing.transitionToError(userId);
@@ -147,9 +154,13 @@ export class MessagesController {
 
       const providerFailure = error instanceof AIError;
       console.error(
-        '[Core] Erro ao processar mensagem de %s:',
-        sanitizeForLog(userId),
-        providerFailure ? `[AI] ${sanitizeForLog(error.message)}` : error,
+        '[Core] Erro ao processar mensagem: %s',
+        JSON.stringify({
+          userId: sanitizeForLog(userId),
+          error: providerFailure
+            ? `[AI] ${sanitizeForLog(error.message)}`
+            : sanitizeForLog(error),
+        }),
       );
       try {
         await this.processing.transitionToError(userId);

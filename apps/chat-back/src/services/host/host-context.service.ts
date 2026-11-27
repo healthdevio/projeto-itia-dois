@@ -8,6 +8,7 @@ import {
 } from '../../models/host-integration.js';
 import type { HostContextLimits } from './host-context.config.js';
 import { parseHostConversationContext } from './host-context.parser.js';
+import { sanitizeForLog } from '../../utils/sanitize-for-log.js';
 import {
   HOST_CONTEXT_LIMITS,
   HOST_CONTEXT_TIMEOUT_MS,
@@ -58,12 +59,7 @@ export class HostContextService {
       const context = parseHostConversationContext(raw, this.limits);
 
       console.log(
-        `[Host] contexto · usuário ${identity.userId} · ` +
-          `tenant ${identity.tenantId ?? 'default'} · ` +
-          `conversa ${conversationId} · ` +
-          `${context.tools.length} ferramentas · ` +
-          `${context.chat_context.permissions?.length ?? 0} permissões · ` +
-          `${Date.now() - started}ms`,
+        `[Host] contexto: ${JSON.stringify({ userId: sanitizeForLog(identity.userId), tenantId: sanitizeForLog(identity.tenantId), conversationId: sanitizeForLog(conversationId), toolCount: context.tools.length, permissionCount: context.chat_context.permissions?.length ?? 0, durationMs: Date.now() - started })}`,
       );
       return context;
     } catch (error) {
@@ -77,10 +73,7 @@ export class HostContextService {
             );
 
       console.warn(
-        `[Host] contexto recusado · usuário ${identity.userId} · ` +
-          `tenant ${identity.tenantId ?? 'default'} · ` +
-          `conversa ${conversationId} · ${failure.code} · ` +
-          `${Date.now() - started}ms`,
+        `[Host] contexto recusado: ${JSON.stringify({ userId: sanitizeForLog(identity.userId), tenantId: sanitizeForLog(identity.tenantId), conversationId: sanitizeForLog(conversationId), code: sanitizeForLog(failure.code), durationMs: Date.now() - started })}`,
       );
       throw failure;
     }

@@ -18,6 +18,7 @@ import { IdentityGuard, type IdentityRequest } from '../middleware/identity.js';
 import { SseService } from '../services/sse/sse.service.js';
 import { SseBroadcaster } from '../services/sse/broadcaster.js';
 import { SseResponseChannel } from '../services/sse/channel.js';
+import { sanitizeForLog } from '../utils/sanitize-for-log.js';
 
 /**
  * Controller de Server-Sent Events (SSE) do chat.
@@ -67,12 +68,12 @@ export class SseController implements OnModuleDestroy {
     response.on('close', () => {
       this.sseService.closeConnection(connectionId);
       this.logger.debug(
-        `Cliente desconectado do SSE (usuário ${userId}, conexão ${connectionId})`,
+        `[SSE] Cliente desconectado: ${JSON.stringify({ userId: sanitizeForLog(userId), connectionId: sanitizeForLog(connectionId) })}`,
       );
     });
 
     this.logger.log(
-      `Conexão SSE aberta para o usuário ${userId}: ${connectionId}`,
+      `[SSE] Conexão aberta: ${JSON.stringify({ userId: sanitizeForLog(userId), connectionId: sanitizeForLog(connectionId) })}`,
     );
   }
 
@@ -121,13 +122,12 @@ export class SseController implements OnModuleDestroy {
       .streamMessage(userId, chatRequest, connectionId)
       .then((chatResponse: ChatResponse) => {
         this.logger.log(
-          `Mensagem processada via SSE (usuário ${userId}, conexão ${connectionId}): ${chatResponse.message_id}`,
+          `[SSE] Mensagem processada: ${JSON.stringify({ userId: sanitizeForLog(userId), connectionId: sanitizeForLog(connectionId), messageId: sanitizeForLog(chatResponse.message_id) })}`,
         );
       })
       .catch((error) => {
         this.logger.error(
-          `Erro ao processar mensagem via SSE (usuário ${userId}, conexão ${connectionId}):`,
-          error instanceof Error ? error.stack : String(error),
+          `[SSE] Erro ao processar mensagem: ${JSON.stringify({ userId: sanitizeForLog(userId), connectionId: sanitizeForLog(connectionId), error: sanitizeForLog(error instanceof Error ? error.stack : error) })}`,
         );
       });
 

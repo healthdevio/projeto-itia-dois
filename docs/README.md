@@ -38,22 +38,23 @@ Consulte [visão geral da CI/CD](ci_cd/visao-geral.md), [operação](ci_cd/ativa
 
 ## Índice por área
 
-| Pasta ou documento                                                                                         | Assunto                                                                 |
-| ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| [ci_cd/](ci_cd/README.md)                                                                                  | Pipeline, publicação, deploy, operação e diagnóstico                    |
-| [dependabot/](dependabot/README.md)                                                                        | Atualizações de dependências e regras do Dependabot                     |
-| [seguranca-workflows/](seguranca-workflows/README.md)                                                      | Estado atual de CodeQL, Dependency Review, Gitleaks e Workflow Security |
-| [01 - Vulnerabilidade deepmerge/shadcn](seguranca-vulnerabilidades/01-vulnerabilidade-deepmerge-shadcn.md) | Registro e correção de vulnerabilidades de dependências                 |
-| [implementacao-nova-seguranca/](implementacao-nova-seguranca/README.md)                                    | Registro da implementação original dos controles de segurança           |
-| [estrutura/](estrutura/README.md)                                                                          | CI, Docker, ambientes, testes e versionamento                           |
-| [backend/](backend/README.md)                                                                              | Contratos e comportamento da API                                        |
-| [Task 01 — Contrato com o Sistema Host](tasks-devops/integracao-com-host/task-01/Definir-contrato.md)      | Processo e contrato da integração com o Host                            |
-| [Task 02 — Receber contexto do Host](tasks-devops/integracao-com-host/task-02/Receber-contexto.md)         | Recebimento validado, limites e uso do contexto no prompt               |
-| [interface/](interface/README.md)                                                                          | Componentes e configuração da interface                                 |
-| [contexto/](contexto/CONTEXTO_MODELO.md)                                                                   | Contexto de manutenção, arquitetura e limitações                        |
-| [changelog/](changelog/CHANGELOG.md)                                                                       | Registros históricos de alterações                                      |
-| [Comparação de CI/CD](ci_cd/diferencas-ci-cd-main-develop.md)                                              | Diferenças entre branches e workflows                                   |
-| [Migração de servidor](ci_cd/troca-de-servidor/README.md)                                                  | Registro histórico da migração da VM para Swarm                         |
-| [Prioridades DevOps](ci_cd/RESUMO_PRIORIDADES_DEVOPS.md)                                                   | Decisões, limitações e itens operacionais pendentes                     |
-| [Health check Nginx/Backend](ci_cd/nginx-health-check.md)                                                  | Registro histórico da configuração de health check                      |
-| [Remoção de comentários](changelog/REMOCAO_COMENTARIOS.md)                                                 | Registro histórico de limpeza de comentários                            |
+| Pasta ou documento                                                                                         | Assunto                                                                      |
+| ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [ci_cd/](ci_cd/README.md)                                                                                  | Pipeline, publicação, deploy, operação e diagnóstico                         |
+| [dependabot/](dependabot/README.md)                                                                        | Atualizações de dependências e regras do Dependabot                          |
+| [seguranca-workflows/](seguranca-workflows/README.md)                                                      | Estado atual de CodeQL, Dependency Review, Gitleaks e Workflow Security      |
+| [01 - Vulnerabilidade deepmerge/shadcn](seguranca-vulnerabilidades/01-vulnerabilidade-deepmerge-shadcn.md) | Registro e correção de vulnerabilidades de dependências                      |
+| [Task 01 — Sanitização global de logs](tasks-seguranca/log-injection/task-01/README.md)                    | Sanitização de campos dinâmicos nos logs e acompanhamento dos alertas CodeQL |
+| [implementacao-nova-seguranca/](implementacao-nova-seguranca/README.md)                                    | Registro da implementação original dos controles de segurança                |
+| [estrutura/](estrutura/README.md)                                                                          | CI, Docker, ambientes, testes e versionamento                                |
+| [backend/](backend/README.md)                                                                              | Contratos e comportamento da API                                             |
+| [Task 01 — Contrato com o Sistema Host](tasks-devops/integracao-com-host/task-01/Definir-contrato.md)      | Processo e contrato da integração com o Host                                 |
+| [Task 02 — Receber contexto do Host](tasks-devops/integracao-com-host/task-02/Receber-contexto.md)         | Recebimento validado, limites e uso do contexto no prompt                    |
+| [interface/](interface/README.md)                                                                          | Componentes e configuração da interface                                      |
+| [contexto/](contexto/CONTEXTO_MODELO.md)                                                                   | Contexto de manutenção, arquitetura e limitações                             |
+| [changelog/](changelog/CHANGELOG.md)                                                                       | Registros históricos de alterações                                           |
+| [Comparação de CI/CD](ci_cd/diferencas-ci-cd-main-develop.md)                                              | Diferenças entre branches e workflows                                        |
+| [Migração de servidor](ci_cd/troca-de-servidor/README.md)                                                  | Registro histórico da migração da VM para Swarm                              |
+| [Prioridades DevOps](ci_cd/RESUMO_PRIORIDADES_DEVOPS.md)                                                   | Decisões, limitações e itens operacionais pendentes                          |
+| [Health check Nginx/Backend](ci_cd/nginx-health-check.md)                                                  | Registro histórico da configuração de health check                           |
+| [Remoção de comentários](changelog/REMOCAO_COMENTARIOS.md)                                                 | Registro histórico de limpeza de comentários                                 |

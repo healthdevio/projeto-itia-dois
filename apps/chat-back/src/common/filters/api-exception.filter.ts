@@ -8,6 +8,7 @@ import {
 import type { Response } from 'express';
 import type { ApiResponse } from '../../models/api-response.js';
 import { ContractValidationError } from '../../models/contract-validation.js';
+import { sanitizeForLog } from '../../utils/sanitize-for-log.js';
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -80,7 +81,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
-        console.error('[Core] Erro HTTP 5xx capturado:', exception);
+        console.error(
+          `[Core] Erro HTTP 5xx capturado: ${JSON.stringify({ status, error: sanitizeForLog(exception.message) })}`,
+        );
         const body: ApiResponse = {
           success: false,
           error: 'Erro interno do servidor',
@@ -97,7 +100,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
       return;
     }
 
-    console.error('[Core] Erro não tratado:', exception);
+    console.error(
+      `[Core] Erro não tratado: ${JSON.stringify(sanitizeForLog(exception))}`,
+    );
     const body: ApiResponse = {
       success: false,
       error: 'Erro interno do servidor',

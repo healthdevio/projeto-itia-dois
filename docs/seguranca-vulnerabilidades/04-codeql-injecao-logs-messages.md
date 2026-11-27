@@ -178,3 +178,7 @@ persistirem, a alternativa proposta é um modelo de sanitizador em
 
 Fora do escopo desta alteração: alerta **#2** (regex polinomial em
 `middleware/identity.ts`) e os demais pontos de log listados na seção anterior.
+
+## Acompanhamento — sanitização global de logs
+
+Em uma task posterior, os logs dinâmicos que haviam ficado fora do escopo foram revisados e atualizados para sanitizar os campos e serializar o payload em JSON. O registro da implementação e das validações locais está em [Task 01 — Sanitização global de logs](../tasks-seguranca/log-injection/task-01/README.md). Os alertas CodeQL #26–#29 mencionados na solicitação dessa task aguardam novo scan do GitHub; este histórico não os declara fechados.

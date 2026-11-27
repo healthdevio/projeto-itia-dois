@@ -6,6 +6,7 @@ import {
   type SSEEvent,
   type SseErrorMetadata,
 } from '../models/sse-events.js';
+import { sanitizeForLog } from '../utils/sanitize-for-log.js';
 
 export type StreamEventDecision =
   | { action: 'emit'; event: SSEEvent }
@@ -28,8 +29,7 @@ export class SseEventValidatorService {
     }
 
     console.error(
-      `[Core] Evento SSE inválido bloqueado (request_id=${meta.request_id}):`,
-      result.issues,
+      `[Core] Evento SSE inválido bloqueado: ${JSON.stringify({ requestId: sanitizeForLog(meta.request_id), issues: result.issues.map((issue) => ({ path: sanitizeForLog(issue.path), message: sanitizeForLog(issue.message) })) })}`,
     );
 
     return {
@@ -46,8 +46,7 @@ export class SseEventValidatorService {
     safeMessage = 'Falha durante o streaming da resposta',
   ): StreamEventDecision {
     console.error(
-      `[Core] Falha no fluxo SSE (request_id=${meta.request_id}):`,
-      error,
+      `[Core] Falha no fluxo SSE: ${JSON.stringify({ requestId: sanitizeForLog(meta.request_id), error: sanitizeForLog(error) })}`,
     );
 
     return {

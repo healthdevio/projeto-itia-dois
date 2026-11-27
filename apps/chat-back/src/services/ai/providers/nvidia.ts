@@ -13,6 +13,7 @@ import type {
   AIProviderResponse,
   ChatMessage,
 } from '../provider.js';
+import { sanitizeForLog } from '../../../utils/sanitize-for-log.js';
 const DEFAULT_TIMEOUT_MS = 300000;
 const DEFAULT_MAX_TOKENS = 400;
 const SUGGESTION_MAX_TOKENS = 200;
@@ -279,19 +280,12 @@ export function createNvidiaProvider(
           suggestions = raw === null ? null : readSuggestions(raw);
         } catch (error) {
           console.warn(
-            `[Nvidia] sem sugestões: ${error instanceof Error ? error.message : String(error)}`,
+            `[Nvidia] sem sugestões: ${JSON.stringify(sanitizeForLog(error))}`,
           );
         }
       }
       console.log(
-        `[Nvidia] ${context.conversation_id} · ` +
-          `tenant ${tenant ?? 'default'} · ` +
-          `${context.previous_messages.length} mensagens de contexto · ` +
-          `${context.history_ids.length} conversas anteriores · ` +
-          `config ${formatChatConfig(chatConfig)}` +
-          `${config.ignoreConfig ? ' (ignorado)' : ''} · ` +
-          `${Date.now() - started}ms · ` +
-          `${suggestions === null ? 'sem sugestões' : `${suggestions.length} sugestões`}`,
+        `[Nvidia] processamento: ${JSON.stringify({ conversationId: sanitizeForLog(context.conversation_id), tenantId: sanitizeForLog(tenant), previousMessageCount: context.previous_messages.length, historyCount: context.history_ids.length, config: sanitizeForLog(formatChatConfig(chatConfig)), configIgnored: config.ignoreConfig, durationMs: Date.now() - started, suggestionCount: suggestions?.length ?? 0 })}`,
       );
       return { response, suggestions };
     },

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { sanitizeForLog } from '../utils/sanitize-for-log.js';
 
 export const CONVERSATION_STATES = [
   'idle',
@@ -42,7 +43,9 @@ export function normalizeConversationState(value: unknown): ConversationState {
   if (isConversationState(value)) return value;
   if (value === 'greeting') return 'idle';
   if (value === 'thinking') return 'streaming';
-  console.warn(`[Core] estado de conversa desconhecido: ${String(value)}`);
+  console.warn(
+    `[Core] estado de conversa desconhecido: ${JSON.stringify(sanitizeForLog(value))}`,
+  );
   return 'idle';
 }
 

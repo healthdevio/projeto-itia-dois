@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { format } from 'node:util';
 import { after, before, beforeEach, describe, it } from 'node:test';
 
 import {
@@ -39,14 +38,8 @@ void describe('registrarMensagemRecebida', () => {
     assert.equal(chamadas.length, 1);
     assert.equal(chamadas[0][0], FORMATO_MENSAGEM_RECEBIDA);
     assert.equal(typeof chamadas[0][0], 'string');
-    assert.equal(
-      chamadas[0].length,
-      7,
-      'formato mais seis argumentos, sem array ou spread',
-    );
-    for (const valor of chamadas[0].slice(1)) {
-      assert.equal(typeof valor, 'string');
-    }
+    assert.equal(chamadas[0].length, 2, 'formato mais um payload JSON');
+    assert.equal(typeof chamadas[0][1], 'string');
   });
 
   void it('reduz CRLF a um espaço em todos os campos', () => {
@@ -60,12 +53,15 @@ void describe('registrarMensagemRecebida', () => {
     });
 
     assert.equal(chamadas.length, 1);
-    assert.equal(
-      format(...chamadas[0]),
-      '[Core] Mensagem recebida de web falso (usuário user 1): msg 2 · config pt BR · formal %d · short ',
-    );
-    // eslint-disable-next-line no-control-regex -- verifica a ausência de quebras no registro
-    assert.doesNotMatch(format(...chamadas[0]), /[\r\n]/);
+    const payload = JSON.parse(chamadas[0][1] as string) as Record<
+      string,
+      string
+    >;
+    assert.equal(payload.origin, 'web falso');
+    assert.equal(payload.userId, 'user 1');
+    assert.equal(payload.messageId, 'msg 2');
+    assert.equal(payload.tone, 'formal %d');
+    assert.doesNotMatch(chamadas[0][1] as string, /[\r\n]/);
   });
 
   void it('não permite quebra de linha nem formato controlado pelo cliente', () => {
@@ -74,17 +70,13 @@ void describe('registrarMensagemRecebida', () => {
 
     assert.equal(chamadas.length, 1);
 
-    const linha = format(...chamadas[0]);
+    const linha = chamadas[0][1] as string;
     // eslint-disable-next-line no-control-regex -- verifica a ausência de controles no registro
     assert.doesNotMatch(linha, /[\r\n]/);
     // eslint-disable-next-line no-control-regex -- verifica a ausência de separadores Unicode e escape ANSI
     assert.doesNotMatch(linha, /\u2028|\u2029|\u001b/);
-    assert.match(linha, /Mensagem recebida de web \[Core\] Mensagem recebida/);
+    assert.ok(linha.includes('web [Core] Mensagem recebida'));
     assert.ok(linha.includes('%s'), '%s do cliente permanece como texto');
-    assert.equal(
-      linha,
-      '[Core] Mensagem recebida de web [Core] Mensagem recebida de admin (usuário x): %s (usuário user-1): msg-1 · config pt-BR · formal · short',
-    );
   });
 
   void it('sanitiza userId, messageId e configuração', () => {
@@ -97,22 +89,18 @@ void describe('registrarMensagemRecebida', () => {
       responseLength: 'short\t',
     });
 
-    const linha = format(...chamadas[0]);
+    const linha = chamadas[0][1] as string;
     // eslint-disable-next-line no-control-regex -- verifica a ausência de controles no registro
     assert.doesNotMatch(linha, /[\r\n\t\u2028\u001b]/);
-    assert.match(
-      linha,
-      /formal%d/,
-      'especificador no valor não é interpretado',
-    );
+    assert.ok(linha.includes('formal%d'), 'especificador permanece como texto');
   });
 
   void it('mantém a linha de um origin normal equivalente à anterior', () => {
     registrarMensagemRecebida({ ...dados, origin: 'web' });
 
     assert.equal(
-      format(...chamadas[0]),
-      '[Core] Mensagem recebida de web (usuário user-1): msg-1 · config pt-BR · formal · short',
+      chamadas[0][1],
+      '{"origin":"web","userId":"user-1","messageId":"msg-1","language":"pt-BR","tone":"formal","responseLength":"short"}',
     );
   });
 });

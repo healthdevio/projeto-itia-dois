@@ -4,6 +4,7 @@ import type { ChatResponse } from '../../models/chat-response.js';
 import type { ConversationState } from '../../models/conversation.js';
 import type { SseChannel } from './broadcaster.js';
 import { SseBroadcaster } from './broadcaster.js';
+import { sanitizeForLog } from '../../utils/sanitize-for-log.js';
 import { MessageProcessingService } from '../message-processing/index.js';
 import { transitionConversationState } from '../../repositories/conversation-repository.js';
 
@@ -115,7 +116,7 @@ export class SseService implements OnModuleDestroy {
     channel.setOwner(userId);
     this.owners.set(connectionId, userId);
     this.logger.debug(
-      `Conexão SSE aberta: ${connectionId} (usuário ${userId})`,
+      `[SSE] Conexão aberta: ${JSON.stringify({ connectionId: sanitizeForLog(connectionId), userId: sanitizeForLog(userId) })}`,
     );
 
     // Notifica a abertura da conexão no próprio canal.
@@ -140,7 +141,9 @@ export class SseService implements OnModuleDestroy {
     channel.close();
     this.broadcaster.unregister(connectionId);
     this.owners.delete(connectionId);
-    this.logger.debug(`Conexão SSE encerrada: ${connectionId}`);
+    this.logger.debug(
+      `[SSE] Conexão encerrada: ${JSON.stringify({ connectionId: sanitizeForLog(connectionId) })}`,
+    );
   }
 
   /**
@@ -329,7 +332,7 @@ export class SseService implements OnModuleDestroy {
         // Não persiste resposta incompleta como concluída.
         // Não transmite eventos após o encerramento (writeEvent já retornará false).
         this.logger.debug(
-          `Processamento cancelado para conexão ${connectionId} (usuário ${userId})`,
+          `[SSE] Processamento cancelado: ${JSON.stringify({ connectionId: sanitizeForLog(connectionId), userId: sanitizeForLog(userId) })}`,
         );
         try {
           await transitionConversationState(userId, 'error');

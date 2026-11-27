@@ -9,6 +9,7 @@ import {
   getOrCreateActiveConversation,
   rotateConversation,
 } from '../repositories/conversation-repository.js';
+import { sanitizeForLog } from '../utils/sanitize-for-log.js';
 
 @Controller('api/conversations')
 @UseGuards(IdentityGuard)
@@ -24,7 +25,13 @@ export class ConversationsController {
       const body: ApiResponse<ConversationView> = { success: true, data: view };
       return response.status(200).json(body);
     } catch (error) {
-      console.error(`[Core] Erro ao obter conversa atual de ${userId}:`, error);
+      console.error(
+        '[Core] Erro ao obter conversa atual: %s',
+        JSON.stringify({
+          userId: sanitizeForLog(userId),
+          error: sanitizeForLog(error),
+        }),
+      );
       const body: ApiResponse = {
         success: false,
         error: 'Erro interno ao obter a conversa atual',
@@ -48,7 +55,13 @@ export class ConversationsController {
       };
       return response.status(200).json(body);
     } catch (error) {
-      console.error(`[Core] Erro ao obter conversa ativa de ${userId}:`, error);
+      console.error(
+        '[Core] Erro ao obter conversa ativa: %s',
+        JSON.stringify({
+          userId: sanitizeForLog(userId),
+          error: sanitizeForLog(error),
+        }),
+      );
       const body: ApiResponse = {
         success: false,
         error: 'Erro interno ao obter a conversa ativa',
@@ -66,7 +79,11 @@ export class ConversationsController {
     try {
       const conversation = await rotateConversation(userId);
       console.log(
-        `[Core] Nova conversa iniciada para ${userId}: ${conversation.id}`,
+        '[Core] Nova conversa iniciada: %s',
+        JSON.stringify({
+          userId: sanitizeForLog(userId),
+          conversationId: sanitizeForLog(conversation.id),
+        }),
       );
       const body: ApiResponse<Conversation> = {
         success: true,
@@ -74,7 +91,13 @@ export class ConversationsController {
       };
       return response.status(200).json(body);
     } catch (error) {
-      console.error(`[Core] Erro ao rotacionar conversa de ${userId}:`, error);
+      console.error(
+        '[Core] Erro ao rotacionar conversa: %s',
+        JSON.stringify({
+          userId: sanitizeForLog(userId),
+          error: sanitizeForLog(error),
+        }),
+      );
       const body: ApiResponse = {
         success: false,
         error: 'Erro interno ao iniciar nova conversa',

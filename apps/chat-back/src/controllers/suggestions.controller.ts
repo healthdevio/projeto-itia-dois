@@ -17,6 +17,7 @@ import {
   clearActiveSuggestions,
   getActiveSuggestions,
 } from '../repositories/suggestion-repository.js';
+import { sanitizeForLog } from '../utils/sanitize-for-log.js';
 
 interface SuggestionsResponseData {
   suggestions: Suggestion[];
@@ -39,7 +40,13 @@ export class SuggestionsController {
       };
       return response.status(200).json(body);
     } catch (error) {
-      console.error(`[Core] Erro ao obter sugestões de ${userId}:`, error);
+      console.error(
+        '[Core] Erro ao obter sugestões: %s',
+        JSON.stringify({
+          userId: sanitizeForLog(userId),
+          error: sanitizeForLog(error),
+        }),
+      );
       const body: ApiResponse = {
         success: false,
         error: 'Erro interno ao obter as sugestões',
@@ -66,8 +73,14 @@ export class SuggestionsController {
         validation.suggestions,
       );
       console.log(
-        `[Core] ${validation.suggestions.length} sugestão(ões) registrada(s) por ${userId}:`,
-        suggestions.map((suggestion) => suggestion.text).join(' | '),
+        '[Core] Sugestões registradas: %s',
+        JSON.stringify({
+          count: validation.suggestions.length,
+          userId: sanitizeForLog(userId),
+          suggestions: suggestions.map((suggestion) =>
+            sanitizeForLog(suggestion.text),
+          ),
+        }),
       );
       const result: ApiResponse<SuggestionsResponseData> = {
         success: true,
@@ -75,7 +88,13 @@ export class SuggestionsController {
       };
       return response.status(200).json(result);
     } catch (error) {
-      console.error(`[Core] Erro ao registrar sugestões de ${userId}:`, error);
+      console.error(
+        '[Core] Erro ao registrar sugestões: %s',
+        JSON.stringify({
+          userId: sanitizeForLog(userId),
+          error: sanitizeForLog(error),
+        }),
+      );
       const result: ApiResponse = {
         success: false,
         error: 'Erro interno ao registrar as sugestões',
@@ -98,7 +117,13 @@ export class SuggestionsController {
       };
       return response.status(200).json(result);
     } catch (error) {
-      console.error(`[Core] Erro ao remover sugestões de ${userId}:`, error);
+      console.error(
+        '[Core] Erro ao remover sugestões: %s',
+        JSON.stringify({
+          userId: sanitizeForLog(userId),
+          error: sanitizeForLog(error),
+        }),
+      );
       const result: ApiResponse = {
         success: false,
         error: 'Erro interno ao remover as sugestões',

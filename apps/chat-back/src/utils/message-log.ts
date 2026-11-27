@@ -5,8 +5,7 @@ import { sanitizeForLog } from './sanitize-for-log.js';
  * `console.log` é sempre esta constante: valores externos nunca ocupam o lugar
  * do formato, onde `%s` e `%d` seriam interpretados pelo Node.
  */
-export const FORMATO_MENSAGEM_RECEBIDA =
-  '[Core] Mensagem recebida de %s (usuário %s): %s · config %s · %s · %s';
+export const FORMATO_MENSAGEM_RECEBIDA = '[Core] Mensagem recebida: %s';
 
 export interface DadosLogMensagemRecebida {
   origin: unknown;
@@ -18,20 +17,21 @@ export interface DadosLogMensagemRecebida {
 }
 
 /**
- * Aplica a sanitização a todos os valores externos presentes no registro. A
- * remoção de `\r`/`\n` também aparece em cada valor para que o CodeQL a reconheça
- * diretamente no caminho do argumento do log.
+ * Sanitiza os campos e serializa o objeto como um único argumento. JSON.stringify
+ * escapa caracteres de controle e impede que valores externos forjem linhas.
  */
 export function valoresLogMensagemRecebida(
   dados: DadosLogMensagemRecebida,
 ): string[] {
   return [
-    sanitizeForLog(dados.origin).replace(/\r\n|\r|\n/g, ' '),
-    sanitizeForLog(dados.userId).replace(/\r\n|\r|\n/g, ' '),
-    sanitizeForLog(dados.messageId).replace(/\r\n|\r|\n/g, ' '),
-    sanitizeForLog(dados.language).replace(/\r\n|\r|\n/g, ' '),
-    sanitizeForLog(dados.tone).replace(/\r\n|\r|\n/g, ' '),
-    sanitizeForLog(dados.responseLength).replace(/\r\n|\r|\n/g, ' '),
+    JSON.stringify({
+      origin: sanitizeForLog(dados.origin),
+      userId: sanitizeForLog(dados.userId),
+      messageId: sanitizeForLog(dados.messageId),
+      language: sanitizeForLog(dados.language),
+      tone: sanitizeForLog(dados.tone),
+      responseLength: sanitizeForLog(dados.responseLength),
+    }),
   ];
 }
 
@@ -39,16 +39,5 @@ export function valoresLogMensagemRecebida(
 export function registrarMensagemRecebida(
   dados: DadosLogMensagemRecebida,
 ): void {
-  const [origin, userId, messageId, language, tone, responseLength] =
-    valoresLogMensagemRecebida(dados);
-
-  console.log(
-    FORMATO_MENSAGEM_RECEBIDA,
-    origin,
-    userId,
-    messageId,
-    language,
-    tone,
-    responseLength,
-  );
+  console.log(FORMATO_MENSAGEM_RECEBIDA, valoresLogMensagemRecebida(dados)[0]);
 }

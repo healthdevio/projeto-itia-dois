@@ -11,6 +11,7 @@ import { getProvider } from './index.js';
 import type { AIContext, AIProviderRequest } from './index.js';
 import type { ChatConfig } from '../../models/chat-config.js';
 import { DEFAULT_CHAT_CONFIG } from '../../models/chat-config.js';
+import { sanitizeForLog } from '../../utils/sanitize-for-log.js';
 
 const CATEGORIAS_VALIDAS = [
   'geral',
@@ -171,8 +172,7 @@ export async function recuperarMemoriaRelevante(
     return await findRelevantMemories(userId, mensagem, limite);
   } catch (error) {
     console.error(
-      `[Memória] Erro ao recuperar memórias relevantes do usuário ${userId}:`,
-      error instanceof Error ? error.message : String(error),
+      `[Memória] Erro ao recuperar memórias relevantes: ${JSON.stringify({ userId: sanitizeForLog(userId), error: sanitizeForLog(error) })}`,
     );
     return [];
   }
@@ -338,8 +338,7 @@ export async function avaliarEAtualizarMemoria(
     return { acao: 'criar', memoria: nova };
   } catch (error) {
     console.error(
-      `[Memória] Erro ao avaliar/atualizar memória do usuário ${userId}:`,
-      error instanceof Error ? error.message : String(error),
+      `[Memória] Erro ao avaliar/atualizar memória: ${JSON.stringify({ userId: sanitizeForLog(userId), error: sanitizeForLog(error) })}`,
     );
     return {
       acao: 'ignorar',
